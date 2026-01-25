@@ -154,7 +154,7 @@ def check_ollama_model(model_name: str = "gemini-3-flash-preview") -> bool:
         logger.error(f"Failed to connect to Ollama: {e}")
         return False
 
-def create_ai_archive(job_id: str, transcript: list, frames_dir: Path, model: str = "gemini-3-flash-preview") -> dict:
+def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str = "gemini-3-flash-preview") -> dict:
     """
     Creates a perfect AI-readable archive.
     1. Semantic Chunking: Groups transcript into concepts.

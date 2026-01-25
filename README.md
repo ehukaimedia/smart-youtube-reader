@@ -51,6 +51,7 @@ We provide a unified launcher that handles environments and dependencies.
 ```bash
 # MacOS / Linux
 ./start.command
+# (Automatically launches http://localhost:3001)
 ```
 
 ### Option B: Manual Setup
