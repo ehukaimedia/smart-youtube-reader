@@ -162,128 +162,139 @@ def create_ai_archive(job_id: str, transcript: list, frames_dir: Path, model: st
     """
     logger.info("Creating AI Archive...")
     
-    # 1. Prepare Transcript Text for LLM
-    full_text = " ".join([t['text'] for t in transcript if 'text' in t])
+    # 1. Chunking Logic (Process in 5-minute segments to avoid context limits)
+    CHUNK_DURATION = 300  # 5 minutes in seconds
     
-    try:
-        # Prompt for semantic chunking
-        system_prompt = (
-            "You are an expert AI Data Archivist. Your goal is to convert the following video transcript "
-            "into a structured dataset for machine learning. \n"
-            "Action: Break the content into logical 'Concepts' or 'Chapters'. \n"
-            "Output Format: JSON list of objects, each with: \n"
-            " - 'title': Short concept title \n"
-            " - 'summary': One sentence summary \n"
-            " - 'content': The full text content for this section \n"
-            " - 'start_time': approximate start time in seconds \n"
-            " - 'end_time': approximate end time in seconds \n"
-            "IMPORTANT: Cover the ENTIRE video content. Do not skip sections."
-        )
+    # Sort transcript just in case
+    transcript.sort(key=lambda x: x.get('start', 0))
+    
+    video_duration = transcript[-1]['start'] + transcript[-1]['duration'] if transcript else 0
+    all_chapters = []
+    
+    current_time = 0
+    while current_time < video_duration:
+        chunk_end = current_time + CHUNK_DURATION
         
-        response = ollama.chat(model=model, messages=[
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': f"Transcript: {full_text[:30000]}"} 
-        ])
+        # Filter transcript for this window
+        chunk_items = [
+            t for t in transcript 
+            if t['start'] >= current_time and t['start'] < chunk_end
+        ]
         
-        # Parse JSON output
-        content = response['message']['content']
-        # Find JSON in content
+        if not chunk_items:
+            current_time += CHUNK_DURATION
+            continue
+            
+        chunk_text = " ".join([t['text'] for t in chunk_items if 'text' in t])
+        
+        logger.info(f"Processing chunk: {current_time}s to {chunk_end}s (Length: {len(chunk_text)} chars)")
+        
         try:
-            start = content.find('[')
-            end = content.rfind(']') + 1
-            if start == -1 or end == 0:
-                start = content.find('{')
-                end = content.rfind('}') + 1
-                json_str = "[" + content[start:end] + "]"
-            else:
-                json_str = content[start:end]
+            # Prompt for semantic chunking of this segment
+            system_prompt = (
+                "You are an expert AI Data Archivist. Your goal is to convert the following video transcript segment "
+                "into a structured dataset for machine learning. \n"
+                "Action: Break the content into logical 'Concepts' or 'Chapters'. \n"
+                "Output Format: JSON list of objects, each with: \n"
+                " - 'title': Short concept title \n"
+                " - 'summary': One sentence summary \n"
+                " - 'content': The full text content for this section \n"
+                " - 'start_time': approximate start time in seconds (relative to video start) \n"
+                " - 'end_time': approximate end time in seconds \n"
+                "IMPORTANT: Focus ONLY on the provided text. Do not hallucinate content outside this segment."
+            )
             
-            chapters = json.loads(json_str)
-        except Exception as e:
-            logger.error(f"Failed to parse LLM JSON: {e}. Content: {content[:100]}...")
-            return {}
-
-        # 2. Select Images for each Chapter
-        archive_data = []
-        frame_files = sorted(list(frames_dir.glob("*.png")))
-        INTERVAL = 15 # default
-        
-        # Helper to get phash (cached?)
-        # For simplicity, calculate on fly or trust name
-        def get_phash(path):
+            response = ollama.chat(model=model, messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': f"Transcript Segment ({current_time}-{chunk_end}s): {chunk_text}"} 
+            ])
+            
+            # Parse JSON output
+            content = response['message']['content']
+            # Find JSON in content
             try:
-                with Image.open(path) as i:
-                    return imagehash.phash(i)
-            except:
-                return None
-
-        for chapter in chapters:
-            c_start = chapter.get('start_time', 0)
-            c_end = chapter.get('end_time', c_start + 60)
+                start = content.find('[')
+                end = content.rfind(']') + 1
+                if start == -1 or end == 0:
+                    start = content.find('{')
+                    end = content.rfind('}') + 1
+                    json_str = "[" + content[start:end] + "]"
+                else:
+                    json_str = content[start:end]
+                
+                chunk_chapters = json.loads(json_str)
+                all_chapters.extend(chunk_chapters)
+                
+            except Exception as e:
+                logger.error(f"Failed to parse LLM JSON for chunk {current_time}: {e}. Content: {content[:100]}...")
+                
+        except Exception as e:
+            logger.error(f"Ollama inference failed for chunk {current_time}: {e}")
             
-            # Find frames in this window
-            candidates = []
-            for f in frame_files:
-                # Use filename to derive accurate time (0001.png -> 1 * 15 = 15s)
-                # This works even if intermediate frames are deleted by deduplication.
-                try:
-                    frame_num = int(f.stem)
-                     # ffmpeg 1-based usually, so frame 1 is at 0s or 1/fps? 
-                     # approximate: frame N * interval.
-                    t = frame_num * INTERVAL
-                except ValueError:
+        current_time += CHUNK_DURATION
+
+    # Use the accumulated chapters
+    chapters = all_chapters
+
+    # 2. Select Images for each Chapter
+    archive_data = []
+    
+    # helper for hex -> imagehash
+    def to_hash_obj(hex_str):
+        if not hex_str: return None
+        return imagehash.hex_to_hash(hex_str)
+
+    for chapter in chapters:
+        c_start = chapter.get('start_time', 0)
+        c_end = chapter.get('end_time', c_start + 60)
+        
+        # Get frame candidates from FrameManager (already sorted by time)
+        # Note: we need to handle the frame_manager type hint if we want strictness, 
+        # but for now we duck-type it.
+        candidates = frame_manager.get_context_frames(c_start, c_end)
+        
+        selected_images = []
+        if candidates:
+            # Algorithm:
+            # 1. Always take the first valid candidate (context).
+            # 2. Then look for frames that are visually distinct (> threshold) from the last selected.
+            # 3. Limit to 4.
+            
+            # Reduce candidate size for efficiency if massive
+            step = max(1, len(candidates) // 10)
+            subset = candidates[::step]
+            
+            last_hash = None
+            for frame_info in subset:
+                if len(selected_images) >= 4:
+                    break
+                    
+                filename = frame_info['filename']
+                current_hash = to_hash_obj(frame_info.get('phash'))
+                
+                if not current_hash:
                     continue
-
-                if c_start <= t <= c_end:
-                    candidates.append(f)
-            
-            selected_images = []
-            if candidates:
-                # Algorithm:
-                # 1. Always take the first valid candidate (context).
-                # 2. Then look for frames that are visually distinct (> threshold) from the last selected.
-                # 3. Limit to 4.
-                
-                # Check if candidates list is huge? Take every Nth?
-                # Visual check is expensive if many frames.
-                # Let's limit comparison candidates to max 10 spread out.
-                
-                step = max(1, len(candidates) // 10)
-                subset = candidates[::step]
-                
-                last_hash = None
-                for img_path in subset:
-                    if len(selected_images) >= 4:
-                        break
-                        
-                    current_hash = get_phash(img_path)
-                    if not current_hash:
-                        continue
-                        
-                    if last_hash is None:
-                        selected_images.append(img_path.name)
+                    
+                if last_hash is None:
+                    selected_images.append(filename)
+                    last_hash = current_hash
+                else:
+                    # Threshold for "different enough" = 10-12 usually
+                    if current_hash - last_hash > 12:
+                        selected_images.append(filename)
                         last_hash = current_hash
-                    else:
-                        # Threshold for "different enough" = 10-12 usually
-                        if current_hash - last_hash > 12:
-                            selected_images.append(img_path.name)
-                            last_hash = current_hash
-            
-            # Fallback if logic selected nothing (should trigger at least one if candidates exist)
-            if not selected_images and candidates:
-                 selected_images.append(candidates[len(candidates)//2].name)
+        
+        # Fallback if logic selected nothing (should trigger at least one if candidates exist)
+        if not selected_images and candidates:
+                selected_images.append(candidates[len(candidates)//2]['filename'])
 
-            archive_data.append({
-                "concept": chapter.get('title'),
-                "summary": chapter.get('summary'),
-                "content": chapter.get('content'),
-                "timestamp_start": c_start,
-                "timestamp_end": c_end,
-                "images": selected_images
-            })
-            
-        return {"job_id": job_id, "archive": archive_data}
-
-    except Exception as e:
-        logger.error(f"Archive generation failed: {e}")
-        return {}
+        archive_data.append({
+            "concept": chapter.get('title'),
+            "summary": chapter.get('summary'),
+            "content": chapter.get('content'),
+            "timestamp_start": c_start,
+            "timestamp_end": c_end,
+            "images": selected_images
+        })
+        
+    return {"job_id": job_id, "archive": archive_data}

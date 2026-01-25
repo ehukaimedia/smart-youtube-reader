@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 from youtube_transcript_api import YouTubeTranscriptApi
 from .jobs import JobStore, JobStatus
-from .intelligence import deduplicate_frames
+# from .intelligence import deduplicate_frames REMOVED
+from .frames import FrameManager # [NEW]
 from .schemas import JobCreateRequest
 
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
@@ -24,12 +25,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
     job.data_dir = job_dir
     
     try:
-        # 1. Download Video Info & Audio (to avoid massive video files if we just need frames, 
-        # but for frames we usually need video. Best to download lowest res video or stream it).
-        # We will download the best video for quality frames but maybe limit resolution?
-        # User asked for efficiency. 
-        # Quickest way: stream to ffmpeg? Or download. Downloading is safer and allows re-processing.
-        
+        # 1. Download Video Info & Audio
         ydl_opts = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'outtmpl': str(job_dir / 'video.%(ext)s'),
@@ -44,7 +40,6 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
 
         # 2. Get Transcript (via yt-dlp to be robust)
         job.current_step = "Extracting Transcript..."
-        # We modify options to get subs
         ydl_opts_subs = {
             'skip_download': True,
             'writeautomaticsub': True,
@@ -55,14 +50,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         
         transcript = []
         try:
-             # Just use youtube_transcript_api if it works, else fallback? 
-             # The user reported issues. Let's try youtube_transcript_api one more time properly?
-             # Or just assume we can get it via api if we invoke it right.
-             # Actually, let's use the API but handle the object correctly if needed.
-             # If API fails, we return error.
-             
              from youtube_transcript_api import YouTubeTranscriptApi
-             # Typical usage:
              transcript = YouTubeTranscriptApi.get_transcript(video_id)
              
              with open(job_dir / "transcript.json", "w") as f:
@@ -73,35 +61,21 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
 
         except Exception as e:
              print(f"Transcript API failed: {e}. Trying yt-dlp subs...")
-             # Fallback to yt-dlp
              try:
                  with yt_dlp.YoutubeDL(ydl_opts_subs) as ydl:
                      ydl.download([payload.video_url])
                  
-                 # It saves as 'subs.en.vtt' usually
                  vtt_path = job_dir / "subs.en.vtt"
                  if not vtt_path.exists():
-                     # try cleaning up name logic or check other exts
                      found = list(job_dir.glob("subs.*.vtt"))
                      if found:
                          vtt_path = found[0]
                  
                  if vtt_path.exists():
-                     # Simple VTT parser (very basic)
-                     # Or use webvtt-py if installed? No.
-                     # regex based parsing for simplicity
                      import re
                      with open(vtt_path, 'r', encoding='utf-8') as f:
                          content = f.read()
                      
-                     # Simple block parser
-                     # WEBVTT ...
-                     # 
-                     # 00:00:00.000 --> 00:00:05.000
-                     # text
-                     
-                     # Regex to match: 00:00:00.000 --> 00:00:00.000 (anything extra) \n (text)
-                     # We use .*? after the second timestamp to consume align/position tags
                      pattern = re.compile(r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3}).*?\n(.*?)(?=\n\n|\Z)', re.DOTALL)
                      matches = pattern.findall(content)
                      
@@ -111,16 +85,10 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
 
                      parsed_transcript = []
                      for start, end, text in matches:
-                         # Clean text (remove <00:00:00.320><c> tags)
                          clean_text = re.sub(r'<[^>]+>', '', text).strip().replace('\n', ' ')
-                         # Skip empty lines or duplicates if needed (yt-dlp vtts are redundant)
                          if not clean_text:
                              continue
                          
-                         # Dedup: if text is same as last one, maybe check overlap? 
-                         # yt-dlp vtt often repeats lines for karaoke effect. 
-                         # We'll valid unique lines or just take them all for now.
-                         # A simple dedup: if text == last_text, skip
                          if parsed_transcript and parsed_transcript[-1]['text'] == clean_text:
                              continue
 
@@ -156,9 +124,18 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         except ffmpeg.Error as e:
             raise RuntimeError(f"FFmpeg error: {e.stderr.decode() if e.stderr else str(e)}")
 
-        # 4. Smart Deduplication
-        job.current_step = "Deduplicating Frames (Vision Analysis)..."
-        removed = deduplicate_frames(frames_dir)
+        # 4. Smart Deduplication (Using FrameManager)
+        job.current_step = "Indexing & Deduplicating Frames..."
+        
+        # Initialize FrameManager
+        frame_manager = FrameManager(job_dir)
+        
+        # Scan and Hash (Compute Once)
+        new_hashed = frame_manager.scan_and_hash(interval_sec=payload.interval_sec)
+        print(f"Hashed {new_hashed} new frames.")
+        
+        # Deduplicate
+        removed = frame_manager.deduplicate(threshold=5)
         print(f"Removed {removed} duplicate frames.")
 
         # 5. Create AI Archive (Intelligence Step)
@@ -166,7 +143,8 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         archive_stats = 0
         try:
              from .intelligence import create_ai_archive
-             archive_result = create_ai_archive(job_id, transcript, frames_dir)
+             # Pass frame_manager instead of frames_dir
+             archive_result = create_ai_archive(job_id, transcript, frame_manager)
              
              if archive_result.get('archive'):
                  with open(job_dir / "archive.json", "w") as f:
@@ -195,9 +173,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         job.status = JobStatus.complete
         job.current_step = "Complete"
         
-        # 7. Rename Directory to readable slug (Final Step to safely close files first?)
-        # Actually safe to do here as long as no open handles?
-        # we still have 'job_dir' variable. 
+        # 7. Rename Directory to readable slug
         try:
            from .jobs import slugify
            slug = slugify(job.title)
@@ -206,6 +182,11 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
            new_job_dir = DATA_ROOT / new_dir_name
            
            if not new_job_dir.exists():
+               import shutil
+               # We need to be careful with rename if open handles exist (though usually python handles are closed)
+               # Renaming the directory invalidates frame_manager paths if we don't update it.
+               # But job is done, so it's fine.
+               
                job_dir.rename(new_job_dir)
                job.data_dir = new_job_dir
                job.package_path = new_job_dir
@@ -219,7 +200,3 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         job.status = JobStatus.failed
         job.error = str(e)
 
-    except Exception as e:
-        job.status = JobStatus.failed
-        job.error = str(e)
-        raise e

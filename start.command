@@ -58,5 +58,9 @@ echo "============================================"
 echo "   (Close this window to stop the app)"
 echo "============================================"
 
+# Auto-launch browser
+sleep 3
+open "http://localhost:3001"
+
 # Wait for both processes
 wait

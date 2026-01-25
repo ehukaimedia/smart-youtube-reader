@@ -1,79 +1,82 @@
-# Smart YouTube Reader
+# Smart YouTube Reader (Gemini 3.0 Edition)
 
-**Smart YouTube Reader** is an AI-powered local application that transforms YouTube videos into structured, searchable narratives. It uses **Gemini 3 Flash** (via Ollama) and advanced computer vision to extract "perfect" frames and align them with the video transcript, creating a rich multi-modal reading experience.
+**Smart YouTube Reader** is a local, AI-powered "Knowledge Engine" that transforms YouTube videos into structured, searchable libraries. By combining **Gemini 3 Flash Preview** (via Ollama) with advanced computer vision, it extracts the *complete* narrative of a video—text, context, and visual keyframes—into a format you can actually use.
 
-Features include a **Video Slicer** for frame-perfect clip extraction and an **AI Archive** that organizes content into semantic chapters.
+> **Why this exists:** Videos are great for watching, but terrible for referencing. This tool makes video content as accessible and searchable as a book.
 
-![Screenshot](/frontend/public/screenshot.png)
+![App Screenshot](/frontend/public/screenshot.png)
 
-## Features
+## 🧠 Core Intelligence
 
--   **Smart Reader**: Converts videos into a blog-post style narrative with relevant images aligned to text.
--   **AI Archive**: Semantic chunking of video content into "Chapters" with summaries and multi-image galleries.
--   **Video Slicer**:
-    -   **Frame-Perfect Extraction**: Select exact start/end times and FPS (10-60).
-    -   **Visual Scrubbing**: Syncs start/end times automatically as you scrub the video.
-    -   **Filmstrip Review**: Inspect every generated frame, exclude blurry/irrelevant ones, and save only the best.
-    -   **Project Integration**: Saved slices appear directly in the main Reader timeline, integrated chronologically with AI chapters.
--   **Local Intelligence**: Runs entirely locally using `Ollama` and `FFmpeg`.
+*   **Model:** Powered by `gemini-3-flash-preview:latest` (Ollama) for ultra-fast, long-context understanding.
+*   **Vision:** Uses Perceptual Hashing (ImageHash) and SSIM to de-duplicate frames and find the "perfect" visual match for every paragraph of text.
+*   **Local Privacy:** All processing happens on your machine. No API keys required.
 
-## Prerequisites
+## ✨ Key Features
 
--   **Python 3.10+**
--   **Node.js 18+**
--   **FFmpeg** (Must be in your system PATH)
--   **Ollama** (Running locally with `gemini-3-flash-preview` or compatible model)
+### 1. The Smart Reader
+Reads like a Medium article, watches like a video.
+*   **Aligned Visuals:** Text paragraphs are automatically paired with the exact frame from the video.
+*   **Active Reading:** Click any paragraph to jump the video to that exact timestamp.
 
-## Installation
+### 2. Semantic AI Archive
+Organize chaos into structure.
+*   **Auto-Chaptering:** AI breaks the video into logical sections with descriptive titles.
+*   **Visual Summaries:** Each chapter gets a generated gallery of key visuals.
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/ehukaimedia/smart-youtube-reader.git
-    cd smart-youtube-reader
-    ```
+### 3. Precision Video Slicer
+Extract the gold.
+*   **Frame-Perfect Cuts:** Select start/end points with millisecond precision.
+*   **Clean Data:** Slices are saved with full metadata, ready for re-use in creative workflows (like *Smart Image Animations*).
+*   **Integrity Check:** Review every frame in a filmstrip view to ensure no blurry or transition frames make the cut.
 
-2.  **Start the Application**:
-    We provide a helper script to start both Frontend and Backend:
-    ```bash
-    ./start.command  # macOS
-    # OR
-    ./start.sh       # Linux/Mac terminal
-    ```
+## 🤖 Agent Integration
 
-    *Alternatively, run manually:*
+This tool is built to feed data into Antigravity Agents.
+*   **Learn from Video:** Turn a 20-minute coding tutorial into a `SKILL.md` for your agent.
+*   **Read the Guide:** [Agent Integration Guide](./AGENT_INTEGRATION.md)
 
-    **Backend (Port 8001)**
-    ```bash
-    cd backend
-    pip install -r requirements.txt
-    python -m app.main
-    ```
 
-    **Frontend (Port 3001)**
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
+## 🛠️ Tech Stack & Ports
 
-## Usage
+*   **Frontend:** Next.js 16.1 (React 19) - `http://localhost:3001`
+*   **Backend:** FastAPI (Python 3.10+) - `http://localhost:8001`
+*   **Database:** Local JSON/Filesystem (Zero-config).
 
-1.  Open [http://localhost:3001](http://localhost:3001).
-2.  **Paste a YouTube URL** to begin a new "Job".
-3.  Wait for the AI to process the video (transcription, frame extraction, alignment).
-4.  **View the Reader**: Read the content with synchronized images.
-5.  **Use the Video Slicer**:
-    -   Click **"Open Slicer"** from the Reader page.
-    -   Select a clip range (e.g., "The explosion animation").
-    -   Click **"Preview"** to see all frames.
-    -   Deselect bad frames and click **"Add to Project"**.
-    -   Return to the Reader to see your slice integrated into the story!
+## 🚀 Quick Start
 
-## Tech Stack
+### Option A: The "One-Click" Script (Recommended)
+We provide a unified launcher that handles environments and dependencies.
 
--   **Frontend**: Next.js 14, React, CSS Modules (Glassmorphism UI).
--   **Backend**: FastAPI, FFmpeg (pyffmpeg), SQLite (optional), Pydantic.
--   **AI/ML**: Ollama (LLM), ImageHash (Perceptual Hashing), SSIM (Structural Similarity).
+```bash
+# MacOS / Linux
+./start.command
+```
+
+### Option B: Manual Setup
+
+**1. Backward (API)**
+```bash
+cd backend
+python3 -m venv .venv        # Create standard venv
+source .venv/bin/activate    # Activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
+
+**2. Frontend (UI)**
+```bash
+cd frontend
+npm install
+npm run dev -- --port 3001
+```
+
+## 📦 Prerequisites
+
+*   [Ollama](https://ollama.com/) installed and running.
+    *   **Pull the model:** `ollama pull gemini-3-flash-preview`
+*   [FFmpeg](https://ffmpeg.org/) installed (`brew install ffmpeg`).
+*   Node.js 18+ and Python 3.10+.
 
 ## License
 
