@@ -201,7 +201,8 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
                 " - 'content': The full text content for this section \n"
                 " - 'start_time': approximate start time in seconds (relative to video start) \n"
                 " - 'end_time': approximate end time in seconds \n"
-                "IMPORTANT: Focus ONLY on the provided text. Do not hallucinate content outside this segment."
+                "IMPORTANT: Focus ONLY on the provided text. Do not hallucinate content outside this segment.\n"
+                "CRITICAL: Output ONLY raw JSON. Do not wrap the JSON in markdown formatting or code blocks."
             )
             
             response = ollama.chat(model=model, messages=[
@@ -210,7 +211,14 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
             ])
             
             # Parse JSON output
-            content = response['message']['content']
+            content = response['message']['content'].strip()
+
+            # Clean up markdown if present
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+
             # Find JSON in content
             try:
                 start = content.find('[')
@@ -218,7 +226,7 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
                 if start == -1 or end == 0:
                     start = content.find('{')
                     end = content.rfind('}') + 1
-                    json_str = "[" + content[start:end] + "]"
+                    json_str = "[" + content[start:end] + "]" if start != -1 and end != 0 else content
                 else:
                     json_str = content[start:end]
                 
@@ -238,11 +246,6 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
 
     # 2. Select Images for each Chapter
     archive_data = []
-    
-    # helper for hex -> imagehash
-    def to_hash_obj(hex_str):
-        if not hex_str: return None
-        return imagehash.hex_to_hash(hex_str)
 
     for chapter in chapters:
         c_start = chapter.get('start_time', 0)
@@ -255,38 +258,40 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
         
         selected_images = []
         if candidates:
-            # Algorithm:
-            # 1. Always take the first valid candidate (context).
-            # 2. Then look for frames that are visually distinct (> threshold) from the last selected.
-            # 3. Limit to 4.
+            # Use Ollama to verify if the frame illustrates the chapter text
             
             # Reduce candidate size for efficiency if massive
             step = max(1, len(candidates) // 10)
             subset = candidates[::step]
             
-            last_hash = None
+            chapter_text = chapter.get('content', '')
+
             for frame_info in subset:
                 if len(selected_images) >= 4:
                     break
                     
                 filename = frame_info['filename']
-                current_hash = to_hash_obj(frame_info.get('phash'))
+                frame_path = frame_manager.frames_dir / filename
                 
-                if not current_hash:
-                    continue
+                try:
+                    response = ollama.chat(model=model, messages=[
+                        {
+                            'role': 'user',
+                            'content': f"Does this image verify or illustrate the text: \"{chapter_text[:200]}\"? Answer only YES or NO.",
+                            'images': [str(frame_path)]
+                        }
+                    ])
                     
-                if last_hash is None:
-                    selected_images.append(filename)
-                    last_hash = current_hash
-                else:
-                    # Threshold for "different enough" = 10-12 usually
-                    if current_hash - last_hash > 12:
+                    answer = response['message']['content'].strip().upper()
+
+                    if "YES" in answer:
                         selected_images.append(filename)
-                        last_hash = current_hash
-        
+                except Exception as e:
+                    logger.error(f"Ollama inference failed during image selection: {e}")
+
         # Fallback if logic selected nothing (should trigger at least one if candidates exist)
         if not selected_images and candidates:
-                selected_images.append(candidates[len(candidates)//2]['filename'])
+            selected_images.append(candidates[len(candidates)//2]['filename'])
 
         archive_data.append({
             "concept": chapter.get('title'),
