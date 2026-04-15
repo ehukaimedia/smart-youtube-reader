@@ -103,14 +103,9 @@ async def list_models():
     import os
     if os.environ.get('NVIDIA_API_KEY'):
         models.extend([
-            "nvidia/llama-3.2-11b-vision-instruct",   # vision + text (good all-rounder)
-            "nvidia/llama-3.2-90b-vision-instruct",   # vision + text (higher quality)
-            "meta/llama-3.3-70b-instruct",            # text only (fast, high quality)
-            "meta/llama-3.1-405b-instruct",           # text only (highest quality)
-            "mistralai/mistral-large-2-instruct",     # text only
-            "deepseek-ai/deepseek-r1",                # text only (reasoning)
-            "microsoft/phi-4",                        # text only (efficient)
-            "minimax/minimax-m2.7",                   # text only (230B, free endpoint)
+            "moonshotai/kimi-k2-instruct",            # free, reasoning + coding + agentic
+            "z-ai/glm-4.7",                           # free, multilingual, tool use
+            "deepseek-ai/deepseek-v3.2",              # free, 685B reasoning, long context
         ])
 
     return {"models": models}
