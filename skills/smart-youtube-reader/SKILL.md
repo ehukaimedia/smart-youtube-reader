@@ -52,6 +52,12 @@ Once a job is complete, locate the output directory and prompt:
 > 2. Reference frame images in `frames/` for visual/UI context.
 > 3. Write a `SKILL.md` that codifies this knowledge as a reusable agent skill."
 
+## Exploring a Job Visually
+
+Use the **`youtube-archive-playground`** skill to turn a completed job into an interactive browser-based explorer. The playground lets you browse chapters, view operator-curated frames, and generate focused agent prompts from selected sections — useful when you want to share the archive with a human or build targeted follow-up prompts.
+
+Trigger it with: `"make a playground for job <id>"` or `"build an explorer for this archive"`.
+
 ## Pipeline Steps
 
 1. **Download** — yt-dlp fetches video using Chrome cookies if `YDL_COOKIES_BROWSER=chrome` is set
