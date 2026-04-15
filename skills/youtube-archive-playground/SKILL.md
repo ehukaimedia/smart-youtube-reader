@@ -47,6 +47,21 @@ const JOB_META = { title: "...", url: "...", folder: "..." };
 const API_BASE = "http://localhost:8001";
 ```
 
+**Security — always escape the JSON before inlining.** The string `</script>` anywhere in the archive content (e.g., a code snippet in a chapter's `content` field) will close the `<script>` block mid-parse, corrupting the file or enabling script injection. Escape it when serialising in Python:
+
+```python
+import json
+archive_json = json.dumps(archive_data, ensure_ascii=False).replace('</', '<\\/')
+```
+
+Or if writing the HTML in JavaScript/Node:
+
+```javascript
+const archiveJson = JSON.stringify(archiveData).replace(/<\//g, '<\\/');
+```
+
+This single substitution makes the embedding safe regardless of what text the archive contains.
+
 ### Step 3: Build the layout
 
 Use a three-panel layout:
@@ -146,25 +161,25 @@ function updateAll() {
 
 ## Opening the file
 
-After writing the HTML file, open it:
-```bash
-open <filename>.html
-```
-
-Name it after the job: `<slug>-playground.html`, e.g., `rethinking-ai-agents-playground.html`.
-
-## Example output filename
+After writing the HTML file, save it inside the job's data directory and open it:
 
 ```
 data/jobs/<folder>/playground.html
 ```
 
-Saving it inside the job's data directory makes it easy to find alongside the other artifacts.
+```bash
+open data/jobs/<folder>/playground.html
+```
+
+The job folder already namespaces it — no need to repeat the slug in the filename.
 
 ## Common mistakes
 
 - Hardcoded image URLs that break if the folder name changes — always use `JOB_META.folder` dynamically
-- No YouTube deep-link on chapter titles — always add `?t=<timestamp>` so users can jump to the source
+- No YouTube deep-link on chapter titles — always add `&t=<timestamp>` (not `?t=`) since YouTube watch URLs already have `?v=...` as their query param
 - Prompt is just a JSON dump of the chapter — write it as natural language a human or agent can read and act on
 - No fallback when images 404 — add `onerror="this.style.opacity=0.2"` on `<img>` tags
 - Forgetting to embed the archive inline — the file must work offline after generation
+- Forgetting to escape `</` in the inlined JSON — causes silent breakage if any chapter content contains a closing script tag
+- Empty archive — if `archive.json` has no chapters, render a message (`"This archive has no chapters yet"`) instead of an empty panel
+- Not auto-selecting the first chapter on load — the playground should show useful content immediately, not an empty detail panel
