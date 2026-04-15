@@ -13,6 +13,7 @@ class JobCreateRequest(BaseModel):
     interval_sec: int = 15
     min_width: int = 1280
     max_width: int = 1920
+    model: str = "gemini-3-flash-preview"
 
 class JobResponse(BaseModel):
     id: str

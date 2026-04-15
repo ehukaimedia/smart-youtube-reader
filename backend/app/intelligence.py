@@ -4,8 +4,63 @@ from pathlib import Path
 import ollama
 import logging
 import json
+import os
+import base64
 
 logger = logging.getLogger(__name__)
+
+# Routing: a model name is treated as NVIDIA NIM when NVIDIA_API_KEY is set AND the name
+# contains '/' (e.g. "meta/llama-3.3-70b-instruct"). Plain Ollama names like "gemma4:latest"
+# never contain '/'. Checking both conditions avoids misrouting any future namespaced Ollama model.
+
+_nvidia_client = None  # Cached OpenAI client — created once on first NVIDIA call
+
+def _get_nvidia_client():
+    global _nvidia_client
+    if _nvidia_client is None:
+        from openai import OpenAI
+        api_key = os.environ.get('NVIDIA_API_KEY')
+        if not api_key:
+            raise RuntimeError("NVIDIA_API_KEY environment variable is not set")
+        _nvidia_client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=api_key)
+    return _nvidia_client
+
+def _is_nvidia_model(model: str) -> bool:
+    return '/' in model and bool(os.environ.get('NVIDIA_API_KEY'))
+
+def _chat(model: str, messages: list) -> str:
+    """
+    Unified chat call. Routes to NVIDIA NIM or Ollama.
+    Messages follow Ollama format: {role, content, images?} where images is a list of file paths.
+    Returns the response content string.
+    """
+    if _is_nvidia_model(model):
+        client = _get_nvidia_client()
+
+        openai_msgs = []
+        for msg in messages:
+            role = msg['role']
+            text = msg.get('content', '')
+            images = msg.get('images', [])
+            if images:
+                parts: list = [{"type": "text", "text": text}]
+                for img_path in images:
+                    with open(img_path, 'rb') as f:
+                        b64 = base64.b64encode(f.read()).decode()
+                    parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{b64}"}
+                    })
+                openai_msgs.append({"role": role, "content": parts})
+            else:
+                openai_msgs.append({"role": role, "content": text})
+
+        resp = client.chat.completions.create(model=model, messages=openai_msgs, max_tokens=2048)
+        return resp.choices[0].message.content
+    else:
+        # Ollama
+        resp = ollama.chat(model=model, messages=messages)
+        return resp['message']['content']
 
 def deduplicate_frames(frames_dir: Path, threshold: int = 5) -> int:
     """
@@ -120,16 +175,13 @@ def align_frames_with_model(transcript: list, frames_dir: Path, model: str = "ge
         best_frame = candidates[len(candidates)//2]
         
         try:
-            # Call Ollama
-            response = ollama.chat(model=model, messages=[
+            answer = _chat(model, [
                 {
                     'role': 'user',
                     'content': f"Does this image verify or illustrate the text: \"{chunk['text']}\"? Answer only YES or NO.",
                     'images': [str(best_frame)]
                 }
-            ])
-            
-            answer = response['message']['content'].strip().upper()
+            ]).strip().upper()
             logger.info(f"Checking frame {best_frame.name} against text '{chunk['text'][:20]}...': {answer}")
             
             if "YES" in answer:
@@ -137,19 +189,15 @@ def align_frames_with_model(transcript: list, frames_dir: Path, model: str = "ge
                 alignment[chunk['start_index']] = best_frame.name
                 
         except Exception as e:
-            logger.error(f"Ollama inference failed: {e}")
+            logger.error(f"LLM inference failed: {e}")
             
     return alignment
 
 def check_ollama_model(model_name: str = "gemini-3-flash-preview") -> bool:
     try:
-        models = ollama.list()
-        # ollama.list() returns a dict with 'models' key which is a list of dicts
-        model_names = [m.get('name') for m in models.get('models', [])]
-        
-        if model_name in model_names or f"{model_name}:latest" in model_names:
-            return True
-        return False
+        result = ollama.list()
+        model_names = [m.model for m in result.models if m.model]
+        return model_name in model_names or f"{model_name}:latest" in model_names
     except Exception as e:
         logger.error(f"Failed to connect to Ollama: {e}")
         return False
@@ -205,13 +253,10 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
                 "CRITICAL: Output ONLY raw JSON. Do not wrap the JSON in markdown formatting or code blocks."
             )
             
-            response = ollama.chat(model=model, messages=[
+            content = _chat(model, [
                 {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': f"Transcript Segment ({current_time}-{chunk_end}s): {chunk_text}"} 
-            ])
-            
-            # Parse JSON output
-            content = response['message']['content'].strip()
+                {'role': 'user', 'content': f"Transcript Segment ({current_time}-{chunk_end}s): {chunk_text}"}
+            ]).strip()
 
             # Clean up markdown if present
             if "```json" in content:
@@ -237,7 +282,7 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
                 logger.error(f"Failed to parse LLM JSON for chunk {current_time}: {e}. Content: {content[:100]}...")
                 
         except Exception as e:
-            logger.error(f"Ollama inference failed for chunk {current_time}: {e}")
+            logger.error(f"LLM inference failed for chunk {current_time}: {e}")
             
         current_time += CHUNK_DURATION
 
@@ -246,52 +291,72 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
 
     # 2. Select Images for each Chapter
     archive_data = []
+    used_frames: set = set()  # Track frames used across chapters to avoid duplicates
+
+    # Build a flat sorted list of all frames for fallback nearest-frame lookup
+    all_frames = frame_manager.get_context_frames(0, float('inf'))
 
     for chapter in chapters:
         c_start = chapter.get('start_time', 0)
         c_end = chapter.get('end_time', c_start + 60)
-        
+
         # Get frame candidates from FrameManager (already sorted by time)
-        # Note: we need to handle the frame_manager type hint if we want strictness, 
-        # but for now we duck-type it.
         candidates = frame_manager.get_context_frames(c_start, c_end)
-        
+
         selected_images = []
         if candidates:
             # Use Ollama to verify if the frame illustrates the chapter text
-            
+
             # Reduce candidate size for efficiency if massive
             step = max(1, len(candidates) // 10)
             subset = candidates[::step]
-            
+
             chapter_text = chapter.get('content', '')
 
             for frame_info in subset:
-                if len(selected_images) >= 4:
+                if len(selected_images) >= 2:
                     break
-                    
+
                 filename = frame_info['filename']
+                if filename in used_frames:
+                    continue
+
                 frame_path = frame_manager.frames_dir / filename
-                
+
                 try:
-                    response = ollama.chat(model=model, messages=[
+                    answer = _chat(model, [
                         {
                             'role': 'user',
                             'content': f"Does this image verify or illustrate the text: \"{chapter_text[:200]}\"? Answer only YES or NO.",
                             'images': [str(frame_path)]
                         }
-                    ])
-                    
-                    answer = response['message']['content'].strip().upper()
+                    ]).strip().upper()
 
                     if "YES" in answer:
                         selected_images.append(filename)
+                        used_frames.add(filename)
                 except Exception as e:
-                    logger.error(f"Ollama inference failed during image selection: {e}")
+                    logger.error(f"LLM inference failed during image selection: {e}")
 
-        # Fallback if logic selected nothing (should trigger at least one if candidates exist)
+        # Fallback: use middle candidate if none selected, skipping already-used frames
         if not selected_images and candidates:
-            selected_images.append(candidates[len(candidates)//2]['filename'])
+            unused = [f for f in candidates if f['filename'] not in used_frames]
+            if unused:
+                chosen = unused[len(unused) // 2]['filename']
+                selected_images.append(chosen)
+                used_frames.add(chosen)
+
+        # Broader fallback: if still no images (candidates empty), find nearest unused frame
+        if not selected_images and all_frames:
+            chapter_mid = (c_start + c_end) / 2
+            nearest = min(
+                (f for f in all_frames if f['filename'] not in used_frames),
+                key=lambda f: abs(f.get('timestamp', 0) - chapter_mid),
+                default=None
+            )
+            if nearest:
+                selected_images.append(nearest['filename'])
+                used_frames.add(nearest['filename'])
 
         archive_data.append({
             "concept": chapter.get('title'),

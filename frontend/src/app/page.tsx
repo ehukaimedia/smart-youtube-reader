@@ -1,12 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8001/models')
+      .then(r => r.json())
+      .then(data => {
+        const list: string[] = data.models ?? [];
+        setModels(list);
+        if (list.length > 0) setSelectedModel(list[0]);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +30,7 @@ export default function Home() {
       const res = await fetch('http://127.0.0.1:8001/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video_url: url }),
+        body: JSON.stringify({ video_url: url, model: selectedModel }),
       });
 
       if (!res.ok) throw new Error('Failed to create job');
@@ -39,7 +52,7 @@ export default function Home() {
           Smart Reader
         </h1>
         <p style={{ color: '#888', marginBottom: '2rem' }}>
-          De-duplicated, intelligent YouTube summaries powered by Gemini 3 Flash.
+          De-duplicated, intelligent YouTube summaries powered by local AI.
         </p>
 
         <div style={{ marginBottom: '2rem' }}>
@@ -48,7 +61,7 @@ export default function Home() {
           </a>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <input
             type="url"
             className="input"
@@ -57,6 +70,18 @@ export default function Home() {
             onChange={(e) => setUrl(e.target.value)}
             required
           />
+          {models.length > 0 && (
+            <select
+              className="input"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              style={{ cursor: 'pointer' }}
+            >
+              {models.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )}
           <button type="submit" className="btn" disabled={loading}>
             {loading ? 'Analyzing...' : 'Analyze'}
           </button>

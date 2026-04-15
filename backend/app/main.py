@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -83,6 +86,34 @@ async def get_transcript(job_id: str):
         return FileResponse(transcript_path)
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
+
+@app.get("/models")
+async def list_models():
+    models = []
+
+    # Local Ollama models
+    try:
+        import ollama
+        result = ollama.list()
+        models.extend([m.model for m in result.models if m.model])
+    except Exception:
+        pass
+
+    # NVIDIA NIM models (curated) — shown when API key is configured
+    import os
+    if os.environ.get('NVIDIA_API_KEY'):
+        models.extend([
+            "nvidia/llama-3.2-11b-vision-instruct",   # vision + text (good all-rounder)
+            "nvidia/llama-3.2-90b-vision-instruct",   # vision + text (higher quality)
+            "meta/llama-3.3-70b-instruct",            # text only (fast, high quality)
+            "meta/llama-3.1-405b-instruct",           # text only (highest quality)
+            "mistralai/mistral-large-2-instruct",     # text only
+            "deepseek-ai/deepseek-r1",                # text only (reasoning)
+            "microsoft/phi-4",                        # text only (efficient)
+            "minimax/minimax-m2.7",                   # text only (230B, free endpoint)
+        ])
+
+    return {"models": models}
 
 @app.get("/health")
 def health_check():

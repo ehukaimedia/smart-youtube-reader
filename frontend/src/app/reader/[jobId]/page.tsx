@@ -89,42 +89,47 @@ export default function ReaderPage() {
 
             {job.status === 'complete' && transcript && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-                    <div className="glass-card">
-                        <h3 style={{ marginBottom: '1rem' }}>Raw Transcript & Context</h3>
-                        {transcript.map((line: any, idx: number) => (
-                            <div key={idx} style={{ marginBottom: '1rem' }}>
-                                <span style={{ color: '#555', fontSize: '0.8rem', marginRight: '1rem', userSelect: 'none' }}>
-                                    {Math.floor(line.start / 60)}:{String(Math.floor(line.start % 60)).padStart(2, '0')}
-                                </span>
-                                <span>{line.text}</span>
-                                {line.image && job.data_folder_name && (
-                                    <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                                        <img
-                                            src={`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/frames/${line.image}`}
-                                            alt="Context"
-                                            style={{ borderRadius: '8px', maxWidth: '100%', maxHeight: '400px', border: '1px solid var(--card-border)' }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                    {/* AI Archive — primary content */}
+                    <div className="glass-card" style={{ borderColor: 'var(--secondary)' }}>
+                        <h3 className="title-gradient" style={{ marginBottom: '1rem' }}>AI Archive</h3>
+                        <ArchivePreview jobId={job.id} folderName={job.data_folder_name} videoUrl={job.video_url} />
                     </div>
 
-                    {/* AI Archive Visualization (New) */}
-                    <div className="glass-card" style={{ borderColor: 'var(--secondary)' }}>
-                        <h3 className="title-gradient" style={{ marginBottom: '1rem' }}>AI Archive Preview</h3>
-                        <p style={{ marginBottom: '1rem', color: '#888' }}>
-                            This is a preview of the structured <code>archive.json</code> data.
-                        </p>
-                        <ArchivePreview jobId={job.id} folderName={job.data_folder_name} />
-                    </div>
+                    {/* Raw Transcript — collapsible secondary */}
+                    <details className="glass-card">
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: '0.5rem' }}>Raw Transcript</summary>
+                        <div style={{ marginTop: '1rem' }}>
+                            {transcript.map((line: any, idx: number) => {
+                                const videoId = job.video_url?.match(/[?&]v=([^&]+)/)?.[1];
+                                const tsUrl = videoId
+                                    ? `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(line.start)}`
+                                    : null;
+                                return (
+                                    <div key={idx} style={{ marginBottom: '0.75rem' }}>
+                                        {tsUrl ? (
+                                            <a href={tsUrl} target="_blank" rel="noopener noreferrer"
+                                                style={{ color: '#555', fontSize: '0.8rem', marginRight: '1rem', userSelect: 'none', textDecoration: 'none' }}>
+                                                {Math.floor(line.start / 60)}:{String(Math.floor(line.start % 60)).padStart(2, '0')}
+                                            </a>
+                                        ) : (
+                                            <span style={{ color: '#555', fontSize: '0.8rem', marginRight: '1rem', userSelect: 'none' }}>
+                                                {Math.floor(line.start / 60)}:{String(Math.floor(line.start % 60)).padStart(2, '0')}
+                                            </span>
+                                        )}
+                                        <span>{line.text}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </details>
                 </div>
             )}
         </div>
     );
 }
 
-function ArchivePreview({ jobId, folderName }: { jobId: string, folderName?: string }) {
+function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folderName?: string, videoUrl?: string }) {
+    const videoId = videoUrl?.match(/[?&]v=([^&]+)/)?.[1];
     const [timeline, setTimeline] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -210,34 +215,35 @@ function ArchivePreview({ jobId, folderName }: { jobId: string, folderName?: str
                         <div key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                                 <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)' }}>{item.concept}</h4>
-                                <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                                    {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')}
-                                </span>
+                                {videoId ? (
+                                    <a
+                                        href={`https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(item.timestamp_start)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: '0.8rem', color: '#666', textDecoration: 'none' }}
+                                    >
+                                        {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')} ↗
+                                    </a>
+                                ) : (
+                                    <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                                        {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')}
+                                    </span>
+                                )}
                             </div>
                             <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1rem' }}>{item.summary}</p>
                             <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>{item.content}</p>
 
-                            {/* Image Grid */}
+                            {/* Image Grid — images are relative paths like "frames/0001.png" */}
                             {item.images && item.images.length > 0 && (
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                                     {item.images.map((img: string, i: number) => (
                                         <img
                                             key={i}
-                                            src={`http://127.0.0.1:8001/data/jobs/${folderName}/frames/${img}`}
+                                            src={`http://127.0.0.1:8001/data/jobs/${folderName}/${img}`}
                                             alt={`Scene ${i}`}
                                             style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)' }}
                                         />
                                     ))}
-                                </div>
-                            )}
-                            {/* Legacy Single Image Fallback */}
-                            {item.image && !item.images && (
-                                <div style={{ marginTop: '1rem' }}>
-                                    <img
-                                        src={`http://127.0.0.1:8001/data/jobs/${folderName}/frames/${item.image}`}
-                                        alt="Scene"
-                                        style={{ width: '100%', maxWidth: '400px', borderRadius: '8px', border: '1px solid var(--card-border)' }}
-                                    />
                                 </div>
                             )}
                         </div>

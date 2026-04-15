@@ -1,83 +1,91 @@
-# Smart YouTube Reader (Gemini 3.0 Edition)
+# Smart YouTube Reader
 
-**Smart YouTube Reader** is a local, AI-powered "Knowledge Engine" that transforms YouTube videos into structured, searchable libraries. By combining **Gemini 3 Flash Preview** (via Ollama) with advanced computer vision, it extracts the *complete* narrative of a video—text, context, and visual keyframes—into a format you can actually use.
+**Smart YouTube Reader** turns any YouTube URL into a structured, AI-readable archive — transcript, de-duplicated visual frames, and semantic chapters — that you or an AI agent can search, read, and learn from.
 
 > **Why this exists:** Videos are great for watching, but terrible for referencing. This tool makes video content as accessible and searchable as a book.
 
-![App Screenshot](/frontend/public/screenshot.png)
+## What it produces
 
-## 🧠 Core Intelligence
+| File | What's inside |
+|---|---|
+| `transcript.json` | Full text with timestamps |
+| `frames/` | De-duplicated screenshots at regular intervals |
+| `archive.json` | AI-generated chapters, each with a summary and frame images |
+| `manifest.json` | Job metadata (title, URL, chapter count) |
 
-*   **Model:** Powered by `gemini-3-flash-preview:latest` (Ollama) for ultra-fast, long-context understanding.
-*   **Vision:** Uses Perceptual Hashing (ImageHash) and SSIM to de-duplicate frames and find the "perfect" visual match for every paragraph of text.
-*   **Local Privacy:** All processing happens on your machine. No API keys required.
+## Features
 
-## ✨ Key Features
+- **Semantic chapters** — AI reads the transcript and groups it into logical sections with titles and summaries
+- **Visual matching** — Each chapter is paired with the most relevant frames from the video
+- **Model choice** — Use a local Ollama model (free, private) or a cloud NVIDIA NIM model (more powerful)
+- **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
+- **Video Slicer** — Cut precise clips from any job and export them with full metadata
+- **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
 
-### 1. The Smart Reader
-Reads like a Medium article, watches like a video.
-*   **Aligned Visuals:** Text paragraphs are automatically paired with the exact frame from the video.
-*   **Active Reading:** Click any paragraph to jump the video to that exact timestamp.
+## Quick Start
 
-### 2. Semantic AI Archive
-Organize chaos into structure.
-*   **Auto-Chaptering:** AI breaks the video into logical sections with descriptive titles.
-*   **Visual Summaries:** Each chapter gets a generated gallery of key visuals.
-
-### 3. Precision Video Slicer
-Extract the gold.
-*   **Frame-Perfect Cuts:** Select start/end points with millisecond precision.
-*   **Clean Data:** Slices are saved with full metadata, ready for re-use in creative workflows (like *Smart Image Animations*).
-*   **Integrity Check:** Review every frame in a filmstrip view to ensure no blurry or transition frames make the cut.
-
-## 🤖 Agent Integration
-
-This tool is built to feed data into Antigravity Agents.
-*   **Learn from Video:** Turn a 20-minute coding tutorial into a `SKILL.md` for your agent.
-*   **Read the Guide:** [Agent Integration Guide](./AGENT_INTEGRATION.md)
-
-
-## 🛠️ Tech Stack & Ports
-
-*   **Frontend:** Next.js 16.1 (React 19) - `http://localhost:3001`
-*   **Backend:** FastAPI (Python 3.10+) - `http://localhost:8001`
-*   **Database:** Local JSON/Filesystem (Zero-config).
-
-## 🚀 Quick Start
-
-### Option A: The "One-Click" Script (Recommended)
-We provide a unified launcher that handles environments and dependencies.
-
+### One-click launch (Mac)
 ```bash
-# MacOS / Linux
 ./start.command
-# (Automatically launches http://localhost:3001)
 ```
+This starts both the backend and frontend automatically.
 
-### Option B: Manual Setup
+### Manual setup
 
-**1. Backward (API)**
+**Backend**
 ```bash
 cd backend
-python3 -m venv .venv        # Create standard venv
-source .venv/bin/activate    # Activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
-**2. Frontend (UI)**
+**Frontend**
 ```bash
 cd frontend
 npm install
 npm run dev -- --port 3001
 ```
 
-## 📦 Prerequisites
+Then open `http://localhost:3001`.
 
-*   [Ollama](https://ollama.com/) installed and running.
-    *   **Pull the model:** `ollama pull gemini-3-flash-preview`
-*   [FFmpeg](https://ffmpeg.org/) installed (`brew install ffmpeg`).
-*   Node.js 18+ and Python 3.10+.
+## Prerequisites
+
+- [Ollama](https://ollama.com/) installed and running (`ollama serve`)
+- At least one model pulled, e.g. `ollama pull gemma4`
+- [FFmpeg](https://ffmpeg.org/) — `brew install ffmpeg`
+- Node.js 18+ and Python 3.10+
+
+## Using NVIDIA Cloud Models (optional)
+
+If you have an [NVIDIA NIM API key](https://build.nvidia.com/), you can use powerful cloud models instead of (or alongside) local Ollama models.
+
+1. Open `backend/.env`
+2. Replace the placeholder with your key:
+   ```
+   NVIDIA_API_KEY=nvapi-your-key-here
+   ```
+3. Restart the backend
+
+The model dropdown on the home page will then show both local and cloud options, including free-tier models like `minimax/minimax-m2.7`.
+
+> **Tip:** Vision-capable models (e.g. `nvidia/llama-3.2-11b-vision-instruct`) do AI-verified image matching. Text-only models still generate chapters but use timestamp-based image selection instead.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js (React) — `http://localhost:3001` |
+| Backend | FastAPI (Python) — `http://localhost:8001` |
+| Local AI | Ollama |
+| Cloud AI | NVIDIA NIM (OpenAI-compatible) |
+| Video | yt-dlp + FFmpeg |
+| Storage | Local filesystem (no database) |
+
+## Agent Integration
+
+The `archive.json` produced by each job is designed to be consumed by AI agents. See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
 ## License
 
