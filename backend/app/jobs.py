@@ -15,6 +15,7 @@ class Job:
         self.title = None
         self.data_dir = None  # Will be set by pipeline
         self.current_step = None # For UI feedback
+        self.video_ext = None
 
     @property
     def data_folder_name(self) -> str:
@@ -33,7 +34,8 @@ class Job:
             package_path=str(self.package_path) if self.package_path else None,
             transcript_preview=self.transcript_preview,
             data_folder_name=self.data_folder_name,
-            current_step=self.current_step
+            current_step=self.current_step,
+            video_ext=self.video_ext
         )
 
 import shutil
@@ -89,8 +91,9 @@ class JobStore:
                     
                     # Try to get title from transcript or inferred
                     # Ideally manifest should store title. We will update pipeline to store it.
-                    job.title = data.get('title') 
-                    
+                    job.title = data.get('title')
+                    job.video_ext = data.get('video_ext', 'mp4')
+
                     self._jobs[job_id] = job
                 except Exception as e:
                     print(f"Failed to load job from {job_dir}: {e}")

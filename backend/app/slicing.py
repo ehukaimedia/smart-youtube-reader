@@ -22,13 +22,14 @@ def generate_preview(job_id: str, start: float, end: float, fps: int, job_store:
     if not job.data_dir:
         raise ValueError("Job data directory not found")
 
-    video_path = job.data_dir / "video.mp4"
+    ext = getattr(job, 'video_ext', None) or 'mp4'
+    video_path = job.data_dir / f"video.{ext}"
     if not video_path.exists():
         videos = list(job.data_dir.glob("video.*"))
         if videos:
             video_path = videos[0]
         else:
-             raise FileNotFoundError("Video file not found in job directory")
+            raise FileNotFoundError("Video file not found in job directory")
 
     preview_id = str(uuid.uuid4())[:8]
     preview_dir = job.data_dir / "previews" / preview_id
@@ -127,7 +128,11 @@ def create_slice(job_id: str, start: float, end: float, format_type: str, fps: i
     if format_type == "mp4":
         if not job_store: raise ValueError("JobStore required")
         job = job_store.get(job_id)
-        video_path = job.data_dir / "video.mp4" # Simplify for brevity, full check in real code
+        ext = getattr(job, 'video_ext', None) or 'mp4'
+        video_path = job.data_dir / f"video.{ext}"
+        if not video_path.exists():
+            videos = list(job.data_dir.glob("video.*"))
+            video_path = videos[0] if videos else video_path
         
         slice_id = str(uuid.uuid4())[:8]
         slices_dir = job.data_dir / "slices" / slice_id
@@ -145,53 +150,41 @@ def create_slice(job_id: str, start: float, end: float, format_type: str, fps: i
 
 def save_slice_to_project(job_id: str, preview_id: str, selected_files: list[str], job_store: JobStore):
     """
-    Saves selected frames into a permanent project slice directory with timing metadata.
+    Saves selected frames into the job's archive.json, updating the matching chapter's images.
+    The operator uses this to curate the visual evidence shown to agents and readers.
     """
     import json
-    
+
     job = job_store.get(job_id)
     preview_dir = job.data_dir / "previews" / preview_id
-    
-    # We need to recover the start time and fps to calculate timestamps. 
-    # Ideally, we should have stored this in the preview dir or pass it in.
-    # For now, let's assume valid files are there. 
-    # A robust way is to store a metadata.json in generate_preview.
-    
-    # Let's try to read metadata from the preview dir if it existed, 
-    # OR we just re-calculate it if we assume files are named 0001.jpg etc.
-    # But we need 'start' and 'fps'. 
-    # HACK: We will look for a 'preview_meta.json' which we will Add to generate_preview now.
-    
+
     meta_path = preview_dir / "preview_meta.json"
     if not meta_path.exists():
-         raise ValueError("Preview metadata missing. Cannot calculate timings.")
-         
+        raise ValueError("Preview metadata missing. Cannot calculate timings.")
+
     with open(meta_path, 'r') as f:
         meta = json.load(f)
-        
+
     start_time = meta['start']
     fps = meta['fps']
-    
+
+    # Copy frames into a permanent slice directory
     slice_id = str(uuid.uuid4())[:8]
     slice_dir = job.data_dir / "slices" / slice_id
     frames_dir = slice_dir / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
-    
+
     saved_frames = []
-    
+    image_paths = []  # relative paths for archive.json
+
     for filename in selected_files:
         src = preview_dir / filename
         if src.exists():
             shutil.copy(src, frames_dir / filename)
-            
-            # Calculate timestamp
-            # filename is like "0001.jpg". Frame 1 is at start + 0.
             try:
                 frame_num = int(Path(filename).stem)
-                # Frame 1 is index 0
                 time_offset = (frame_num - 1) / fps
                 absolute_time = start_time + time_offset
-                
                 saved_frames.append({
                     "filename": filename,
                     "timestamp": round(absolute_time, 3),
@@ -199,24 +192,57 @@ def save_slice_to_project(job_id: str, preview_id: str, selected_files: list[str
                 })
             except:
                 pass
+            image_paths.append(f"slices/{slice_id}/frames/{filename}")
 
-    # Save Manifest for this slice
+    # Save slice manifest
     manifest = {
         "id": slice_id,
         "source_job": job_id,
-        "created_at": str(uuid.uuid1()), # simple timestamp
         "fps": fps,
         "base_start_time": start_time,
         "frames": saved_frames
     }
-    
     with open(slice_dir / "slice.json", "w") as f:
         json.dump(manifest, f, indent=2)
-        
+
+    # Update archive.json — inject images into the best matching chapter
+    archive_path = job.data_dir / "archive.json"
+    if archive_path.exists() and image_paths:
+        with open(archive_path, 'r') as f:
+            archive = json.load(f)
+
+        chapters = archive.get('archive', [])
+
+        # Find the chapter whose time window best contains the slice start time
+        best_chapter = None
+        for chapter in chapters:
+            c_start = chapter.get('timestamp_start', 0)
+            c_end = chapter.get('timestamp_end', c_start + 60)
+            if c_start <= start_time <= c_end:
+                best_chapter = chapter
+                break
+
+        # Fallback: nearest chapter by start time
+        if best_chapter is None and chapters:
+            best_chapter = min(chapters, key=lambda c: abs(c.get('timestamp_start', 0) - start_time))
+
+        if best_chapter is not None:
+            # Stash original AI-generated images so delete can restore them
+            if '_original_images' not in best_chapter:
+                best_chapter['_original_images'] = best_chapter.get('images', [])
+            # Replace existing images with operator-curated ones
+            # Tag each path so we can remove them if the slice is deleted
+            best_chapter['images'] = image_paths
+            best_chapter['_slice_id'] = slice_id  # track which slice owns these images
+
+            with open(archive_path, 'w') as f:
+                json.dump(archive, f)
+
     return {
         "id": slice_id,
         "path": f"slices/{slice_id}",
-        "manifest": manifest
+        "manifest": manifest,
+        "images_added": len(image_paths)
     }
 
 def list_slices(job_id: str, job_store: JobStore):

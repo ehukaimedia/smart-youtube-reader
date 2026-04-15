@@ -26,6 +26,7 @@ class JobResponse(BaseModel):
     transcript_preview: Optional[str] = None
     data_folder_name: Optional[str] = None
     current_step: Optional[str] = None
+    video_ext: Optional[str] = None
 
 class SliceRequest(BaseModel):
     start: float

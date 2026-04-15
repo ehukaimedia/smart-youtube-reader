@@ -64,6 +64,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
             video_path = str(job_dir / f"video.{info['ext']}")
             video_id = info['id']
             job.title = info.get('title', 'Unknown Video')
+            job.video_ext = info['ext']
 
         # 2. Get Transcript (via yt-dlp to be robust)
         job.current_step = "Extracting Transcript..."
@@ -218,7 +219,8 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
             "created_at": job.created_at,
             "removed_duplicates": removed,
             "archive_chapters": archive_stats,
-            "status": "complete"
+            "status": "complete",
+            "video_ext": job.video_ext or "mp4"
         }
         with open(job_dir / "manifest.json", "w") as f:
             json.dump(manifest, f)

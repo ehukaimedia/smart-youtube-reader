@@ -62,7 +62,7 @@ export default function ReaderPage() {
                         </a>
                     )}
 
-                    <a href={`/slicer?id=${job.id}`} className="btn" style={{ background: 'var(--secondary)' }}>
+                    <a href={`/slicer/${job.id}`} className="btn" style={{ background: 'var(--secondary)' }}>
                         Open Slicer
                     </a>
                 </span>
@@ -133,34 +133,30 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
     const [timeline, setTimeline] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const deleteSlice = async (sliceId: string) => {
+        if (!confirm('Remove curated visuals from this chapter? The AI-selected images will be cleared.')) return;
+        await fetch(`http://127.0.0.1:8001/jobs/${jobId}/slices/${sliceId}`, { method: 'DELETE' });
+        // Clear images and _slice_id from the matching chapter in local state
+        setTimeline(prev => prev.map(item =>
+            item._slice_id === sliceId ? { ...item, images: [], _slice_id: undefined } : item
+        ));
+    };
+
     useEffect(() => {
         if (!folderName) return;
 
         const fetchData = async () => {
             try {
-                let archiveData: any[] = [];
-                let slicesData: any[] = [];
-
-                // Fetch Archive
                 const archiveRes = await fetch(`http://127.0.0.1:8001/data/jobs/${folderName}/archive.json`);
                 if (archiveRes.ok) {
                     const data = await archiveRes.json();
-                    archiveData = data.archive || [];
+                    const chapters = (data.archive || []).map((a: any) => ({
+                        ...a,
+                        type: 'chapter',
+                        sortTime: a.timestamp_start
+                    }));
+                    setTimeline(chapters);
                 }
-
-                // Fetch Slices
-                const slicesRes = await fetch(`http://127.0.0.1:8001/jobs/${jobId}/slices`);
-                if (slicesRes.ok) {
-                    slicesData = await slicesRes.json();
-                }
-
-                // Merge and Sort
-                const united = [
-                    ...archiveData.map((a: any) => ({ ...a, type: 'chapter', sortTime: a.timestamp_start })),
-                    ...slicesData.map((s: any) => ({ ...s, type: 'slice', sortTime: s.base_start_time }))
-                ].sort((a, b) => a.sortTime - b.sortTime);
-
-                setTimeline(united);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -176,80 +172,53 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {timeline.map((item: any, idx: number) => {
-                if (item.type === 'slice') {
-                    // RENDER SLICE
-                    return (
-                        <div key={`slice-${item.id}`} style={{ borderBottom: '2px dashed var(--secondary)', paddingBottom: '2rem', background: 'rgba(var(--secondary-rgb), 0.05)', padding: '1.5rem', borderRadius: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <h4 style={{ fontSize: '1.1rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    ✨ Custom Slice
-                                    <span style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 'normal' }}>
-                                        ({item.frames.length} frames @ {item.fps} FPS)
-                                    </span>
-                                </h4>
-                                <span style={{ fontSize: '0.8rem', color: '#888' }}>
-                                    Starts at {Math.floor(item.base_start_time / 60)}:{String(Math.floor(item.base_start_time % 60)).padStart(2, '0')}
-                                </span>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-                                {item.frames.map((frame: any, i: number) => (
-                                    <div key={i} style={{ position: 'relative' }}>
-                                        <img
-                                            src={`http://127.0.0.1:8001/data/jobs/${folderName}/slices/${item.id}/frames/${frame.filename}`}
-                                            alt={`Frame ${frame.timestamp}`}
-                                            style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)' }}
-                                        />
-                                        <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: '0.7rem', padding: '2px 4px', borderTopLeftRadius: '4px' }}>
-                                            {frame.timestamp}s
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                } else {
-                    // RENDER CHAPTER
-                    return (
-                        <div key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)' }}>{item.concept}</h4>
-                                {videoId ? (
-                                    <a
-                                        href={`https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(item.timestamp_start)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ fontSize: '0.8rem', color: '#666', textDecoration: 'none' }}
-                                    >
-                                        {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')} ↗
-                                    </a>
-                                ) : (
-                                    <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                                        {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')}
-                                    </span>
-                                )}
-                            </div>
-                            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1rem' }}>{item.summary}</p>
-                            <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>{item.content}</p>
-
-                            {/* Image Grid — images are relative paths like "frames/0001.png" */}
-                            {item.images && item.images.length > 0 && (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                                    {item.images.map((img: string, i: number) => (
-                                        <img
-                                            key={i}
-                                            src={`http://127.0.0.1:8001/data/jobs/${folderName}/${img}`}
-                                            alt={`Scene ${i}`}
-                                            style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)' }}
-                                        />
-                                    ))}
-                                </div>
+            {timeline.map((item: any, idx: number) => (
+                <div key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)' }}>{item.concept}</h4>
+                            {item._slice_id && (
+                                <button
+                                    onClick={() => deleteSlice(item._slice_id)}
+                                    title="Remove operator-curated visuals"
+                                    style={{ background: 'none', border: '1px solid var(--secondary)', borderRadius: '4px', color: 'var(--secondary)', cursor: 'pointer', padding: '1px 6px', fontSize: '0.7rem' }}
+                                >
+                                    ✨ curated — remove
+                                </button>
                             )}
                         </div>
-                    );
-                }
-            })}
+                        {videoId ? (
+                            <a
+                                href={`https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(item.timestamp_start)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: '0.8rem', color: '#666', textDecoration: 'none' }}
+                            >
+                                {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')} ↗
+                            </a>
+                        ) : (
+                            <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                                {Math.floor(item.timestamp_start / 60)}:{String(Math.floor(item.timestamp_start % 60)).padStart(2, '0')}
+                            </span>
+                        )}
+                    </div>
+                    <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1rem' }}>{item.summary}</p>
+                    <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>{item.content}</p>
+
+                    {item.images && item.images.length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                            {item.images.map((img: string, i: number) => (
+                                <img
+                                    key={i}
+                                    src={`http://127.0.0.1:8001/data/jobs/${folderName}/${img}`}
+                                    alt={`Scene ${i}`}
+                                    style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)' }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }

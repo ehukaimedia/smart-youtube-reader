@@ -39,7 +39,8 @@ export default function SlicerPage() {
             .then(data => {
                 setJob(data);
                 if (data.data_folder_name) {
-                    setVideoSrc(`http://127.0.0.1:8001/data/jobs/${data.data_folder_name}/video.mp4`);
+                    const ext = data.video_ext || 'mp4';
+                    setVideoSrc(`http://127.0.0.1:8001/data/jobs/${data.data_folder_name}/video.${ext}`);
                 }
             });
     }, [jobId]);
@@ -84,7 +85,7 @@ export default function SlicerPage() {
                 setPreviewId(data.preview_id);
                 setPreviewFrames(data.frames);
                 setPreviewBaseUrl(data.base_url); // relative e.g. "previews/123"
-                setExcludedFrames(new Set());
+                setExcludedFrames(new Set(data.frames)); // start with all deselected
                 setStep('review');
             }
         } catch (e) {
@@ -209,7 +210,7 @@ export default function SlicerPage() {
                     <h1 className="title-gradient">Video Slicer</h1>
                     <p style={{ color: '#888' }}>{job.title}</p>
                 </div>
-                <a href={`/reader?id=${job.id}`} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>
+                <a href={`/reader/${job.id}`} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>
                     &larr; Back to Project
                 </a>
             </header>
@@ -298,10 +299,10 @@ export default function SlicerPage() {
             {step === 'review' && (
                 <div className="glass-card">
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3>Select Frames ({previewFrames.length - excludedFrames.size} / {previewFrames.length})</h3>
+                        <h3>{previewFrames.length - excludedFrames.size} of {previewFrames.length} frames selected — click to toggle</h3>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button className="btn" style={{ background: '#444' }} onClick={selectAll}>Select All</button>
-                            <button className="btn" style={{ background: '#444' }} onClick={deselectAll}>Deselect All</button>
+                            <button className="btn" style={{ background: '#444' }} onClick={deselectAll}>Clear All</button>
                         </div>
                     </header>
 

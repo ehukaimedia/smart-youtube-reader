@@ -173,3 +173,28 @@ async def get_job_slices(job_id: str):
     except Exception as e:
         print(f"List slices error: {e}")
         raise HTTPException(status_code=500, detail="Failed to list slices")
+
+@app.delete("/jobs/{job_id}/slices/{slice_id}", status_code=204)
+async def delete_slice(job_id: str, slice_id: str):
+    try:
+        import shutil, json
+        job = job_store.get(job_id)
+        slice_dir = job.data_dir / "slices" / slice_id
+        if not slice_dir.exists():
+            raise HTTPException(status_code=404, detail="Slice not found")
+
+        # Remove slice images from archive.json
+        archive_path = job.data_dir / "archive.json"
+        if archive_path.exists():
+            with open(archive_path, 'r') as f:
+                archive = json.load(f)
+            for chapter in archive.get('archive', []):
+                if chapter.get('_slice_id') == slice_id:
+                    chapter['images'] = chapter.pop('_original_images', [])
+                    del chapter['_slice_id']
+            with open(archive_path, 'w') as f:
+                json.dump(archive, f)
+
+        shutil.rmtree(slice_dir)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Job not found")
