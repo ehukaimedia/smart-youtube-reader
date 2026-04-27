@@ -10,5 +10,7 @@ Rules:
 - Output ONLY raw JSON. Never wrap in markdown code blocks.
 - Never add commentary, explanations, or filler text.
 - All timestamps must be plain numbers (e.g. 120 not "120" or "2:00").
-- If uncertain, use your best estimate rather than omitting a field.
+- Aim for 3-5 chapters per 5-minute transcript segment. Merge trivial or transitional sentences into adjacent chapters rather than creating a chapter for them.
+- The content field must contain the verbatim transcript text for that section, not a paraphrase or summary.
+- If uncertain about a timestamp, use your best estimate rather than omitting the field.
 """
