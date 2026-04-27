@@ -21,18 +21,15 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
-# Check if ports are in use
-if lsof -Pi :8001 -sTCP:LISTEN -t >/dev/null ; then
-    echo "Error: Port 8001 is already in use. Please stop the existing backend process."
-    read -p "Press Enter to exit..."
-    exit 1
-fi
-
-if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null ; then
-    echo "Error: Port 3001 is already in use. Please stop the existing frontend process."
-    read -p "Press Enter to exit..."
-    exit 1
-fi
+# Clear stale processes on required ports
+for PORT in 8001 3001; do
+    PIDS=$(lsof -Pi :$PORT -sTCP:LISTEN -t 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        echo "--> Clearing stale process(es) on port $PORT (PIDs: $PIDS)..."
+        kill $PIDS 2>/dev/null
+        sleep 1
+    fi
+done
 
 # Start Backend
 echo "--> Starting Backend (Port 8001)..."

@@ -99,7 +99,34 @@ If the server isn't running, images show a broken-image placeholder — that's f
 
 ### Step 6: Agent prompt panel
 
-Generate a focused prompt for the selected chapter. Use natural language, not a data dump:
+The prompt panel has two modes: a **global learning prompt** (always visible) and a **chapter prompt** (selected chapter).
+
+**Global learning prompt** — shown at the top of the panel, always available:
+
+```javascript
+function buildGlobalPrompt() {
+  return `You have access to a structured archive of a YouTube video.
+
+Video: "${JOB_META.title}"
+YouTube: ${JOB_META.url}
+Archive JSON: ${API_BASE}/data/jobs/${JOB_META.folder}/archive.json
+
+The archive contains ${ARCHIVE.archive.length} semantic chapters. Each chapter has:
+- concept: topic title
+- summary: one-sentence overview
+- content: full transcript text for the section
+- timestamp_start / timestamp_end: seconds into the video
+- images: video frame filenames (served at ${API_BASE}/data/jobs/${JOB_META.folder}/<filename>)
+
+To learn from this video: fetch the archive JSON, read through the chapters by concept, and append &t=<timestamp_start> to the YouTube URL to jump to any section.
+
+What would you like to know about this video?`;
+}
+```
+
+Include a **Copy Learning Prompt** button at the top of the panel that copies this global prompt. This is the primary sharing mechanism — paste into any LLM chat and it immediately knows how to learn from the video.
+
+**Chapter-focused prompt** — shown when a chapter is selected, for drilling into a specific section. Generate a focused prompt for the selected chapter. Use natural language, not a data dump:
 
 ```javascript
 function buildPrompt(chapter) {

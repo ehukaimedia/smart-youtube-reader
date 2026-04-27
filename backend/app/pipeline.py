@@ -1,4 +1,5 @@
 import os
+import traceback
 import yt_dlp
 import ffmpeg
 import json
@@ -169,6 +170,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         # 5. Create AI Archive (Intelligence Step)
         job.current_step = "Generating AI Archive (Thinking)..."
         archive_stats = 0
+        archive_result = None
         try:
              from .intelligence import create_ai_archive
              # Pass frame_manager instead of frames_dir
@@ -180,6 +182,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
              # archive.json is written after rename below, once the final folder name is known
 
         except Exception as e:
+            traceback.print_exc()
             print(f"Archive generation failed: {e}")
 
         # 6. Rename Directory to readable slug (must happen before writing archive.json)
@@ -230,7 +233,6 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         job.current_step = "Complete"
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         job.status = JobStatus.failed
         job.error = str(e)

@@ -9,6 +9,12 @@ import base64
 
 logger = logging.getLogger(__name__)
 
+def _to_float(value, default: float) -> float:
+    try:
+        return float(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
 # Routing: a model name is treated as NVIDIA NIM when NVIDIA_API_KEY is set AND the name
 # contains '/' (e.g. "meta/llama-3.3-70b-instruct"). Plain Ollama names like "gemma4:latest"
 # never contain '/'. Checking both conditions avoids misrouting any future namespaced Ollama model.
@@ -297,54 +303,24 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
     all_frames = frame_manager.get_context_frames(0, float('inf'))
 
     for chapter in chapters:
-        c_start = chapter.get('start_time', 0)
-        c_end = chapter.get('end_time', c_start + 60)
+        c_start = _to_float(chapter.get('start_time'), 0.0)
+        c_end = _to_float(chapter.get('end_time'), c_start + 60.0)
 
         # Get frame candidates from FrameManager (already sorted by time)
         candidates = frame_manager.get_context_frames(c_start, c_end)
 
+        # Pick up to 2 unused frames from the chapter's time window by position.
+        # Vision verification was removed — it made N LLM calls per chapter and
+        # dominated total runtime without meaningfully improving frame relevance.
         selected_images = []
         if candidates:
-            # Use Ollama to verify if the frame illustrates the chapter text
-
-            # Reduce candidate size for efficiency if massive
-            step = max(1, len(candidates) // 10)
-            subset = candidates[::step]
-
-            chapter_text = chapter.get('content', '')
-
-            for frame_info in subset:
-                if len(selected_images) >= 2:
-                    break
-
-                filename = frame_info['filename']
-                if filename in used_frames:
-                    continue
-
-                frame_path = frame_manager.frames_dir / filename
-
-                try:
-                    answer = _chat(model, [
-                        {
-                            'role': 'user',
-                            'content': f"Does this image verify or illustrate the text: \"{chapter_text[:200]}\"? Answer only YES or NO.",
-                            'images': [str(frame_path)]
-                        }
-                    ]).strip().upper()
-
-                    if "YES" in answer:
-                        selected_images.append(filename)
-                        used_frames.add(filename)
-                except Exception as e:
-                    logger.error(f"LLM inference failed during image selection: {e}")
-
-        # Fallback: use middle candidate if none selected, skipping already-used frames
-        if not selected_images and candidates:
             unused = [f for f in candidates if f['filename'] not in used_frames]
-            if unused:
-                chosen = unused[len(unused) // 2]['filename']
-                selected_images.append(chosen)
-                used_frames.add(chosen)
+            # Take the frame at 1/3 and 2/3 of the window for visual variety
+            for idx in [len(unused) // 3, 2 * len(unused) // 3]:
+                if idx < len(unused) and len(selected_images) < 2:
+                    chosen = unused[idx]['filename']
+                    selected_images.append(chosen)
+                    used_frames.add(chosen)
 
         # Broader fallback: if still no images (candidates empty), find nearest unused frame
         if not selected_images and all_frames:

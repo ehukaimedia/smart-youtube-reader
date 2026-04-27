@@ -8,6 +8,35 @@ export default function ReaderPage() {
     const [job, setJob] = useState<any>(null);
     const [transcript, setTranscript] = useState<any[] | null>(null);
     const [error, setError] = useState('');
+    const [promptCopied, setPromptCopied] = useState(false);
+
+    const copyLearningPrompt = (job: any) => {
+        const archiveUrl = `http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/archive.json`;
+        const baseUrl = `http://127.0.0.1:8001/data/jobs/${job.data_folder_name}`;
+        const prompt = `You have access to a structured archive of a YouTube video.
+
+Video: "${job.title || job.id}"
+YouTube: ${job.video_url || '(not available)'}
+Archive JSON: ${archiveUrl}
+
+Each chapter in the archive has:
+- concept: topic title
+- summary: one-sentence overview
+- content: full transcript text for the section
+- timestamp_start / timestamp_end: seconds into the video
+- images: array of frame filenames — fetch and read these, they often contain slides, diagrams, and visual explanations that are NOT in the transcript text
+
+To read a frame image: ${baseUrl}/<filename>  (e.g. ${baseUrl}/frames/0007.png)
+To jump to a section on YouTube: append &t=<timestamp_start> to the YouTube URL
+
+Start by fetching the archive JSON, then for each chapter read both the content text AND the frame images — this video likely uses visual slides to explain its concepts.
+
+What would you like to know about this video?`;
+        navigator.clipboard.writeText(prompt).then(() => {
+            setPromptCopied(true);
+            setTimeout(() => setPromptCopied(false), 2000);
+        });
+    };
 
     useEffect(() => {
         if (!jobId) return;
@@ -51,15 +80,24 @@ export default function ReaderPage() {
                 <span className="glass-card" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <strong>{job.status}</strong>
                     {job.status === 'complete' && job.data_folder_name && (
-                        <a
-                            href={`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/archive.json`}
-                            target="_blank"
-                            download="archive.json"
-                            className="btn"
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none' }}
-                        >
-                            Download AI Archive
-                        </a>
+                        <>
+                            <button
+                                onClick={() => copyLearningPrompt(job)}
+                                className="btn"
+                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: promptCopied ? 'var(--secondary)' : undefined }}
+                            >
+                                {promptCopied ? '✓ Copied!' : '⊕ Copy Learning Prompt'}
+                            </button>
+                            <a
+                                href={`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/archive.json`}
+                                target="_blank"
+                                download="archive.json"
+                                className="btn"
+                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none' }}
+                            >
+                                Download AI Archive
+                            </a>
+                        </>
                     )}
 
                     <a href={`/slicer/${job.id}`} className="btn" style={{ background: 'var(--secondary)' }}>
