@@ -39,6 +39,15 @@ if [ -d ".venv" ]; then
 else
     echo "Warning: No .venv found in backend. Using system python."
 fi
+
+# Register smart-reader model with Ollama (idempotent)
+if command -v ollama &> /dev/null; then
+    echo "--> Registering smart-reader model with Ollama..."
+    ollama create smart-reader -f modelfiles/smart-reader.Modelfile
+else
+    echo "Warning: ollama not found. Archive generation may fail."
+fi
+
 uvicorn app.main:app --reload --port 8001 &
 BACKEND_PID=$!
 
