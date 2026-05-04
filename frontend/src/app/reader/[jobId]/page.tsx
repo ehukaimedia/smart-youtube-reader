@@ -33,10 +33,24 @@ To jump to a section on YouTube: append &t=<timestamp_start> to the YouTube URL
 Start by fetching the archive JSON, then for each chapter read both the content text AND the frame images — this video likely uses visual slides to explain its concepts.
 
 What would you like to know about this video?`;
-        navigator.clipboard.writeText(prompt).then(() => {
+        const onCopied = () => {
             setPromptCopied(true);
             setTimeout(() => setPromptCopied(false), 2000);
-        });
+        };
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(prompt).then(onCopied);
+        } else {
+            // Fallback for non-secure contexts (HTTP over Tailscale)
+            const ta = document.createElement('textarea');
+            ta.value = prompt;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onCopied();
+        }
     };
 
     useEffect(() => {
