@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getApiBase } from '@/lib/api';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -11,7 +12,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8001/models')
+    fetch(`${getApiBase()}/models`)
       .then(r => r.json())
       .then(data => {
         const list: string[] = data.models ?? [];
@@ -27,7 +28,7 @@ export default function Home() {
 
     setLoading(true);
     try {
-      const res = await fetch('http://127.0.0.1:8001/jobs', {
+      const res = await fetch(`${getApiBase()}/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ video_url: url, model: selectedModel }),

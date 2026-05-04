@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { getApiBase } from '@/lib/api';
 
 export default function SlicerPage() {
     const { jobId } = useParams();
@@ -34,13 +35,13 @@ export default function SlicerPage() {
 
     useEffect(() => {
         if (!jobId) return;
-        fetch(`http://127.0.0.1:8001/jobs/${jobId}`)
+        fetch(`${getApiBase()}/jobs/${jobId}`)
             .then(res => res.json())
             .then(data => {
                 setJob(data);
                 if (data.data_folder_name) {
                     const ext = data.video_ext || 'mp4';
-                    setVideoSrc(`http://127.0.0.1:8001/data/jobs/${data.data_folder_name}/video.${ext}`);
+                    setVideoSrc(`${getApiBase()}/data/jobs/${data.data_folder_name}/video.${ext}`);
                 }
             });
     }, [jobId]);
@@ -65,17 +66,17 @@ export default function SlicerPage() {
         try {
             if (format === 'mp4') {
                 // Direct MP4 export (legacy flow)
-                const res = await fetch(`http://127.0.0.1:8001/jobs/${job.id}/slice`, {
+                const res = await fetch(`${getApiBase()}/jobs/${job.id}/slice`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ start, end, format: 'mp4' })
                 });
                 const result = await res.json();
-                setDownloadUrl(`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/${result.path}`);
+                setDownloadUrl(`${getApiBase()}/data/jobs/${job.data_folder_name}/${result.path}`);
                 setStep('done');
             } else {
                 // Generate Frames Preview
-                const res = await fetch(`http://127.0.0.1:8001/jobs/${job.id}/slicer/preview`, {
+                const res = await fetch(`${getApiBase()}/jobs/${job.id}/slicer/preview`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ start, end, fps })
@@ -105,7 +106,7 @@ export default function SlicerPage() {
 
         setProcessing(true);
         try {
-            const res = await fetch(`http://127.0.0.1:8001/jobs/${job.id}/slicer/finalize`, {
+            const res = await fetch(`${getApiBase()}/jobs/${job.id}/slicer/finalize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -115,7 +116,7 @@ export default function SlicerPage() {
             });
             if (!res.ok) throw new Error("Finalize failed");
             const result = await res.json();
-            setDownloadUrl(`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/${result.path}`);
+            setDownloadUrl(`${getApiBase()}/data/jobs/${job.data_folder_name}/${result.path}`);
             setStep('done');
         } catch (e) {
             console.error(e);
@@ -182,7 +183,7 @@ export default function SlicerPage() {
 
         setProcessing(true);
         try {
-            const res = await fetch(`http://127.0.0.1:8001/jobs/${job.id}/slicer/save`, {
+            const res = await fetch(`${getApiBase()}/jobs/${job.id}/slicer/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -337,7 +338,7 @@ export default function SlicerPage() {
                                 >
                                     <img
                                         onClick={() => toggleFrame(frame)}
-                                        src={`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${frame}`}
+                                        src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${frame}`}
                                         style={{ width: '100%', height: 'auto', display: 'block', filter: isExcluded ? 'grayscale(100%)' : 'none' }}
                                     />
 
@@ -420,7 +421,7 @@ export default function SlicerPage() {
                     </button>
 
                     <img
-                        src={`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${viewingFrame}`}
+                        src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${viewingFrame}`}
                         style={{ maxWidth: '80%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '4px' }}
                         onClick={(e) => e.stopPropagation()}
                     />
