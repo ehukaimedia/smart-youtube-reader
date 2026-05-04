@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getApiBase } from '@/lib/api';
 
 export default function DashboardPage() {
     const [jobs, setJobs] = useState<any[]>([]);
@@ -10,7 +11,7 @@ export default function DashboardPage() {
     const router = useRouter();
 
     const fetchJobs = () => {
-        fetch('http://127.0.0.1:8001/jobs')
+        fetch(`${getApiBase()}/jobs`)
             .then(res => res.json())
             .then(data => {
                 setJobs(data);
@@ -31,7 +32,7 @@ export default function DashboardPage() {
         if (!confirm('Are you sure you want to delete this project?')) return;
 
         try {
-            await fetch(`http://127.0.0.1:8001/jobs/${id}`, { method: 'DELETE' });
+            await fetch(`${getApiBase()}/jobs/${id}`, { method: 'DELETE' });
             fetchJobs(); // Refresh
         } catch (err) {
             console.error(err);

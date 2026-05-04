@@ -48,13 +48,13 @@ else
     echo "Warning: ollama not found. Archive generation may fail."
 fi
 
-uvicorn app.main:app --reload --port 8001 &
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001 &
 BACKEND_PID=$!
 
 # Start Frontend
 echo "--> Starting Frontend (Port 3001)..."
 cd ../frontend
-npm run dev -- --port 3001 &
+npm run dev -- -H 0.0.0.0 --port 3001 &
 FRONTEND_PID=$!
 
 echo "============================================"

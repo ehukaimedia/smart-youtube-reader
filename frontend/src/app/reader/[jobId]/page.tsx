@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { getApiBase } from '@/lib/api';
 
 export default function ReaderPage() {
     const { jobId } = useParams();
@@ -11,8 +12,8 @@ export default function ReaderPage() {
     const [promptCopied, setPromptCopied] = useState(false);
 
     const copyLearningPrompt = (job: any) => {
-        const archiveUrl = `http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/archive.json`;
-        const baseUrl = `http://127.0.0.1:8001/data/jobs/${job.data_folder_name}`;
+        const archiveUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}/archive.json`;
+        const baseUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}`;
         const prompt = `You have access to a structured archive of a YouTube video.
 
 Video: "${job.title || job.id}"
@@ -43,14 +44,14 @@ What would you like to know about this video?`;
 
         const fetchStatus = async () => {
             try {
-                const res = await fetch(`http://127.0.0.1:8001/jobs/${jobId}`);
+                const res = await fetch(`${getApiBase()}/jobs/${jobId}`);
                 if (!res.ok) throw new Error('Failed to fetch job');
                 const data = await res.json();
                 setJob(data);
 
                 if (data.status === 'complete' && !transcript) {
                     // Fetch transcript
-                    const tres = await fetch(`http://127.0.0.1:8001/jobs/${jobId}/transcript`);
+                    const tres = await fetch(`${getApiBase()}/jobs/${jobId}/transcript`);
                     if (tres.ok) {
                         const tdata = await tres.json();
                         setTranscript(tdata);
@@ -89,7 +90,7 @@ What would you like to know about this video?`;
                                 {promptCopied ? '✓ Copied!' : '⊕ Copy Learning Prompt'}
                             </button>
                             <a
-                                href={`http://127.0.0.1:8001/data/jobs/${job.data_folder_name}/archive.json`}
+                                href={`${getApiBase()}/data/jobs/${job.data_folder_name}/archive.json`}
                                 target="_blank"
                                 download="archive.json"
                                 className="btn"
@@ -173,7 +174,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
 
     const deleteSlice = async (sliceId: string) => {
         if (!confirm('Remove curated visuals from this chapter? The AI-selected images will be cleared.')) return;
-        await fetch(`http://127.0.0.1:8001/jobs/${jobId}/slices/${sliceId}`, { method: 'DELETE' });
+        await fetch(`${getApiBase()}/jobs/${jobId}/slices/${sliceId}`, { method: 'DELETE' });
         // Clear images and _slice_id from the matching chapter in local state
         setTimeline(prev => prev.map(item =>
             item._slice_id === sliceId ? { ...item, images: [], _slice_id: undefined } : item
@@ -185,7 +186,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
 
         const fetchData = async () => {
             try {
-                const archiveRes = await fetch(`http://127.0.0.1:8001/data/jobs/${folderName}/archive.json`);
+                const archiveRes = await fetch(`${getApiBase()}/data/jobs/${folderName}/archive.json`);
                 if (archiveRes.ok) {
                     const data = await archiveRes.json();
                     const chapters = (data.archive || []).map((a: any) => ({
@@ -248,7 +249,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                             {item.images.map((img: string, i: number) => (
                                 <img
                                     key={i}
-                                    src={`http://127.0.0.1:8001/data/jobs/${folderName}/${img}`}
+                                    src={`${getApiBase()}/data/jobs/${folderName}/${img}`}
                                     alt={`Scene ${i}`}
                                     style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)' }}
                                 />
