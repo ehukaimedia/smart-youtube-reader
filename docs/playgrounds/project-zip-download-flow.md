@@ -5,6 +5,7 @@ flowchart TD
     A["Reader page: completed job"] --> B["Download Project ZIP button"]
     A --> J["Copy Project Link button"]
     K["Dashboard project card"] --> L["Copy Link button"]
+    K --> O["Visible Tailscale project URL"]
     K --> M["Download ZIP link for complete jobs"]
     J --> N["Copies current-origin /reader/{job_id} URL"]
     L --> N

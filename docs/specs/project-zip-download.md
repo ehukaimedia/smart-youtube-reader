@@ -19,7 +19,7 @@ When a job is complete, the reader page must offer a project ZIP download. The Z
 
 The API must serve the ZIP as `application/zip` with an attachment filename so downloads work across the frontend/backend port boundary.
 
-The dashboard and completed project page must also expose a copyable project link. The copied URL must use the current browser origin so it works when the app is opened over Tailscale, for example `http://<tailscale-device>:3001/reader/<job-id>`.
+The dashboard and completed project page must also expose a project share link. The dashboard must show the actual Tailscale URL on each card, not only a local "Open Project" route. When the app is opened from `localhost`, the backend must resolve the machine's Tailscale IP and return a share origin such as `http://<tailscale-ip>:3001`, so copied links work from another computer.
 
 ## Non-Goals
 

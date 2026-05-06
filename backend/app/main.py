@@ -43,6 +43,8 @@ job_store = JobStore()
 
 
 def _get_tailscale_ip() -> str | None:
+    tailscale_network = ip_network("100.64.0.0/10")
+
     try:
         result = subprocess.run(
             ["tailscale", "ip", "-4"],
@@ -54,12 +56,29 @@ def _get_tailscale_ip() -> str | None:
         if result.returncode == 0:
             for line in result.stdout.splitlines():
                 candidate = line.strip()
-                if candidate:
+                if candidate and ip_address(candidate) in tailscale_network:
                     return candidate
     except Exception:
         pass
 
-    tailscale_network = ip_network("100.64.0.0/10")
+    try:
+        result = subprocess.run(
+            ["ifconfig"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                parts = line.strip().split()
+                if len(parts) >= 2 and parts[0] == "inet":
+                    candidate = parts[1]
+                    if ip_address(candidate) in tailscale_network:
+                        return candidate
+    except Exception:
+        pass
+
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
             candidate = info[4][0]

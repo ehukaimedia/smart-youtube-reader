@@ -17,6 +17,7 @@ export default function DashboardPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+    const [shareOrigin, setShareOrigin] = useState('');
 
     const fetchJobs = () => {
         fetch(`${getApiBase()}/jobs`)
@@ -33,6 +34,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         fetchJobs();
+        getShareOrigin().then(setShareOrigin);
     }, []);
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -48,8 +50,8 @@ export default function DashboardPage() {
     };
 
     const copyProjectLink = async (id: string) => {
-        const shareOrigin = await getShareOrigin();
-        const url = `${shareOrigin}/reader/${id}`;
+        const origin = shareOrigin || await getShareOrigin();
+        const url = `${origin}/reader/${id}`;
         const onCopied = () => {
             setCopiedJobId(id);
             setTimeout(() => setCopiedJobId(null), 2000);
@@ -94,7 +96,10 @@ export default function DashboardPage() {
                         </div>
                     )}
 
-                    {jobs.map(job => (
+                    {jobs.map(job => {
+                        const projectShareUrl = `${shareOrigin || window.location.origin}/reader/${job.id}`;
+
+                        return (
                         <div key={job.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <span className={`status-badge status-${job.status}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }}>
@@ -121,13 +126,32 @@ export default function DashboardPage() {
                                 Open Project
                             </Link>
 
+                            <a
+                                href={projectShareUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    color: 'var(--primary)',
+                                    fontSize: '0.8rem',
+                                    lineHeight: 1.4,
+                                    overflowWrap: 'anywhere',
+                                    textDecoration: 'none',
+                                    border: '1px solid var(--card-border)',
+                                    borderRadius: '6px',
+                                    padding: '0.6rem 0.75rem',
+                                    background: 'rgba(255,255,255,0.04)'
+                                }}
+                            >
+                                Tailscale Link: {projectShareUrl}
+                            </a>
+
                             <div style={{ display: 'grid', gridTemplateColumns: job.status === 'complete' ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
                                 <button
                                     onClick={() => copyProjectLink(job.id)}
                                     className="btn"
                                     style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
                                 >
-                                    {copiedJobId === job.id ? 'Copied Link' : 'Copy Link'}
+                                    {copiedJobId === job.id ? 'Copied Link' : 'Copy Tailscale Link'}
                                 </button>
 
                                 {job.status === 'complete' && (
@@ -142,7 +166,7 @@ export default function DashboardPage() {
                                 )}
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>
