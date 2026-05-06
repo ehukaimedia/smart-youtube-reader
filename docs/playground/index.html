@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart YouTube Reader — Architecture Map</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f172a; color: #e2e8f0;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.header {
+  padding: 10px 20px; border-bottom: 1px solid #1e293b;
+  display: flex; align-items: center; gap: 12px;
+  background: #0c1426; flex-shrink: 0;
+}
+.header h1 { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+.header .sep { color: #334155; }
+.header .subtitle { font-size: 12px; color: #64748b; }
+.header .hint { margin-left: auto; font-size: 11px; color: #475569; font-style: italic; }
+.layout { display: flex; flex: 1; overflow: hidden; }
+.sidebar {
+  width: 215px; background: #0c1426; border-right: 1px solid #1e293b;
+  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+.sidebar-section { padding: 12px 14px; border-bottom: 1px solid #1e293b; }
+.sidebar-section:last-child { border-bottom: none; flex: 1; }
+.section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #475569; margin-bottom: 9px;
+}
+.preset-btn {
+  display: block; width: 100%; text-align: left;
+  padding: 6px 9px; border-radius: 5px; font-size: 12px; font-family: inherit;
+  background: transparent; color: #94a3b8; border: 1px solid #1e293b;
+  cursor: pointer; margin-bottom: 4px; transition: all 0.12s;
+}
+.preset-btn:hover { background: #1e293b; color: #cbd5e1; }
+.preset-btn.active { background: #1d4ed8; border-color: #2563eb; color: #fff; font-weight: 600; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.toggle-label {
+  display: flex; align-items: center; gap: 7px; font-size: 11px;
+  color: #94a3b8; cursor: pointer; flex: 1; min-width: 0;
+}
+.toggle-label span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layer-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+input[type="checkbox"] { width: 13px; height: 13px; cursor: pointer; accent-color: #3b82f6; flex-shrink: 0; }
+.comment-item {
+  background: #0f172a; border: 1px solid #1e293b;
+  border-radius: 5px; padding: 7px 9px; margin-bottom: 5px;
+}
+.comment-target { font-size: 10px; font-weight: 700; color: #60a5fa; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+.comment-text { font-size: 11px; color: #94a3b8; line-height: 1.45; word-break: break-word; }
+.comment-delete { font-size: 10px; color: #ef4444; cursor: pointer; margin-top: 4px; display: inline-block; opacity: 0.7; }
+.comment-delete:hover { opacity: 1; text-decoration: underline; }
+.no-comments { font-size: 11px; color: #475569; font-style: italic; line-height: 1.5; }
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.canvas-wrapper {
+  flex: 1; overflow: hidden; position: relative;
+  background: #0a1120; cursor: grab; user-select: none;
+}
+.canvas-wrapper.dragging { cursor: grabbing; }
+#diagram { display: block; }
+.node-group { cursor: pointer; }
+.node-group:hover .node-rect { filter: brightness(1.06); }
+.node-group:hover .node-shadow { opacity: 0.35; }
+.zoom-controls { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 4px; }
+.zoom-btn {
+  width: 28px; height: 28px; border-radius: 5px; background: #1e293b;
+  border: 1px solid #334155; color: #94a3b8; font-size: 16px; font-family: inherit;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.12s;
+}
+.zoom-btn:hover { background: #334155; color: #f1f5f9; }
+.zoom-label { font-size: 10px; color: #475569; text-align: center; font-family: monospace; margin-top: 2px; }
+.legend {
+  position: absolute; bottom: 12px; left: 12px;
+  background: rgba(12,20,38,0.92); border: 1px solid #1e293b;
+  border-radius: 7px; padding: 9px 12px; backdrop-filter: blur(4px);
+}
+.legend-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; margin-bottom: 6px; }
+.legend-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; font-size: 10px; color: #64748b; }
+.legend-row:last-child { margin-bottom: 0; }
+.prompt-area { padding: 11px 14px; background: #0c1426; border-top: 1px solid #1e293b; flex-shrink: 0; }
+.prompt-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.prompt-header-left { display: flex; align-items: center; gap: 8px; }
+.prompt-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; }
+.prompt-hint { font-size: 10px; color: #334155; font-style: italic; }
+.copy-btn {
+  padding: 4px 12px; background: #2563eb; border: none; border-radius: 4px;
+  color: #fff; font-size: 11px; font-family: inherit; font-weight: 600;
+  cursor: pointer; transition: background 0.12s;
+}
+.copy-btn:hover { background: #1d4ed8; }
+.copy-btn.copied { background: #059669; }
+#prompt-output {
+  width: 100%; background: #0a1120; border: 1px solid #1e293b; border-radius: 5px;
+  padding: 8px 11px; color: #64748b; font-family: 'SF Mono','Fira Code',monospace;
+  font-size: 11px; line-height: 1.55; resize: none; height: 72px; outline: none;
+}
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  display: none; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+  padding: 18px 20px; width: 380px; box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+}
+.modal-title-text { font-size: 14px; font-weight: 700; color: #f1f5f9; margin-bottom: 2px; }
+.modal-file { font-size: 10px; color: #64748b; font-family: 'SF Mono','Fira Code',monospace; margin-bottom: 12px; }
+.modal textarea {
+  width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 5px;
+  padding: 9px 11px; color: #e2e8f0; font-family: system-ui, sans-serif; font-size: 13px;
+  line-height: 1.5; resize: none; height: 90px; outline: none; transition: border-color 0.12s;
+}
+.modal textarea:focus { border-color: #2563eb; }
+.modal textarea::placeholder { color: #475569; }
+.modal-hint { font-size: 10px; color: #475569; margin-top: 5px; }
+.modal-btns { display: flex; gap: 7px; margin-top: 12px; justify-content: flex-end; }
+.modal-btn {
+  padding: 6px 16px; border-radius: 5px; font-size: 12px; font-family: inherit;
+  font-weight: 600; cursor: pointer; border: 1px solid #334155; transition: all 0.12s;
+}
+.modal-btn.save { background: #2563eb; border-color: #2563eb; color: #fff; }
+.modal-btn.save:hover { background: #1d4ed8; }
+.modal-btn.cancel { background: transparent; color: #94a3b8; }
+.modal-btn.cancel:hover { background: #334155; color: #f1f5f9; }
+.modal-btn.del { background: transparent; border-color: #7f1d1d; color: #ef4444; margin-right: auto; }
+.modal-btn.del:hover { background: #7f1d1d; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Smart YouTube Reader</h1>
+  <span class="sep">—</span>
+  <span class="subtitle">Codebase Architecture</span>
+  <span class="hint">Click any component to add feedback · Drag to pan · Scroll to zoom</span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-title">View Presets</div>
+      <div id="preset-btns"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="section-title">Layers</div>
+      <div id="layer-toggles"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="section-title">Connections</div>
+      <div id="conn-toggles"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="section-title">Comments (<span id="comment-count">0</span>)</div>
+      <div id="comments-list"></div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <svg id="diagram" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+        <defs>
+          <marker id="arr-data-flow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+          </marker>
+          <marker id="arr-tool-call" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+          </marker>
+          <marker id="arr-event" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+          </marker>
+          <marker id="arr-dependency" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#6b7280"/>
+          </marker>
+        </defs>
+        <g id="zoom-pan">
+          <g id="bands-group"></g>
+          <g id="connections-group"></g>
+          <g id="labels-group"></g>
+          <g id="nodes-group"></g>
+        </g>
+      </svg>
+      <div class="zoom-controls">
+        <button class="zoom-btn" title="Zoom in" onclick="doZoom(1.2)">+</button>
+        <button class="zoom-btn" title="Zoom out" onclick="doZoom(0.833)">−</button>
+        <button class="zoom-btn" title="Fit to screen" onclick="fitView()" style="font-size:12px">⊡</button>
+        <div class="zoom-label" id="zoom-label">85%</div>
+      </div>
+      <div class="legend">
+        <div class="legend-title">Connection Types</div>
+        <div class="legend-row">
+          <svg width="26" height="10"><line x1="2" y1="5" x2="20" y2="5" stroke="#3b82f6" stroke-width="2"/><polygon points="16,2 22,5 16,8" fill="#3b82f6"/></svg>
+          Data Flow
+        </div>
+        <div class="legend-row">
+          <svg width="26" height="10"><line x1="2" y1="5" x2="20" y2="5" stroke="#10b981" stroke-width="1.5" stroke-dasharray="5,3"/><polygon points="16,2 22,5 16,8" fill="#10b981"/></svg>
+          Tool Call
+        </div>
+        <div class="legend-row">
+          <svg width="26" height="10"><line x1="2" y1="5" x2="20" y2="5" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,3"/><polygon points="16,2 22,5 16,8" fill="#f59e0b"/></svg>
+          Event / Poll
+        </div>
+        <div class="legend-row">
+          <svg width="26" height="10"><line x1="2" y1="5" x2="20" y2="5" stroke="#6b7280" stroke-width="1" stroke-dasharray="2,3"/><polygon points="16,2 22,5 16,8" fill="#6b7280"/></svg>
+          Dependency
+        </div>
+      </div>
+    </div>
+
+    <div class="prompt-area">
+      <div class="prompt-header">
+        <div class="prompt-header-left">
+          <span class="prompt-title">Generated Prompt</span>
+          <span class="prompt-hint">— adds component feedback to context</span>
+        </div>
+        <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">Copy Prompt</button>
+      </div>
+      <textarea id="prompt-output" readonly spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title-text" id="modal-title"></div>
+    <div class="modal-file" id="modal-file"></div>
+    <textarea id="modal-textarea" placeholder="Feedback, questions, or notes about this component…"></textarea>
+    <div class="modal-hint">Cmd/Ctrl+Enter to save · Escape to cancel</div>
+    <div class="modal-btns">
+      <button class="modal-btn del" id="modal-del-btn" style="display:none" onclick="deleteCurrentComment()">Remove</button>
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn save" onclick="saveComment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── DATA ──────────────────────────────────────────────────
+
+const LAYERS = {
+  ui:         { label: 'UI (Next.js)',      fill: '#dbeafe', border: '#3b82f6', text: '#1e3a8a', band: '#1e3a5f' },
+  api:        { label: 'API (FastAPI)',     fill: '#fef3c7', border: '#f59e0b', text: '#78350f', band: '#3d2b00' },
+  core:       { label: 'Core Logic',       fill: '#ede9fe', border: '#7c3aed', text: '#4c1d95', band: '#2d1a4a' },
+  processing: { label: 'Processing',       fill: '#dcfce7', border: '#16a34a', text: '#14532d', band: '#1a3a2e' },
+  data:       { label: 'Data / Storage',   fill: '#fce7f3', border: '#db2777', text: '#831843', band: '#3a1a2e' },
+  external:   { label: 'External Services',fill: '#f1f5f9', border: '#64748b', text: '#374151', band: '#1e293b' },
+};
+
+const BANDS = [
+  { layer:'ui',         y:  20, h:100, label:'UI LAYER' },
+  { layer:'api',        y: 145, h:100, label:'API LAYER' },
+  { layer:'core',       y: 270, h:100, label:'CORE LOGIC' },
+  { layer:'processing', y: 395, h:100, label:'PROCESSING' },
+  { layer:'data',       y: 520, h:100, label:'DATA STORAGE' },
+  { layer:'external',   y: 645, h:100, label:'EXTERNAL SERVICES' },
+];
+
+const NODES = [
+  { id:'home',         label:'Home Page',       sub:'app/page.tsx',                     x: 40, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'dashboard',    label:'Dashboard',       sub:'app/dashboard/page.tsx',           x:215, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'reader',       label:'Reader',          sub:'app/reader/[jobId]/page.tsx',      x:390, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'slicer-ui',    label:'Slicer UI',       sub:'app/slicer/[jobId]/page.tsx',      x:565, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'api-client',   label:'API Client',      sub:'frontend/lib/api.ts',             x:740, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'main',         label:'FastAPI Server',  sub:'backend/app/main.py',             x:210, y:175,  w:165, h:52, layer:'api' },
+  { id:'schemas',      label:'Schemas',         sub:'backend/app/schemas.py',          x:565, y:175,  w:145, h:52, layer:'api' },
+  { id:'pipeline',     label:'Pipeline',        sub:'backend/app/pipeline.py',         x:120, y:300,  w:155, h:52, layer:'core' },
+  { id:'jobs',         label:'Job Store',       sub:'backend/app/jobs.py',             x:390, y:300,  w:145, h:52, layer:'core' },
+  { id:'frames',       label:'Frame Manager',   sub:'backend/app/frames.py',           x: 40, y:425,  w:155, h:52, layer:'processing' },
+  { id:'intelligence', label:'AI Intelligence', sub:'backend/app/intelligence.py',     x:270, y:425,  w:165, h:52, layer:'processing' },
+  { id:'slicing',      label:'Video Slicer',    sub:'backend/app/slicing.py',          x:565, y:425,  w:145, h:52, layer:'processing' },
+  { id:'archive-json', label:'archive.json',    sub:'data/jobs/{slug}/archive.json',   x: 40, y:550,  w:145, h:52, layer:'data' },
+  { id:'manifest',     label:'manifest.json',   sub:'data/jobs/{slug}/manifest.json',  x:215, y:550,  w:145, h:52, layer:'data' },
+  { id:'frames-json',  label:'frames.json',     sub:'data/jobs/{slug}/frames.json',    x:390, y:550,  w:145, h:52, layer:'data' },
+  { id:'data-dir',     label:'Job Directory',   sub:'data/jobs/{slug}_{uuid}/',        x:565, y:550,  w:145, h:52, layer:'data' },
+  { id:'youtube',      label:'YouTube',         sub:'yt-dlp + TranscriptAPI',          x: 40, y:675,  w:155, h:52, layer:'external' },
+  { id:'ffmpeg',       label:'FFmpeg',          sub:'Frame extraction + encoding',     x:230, y:675,  w:145, h:52, layer:'external' },
+  { id:'ollama',       label:'Ollama (Local)',   sub:'Local AI model server',           x:420, y:675,  w:155, h:52, layer:'external' },
+  { id:'nvidia',       label:'NVIDIA NIM',      sub:'Cloud AI + Vision API',          x:615, y:675,  w:145, h:52, layer:'external' },
+];
+
+const CONN_TYPES = {
+  'data-flow':  { label:'Data Flow',  color:'#3b82f6', dash:'',    w:2   },
+  'tool-call':  { label:'Tool Call',  color:'#10b981', dash:'5,3', w:1.5 },
+  'event':      { label:'Event/Poll', color:'#f59e0b', dash:'3,3', w:1.5 },
+  'dependency': { label:'Dependency', color:'#6b7280', dash:'2,3', w:1   },
+};
+
+const CONNECTIONS = [
+  { from:'home',        to:'main',         type:'data-flow',  label:'POST /jobs' },
+  { from:'dashboard',   to:'main',         type:'data-flow',  label:'GET /jobs' },
+  { from:'reader',      to:'main',         type:'event',      label:'polls 2s' },
+  { from:'slicer-ui',   to:'main',         type:'data-flow',  label:'POST /slicer' },
+  { from:'api-client',  to:'main',         type:'dependency', label:'getApiBase()' },
+  { from:'main',        to:'pipeline',     type:'tool-call',  label:'run_pipeline()' },
+  { from:'main',        to:'jobs',         type:'tool-call',  label:'create/get/list' },
+  { from:'main',        to:'slicing',      type:'tool-call',  label:'preview/finalize' },
+  { from:'schemas',     to:'main',         type:'dependency', label:'validates' },
+  { from:'pipeline',    to:'frames',       type:'tool-call',  label:'scan_and_hash()' },
+  { from:'pipeline',    to:'intelligence', type:'tool-call',  label:'create_archive()' },
+  { from:'pipeline',    to:'jobs',         type:'tool-call',  label:'update_status()' },
+  { from:'intelligence',to:'archive-json', type:'data-flow',  label:'writes' },
+  { from:'pipeline',    to:'manifest',     type:'data-flow',  label:'writes' },
+  { from:'frames',      to:'frames-json',  type:'data-flow',  label:'writes' },
+  { from:'pipeline',    to:'data-dir',     type:'data-flow',  label:'creates dir' },
+  { from:'slicing',     to:'data-dir',     type:'data-flow',  label:'previews/slices' },
+  { from:'pipeline',    to:'youtube',      type:'tool-call',  label:'download + transcript' },
+  { from:'pipeline',    to:'ffmpeg',       type:'tool-call',  label:'extract frames' },
+  { from:'intelligence',to:'ollama',       type:'tool-call',  label:'local chat' },
+  { from:'intelligence',to:'nvidia',       type:'tool-call',  label:'cloud + vision' },
+  { from:'slicing',     to:'ffmpeg',       type:'tool-call',  label:'encode video' },
+];
+
+const PRESETS = [
+  { name:'Full System',        layers:{ui:1,api:1,core:1,processing:1,data:1,external:1}, conns:{'data-flow':1,'tool-call':1,'event':1,'dependency':1} },
+  { name:'Frontend Flow',      layers:{ui:1,api:1,core:0,processing:0,data:0,external:0}, conns:{'data-flow':1,'tool-call':0,'event':1,'dependency':1} },
+  { name:'Processing Pipeline',layers:{ui:0,api:1,core:1,processing:1,data:1,external:1}, conns:{'data-flow':1,'tool-call':1,'event':0,'dependency':0} },
+  { name:'AI Flow',            layers:{ui:0,api:0,core:1,processing:1,data:0,external:1}, conns:{'data-flow':0,'tool-call':1,'event':0,'dependency':0} },
+  { name:'Data Flow',          layers:{ui:0,api:0,core:1,processing:1,data:1,external:0}, conns:{'data-flow':1,'tool-call':0,'event':0,'dependency':0} },
+];
+
+// ── STATE ─────────────────────────────────────────────────
+
+const state = {
+  layers:       { ui:true, api:true, core:true, processing:true, data:true, external:true },
+  conns:        { 'data-flow':true, 'tool-call':true, 'event':true, 'dependency':true },
+  comments:     [],
+  activePreset: 0,
+  scale:        0.85,
+  panX:         30,
+  panY:         10,
+};
+
+let activeNode = null;
+
+// ── SVG HELPERS ───────────────────────────────────────────
+
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag) { return document.createElementNS(NS, tag); }
+function setA(el, attrs) { for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v); return el; }
+function clr(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+// ── DERIVED DATA ──────────────────────────────────────────
+
+function visNodes() { return NODES.filter(n => state.layers[n.layer]); }
+function visConns() {
+  const ids = new Set(visNodes().map(n => n.id));
+  return CONNECTIONS.filter(c => state.conns[c.type] && ids.has(c.from) && ids.has(c.to));
+}
+function nodeById(id) { return NODES.find(n => n.id === id); }
+
+// ── PATH ROUTING ──────────────────────────────────────────
+
+function makePath(a, b, idx, total) {
+  const ax = a.x + a.w / 2, ay = a.y + a.h;
+  const bx = b.x + b.w / 2, by = b.y;
+
+  if (Math.abs(a.y - b.y) < 15) {
+    // Same layer — horizontal routing above the band
+    const sx = a.x > b.x ? a.x : a.x + a.w;
+    const ex = a.x > b.x ? b.x + b.w : b.x;
+    const sy = a.y + a.h / 2, ey = b.y + b.h / 2;
+    const arc = 40 + idx * 12;
+    const mx = (sx + ex) / 2;
+    return `M ${sx} ${sy} C ${mx} ${sy - arc}, ${mx} ${ey - arc}, ${ex} ${ey}`;
+  }
+
+  const xOff = (idx - (total - 1) / 2) * 8;
+  const dy = Math.abs(by - ay);
+  return `M ${ax + xOff} ${ay} C ${ax + xOff} ${ay + dy * 0.45}, ${bx + xOff} ${by - dy * 0.45}, ${bx + xOff} ${by}`;
+}
+
+// ── RENDER ────────────────────────────────────────────────
+
+function render() {
+  renderBands();
+  renderConnections();
+  renderNodes();
+  updatePrompt();
+  updateCommentsList();
+}
+
+function renderBands() {
+  const g = document.getElementById('bands-group');
+  clr(g);
+  BANDS.forEach(band => {
+    if (!state.layers[band.layer]) return;
+    const def = LAYERS[band.layer];
+    g.appendChild(setA(svgEl('rect'), { x:20, y:band.y, width:900, height:band.h, rx:10, fill:def.band, opacity:'0.45' }));
+    const t = setA(svgEl('text'), { x:30, y:band.y+13, 'font-size':'9', 'font-family':'system-ui,sans-serif', 'font-weight':'700', 'letter-spacing':'0.08em', fill:def.border, opacity:'0.7' });
+    t.textContent = band.label;
+    g.appendChild(t);
+  });
+}
+
+function renderConnections() {
+  const cg = document.getElementById('connections-group');
+  const lg = document.getElementById('labels-group');
+  clr(cg); clr(lg);
+
+  const pairCount = {}, pairIdx = {};
+  const vis = visConns();
+  vis.forEach(c => { const k = [c.from,c.to].sort().join('|'); pairCount[k] = (pairCount[k]||0)+1; });
+  vis.forEach(c => {
+    const a = nodeById(c.from), b = nodeById(c.to);
+    if (!a || !b) return;
+    const k = [c.from,c.to].sort().join('|');
+    if (pairIdx[k] === undefined) pairIdx[k] = 0;
+    const idx = pairIdx[k]++, total = pairCount[k];
+    const ct = CONN_TYPES[c.type];
+
+    const path = setA(svgEl('path'), { d:makePath(a,b,idx,total), fill:'none', stroke:ct.color, 'stroke-width':ct.w, 'marker-end':`url(#arr-${c.type})`, opacity:'0.65' });
+    if (ct.dash) path.setAttribute('stroke-dasharray', ct.dash);
+    cg.appendChild(path);
+
+    if (c.label) {
+      const lx = (a.x+a.w/2+b.x+b.w/2)/2;
+      const ly = (a.y+a.h+b.y)/2;
+      const lw = c.label.length * 5.4 + 10;
+      cg.appendChild(setA(svgEl('rect'), { x:lx-lw/2, y:ly-8, width:lw, height:14, rx:3, fill:'#0a1120', opacity:'0.88' }));
+      const lt = setA(svgEl('text'), { x:lx, y:ly+2.5, 'text-anchor':'middle', 'font-size':'8.5', 'font-family':"'SF Mono',monospace", fill:ct.color });
+      lt.textContent = c.label;
+      cg.appendChild(lt);
+    }
+  });
+}
+
+function renderNodes() {
+  const g = document.getElementById('nodes-group');
+  clr(g);
+  visNodes().forEach(n => {
+    const def = LAYERS[n.layer];
+    const commented = state.comments.some(c => c.target === n.id);
+    const grp = svgEl('g');
+    grp.setAttribute('class', 'node-group');
+    grp.addEventListener('click', () => openModal(n));
+
+    grp.appendChild(setA(svgEl('rect'), { class:'node-shadow', x:n.x+2, y:n.y+3, width:n.w, height:n.h, rx:8, fill:'#000', opacity:'0.25' }));
+    const rect = setA(svgEl('rect'), { class:'node-rect', x:n.x, y:n.y, width:n.w, height:n.h, rx:8, fill:def.fill, stroke:commented?'#f59e0b':def.border, 'stroke-width':commented?2.5:1.5 });
+    grp.appendChild(rect);
+
+    if (commented) {
+      grp.appendChild(setA(svgEl('circle'), { cx:n.x+n.w-9, cy:n.y+9, r:5, fill:'#f59e0b' }));
+    }
+
+    const lbl = setA(svgEl('text'), { x:n.x+n.w/2, y:n.y+20, 'text-anchor':'middle', 'font-size':'12', 'font-family':'system-ui,-apple-system,sans-serif', 'font-weight':'700', fill:def.text });
+    lbl.textContent = n.label;
+    grp.appendChild(lbl);
+
+    const maxCh = Math.floor((n.w-16)/5.5);
+    const subTxt = n.sub.length > maxCh ? '…' + n.sub.slice(-(maxCh-1)) : n.sub;
+    const sub = setA(svgEl('text'), { x:n.x+n.w/2, y:n.y+35, 'text-anchor':'middle', 'font-size':'9', 'font-family':"'SF Mono',monospace", fill:def.text, opacity:'0.65' });
+    sub.textContent = subTxt;
+    grp.appendChild(sub);
+
+    g.appendChild(grp);
+  });
+}
+
+// ── CONTROLS ──────────────────────────────────────────────
+
+function buildPresets() {
+  const el = document.getElementById('preset-btns');
+  clr(el);
+  PRESETS.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (i === state.activePreset ? ' active' : '');
+    btn.textContent = p.name;
+    btn.addEventListener('click', () => applyPreset(i));
+    el.appendChild(btn);
+  });
+}
+
+function buildLayerToggles() {
+  const el = document.getElementById('layer-toggles');
+  clr(el);
+  Object.entries(LAYERS).forEach(([key, def]) => {
+    const row = document.createElement('div');
+    row.className = 'toggle-row';
+
+    const lbl = document.createElement('label');
+    lbl.className = 'toggle-label';
+    lbl.setAttribute('for', 'layer-' + key);
+
+    const dot = document.createElement('div');
+    dot.className = 'layer-dot';
+    dot.style.cssText = `background:${def.fill};border:1.5px solid ${def.border}`;
+
+    const span = document.createElement('span');
+    span.textContent = def.label;
+
+    lbl.appendChild(dot);
+    lbl.appendChild(span);
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'layer-' + key;
+    cb.checked = !!state.layers[key];
+    cb.addEventListener('change', () => { state.layers[key] = cb.checked; clearPresetActive(); render(); });
+
+    row.appendChild(lbl);
+    row.appendChild(cb);
+    el.appendChild(row);
+  });
+}
+
+function buildConnToggles() {
+  const el = document.getElementById('conn-toggles');
+  clr(el);
+  Object.entries(CONN_TYPES).forEach(([key, def]) => {
+    const row = document.createElement('div');
+    row.className = 'toggle-row';
+
+    const lbl = document.createElement('label');
+    lbl.className = 'toggle-label';
+    lbl.setAttribute('for', 'conn-' + key);
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '22'); svg.setAttribute('height', '10');
+    svg.style.flexShrink = '0';
+    const line = setA(svgEl('line'), { x1:'1', y1:'5', x2:'18', y2:'5', stroke:def.color, 'stroke-width':def.w });
+    if (def.dash) line.setAttribute('stroke-dasharray', def.dash);
+    const arrow = setA(svgEl('polygon'), { points:'14,2 20,5 14,8', fill:def.color });
+    svg.appendChild(line); svg.appendChild(arrow);
+
+    const span = document.createElement('span');
+    span.textContent = def.label;
+
+    lbl.appendChild(svg);
+    lbl.appendChild(span);
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'conn-' + key;
+    cb.checked = !!state.conns[key];
+    cb.addEventListener('change', () => { state.conns[key] = cb.checked; clearPresetActive(); render(); });
+
+    row.appendChild(lbl);
+    row.appendChild(cb);
+    el.appendChild(row);
+  });
+}
+
+function clearPresetActive() {
+  state.activePreset = -1;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+}
+
+function applyPreset(i) {
+  const p = PRESETS[i];
+  Object.keys(state.layers).forEach(k => { state.layers[k] = !!p.layers[k]; });
+  Object.keys(state.conns).forEach(k => { state.conns[k] = !!p.conns[k]; });
+  state.activePreset = i;
+  buildPresets();
+  buildLayerToggles();
+  buildConnToggles();
+  render();
+}
+
+// ── ZOOM / PAN ────────────────────────────────────────────
+
+function applyTransform() {
+  document.getElementById('zoom-pan').setAttribute('transform', `translate(${state.panX},${state.panY}) scale(${state.scale})`);
+  document.getElementById('zoom-label').textContent = Math.round(state.scale * 100) + '%';
+}
+
+function doZoom(f) {
+  state.scale = Math.max(0.25, Math.min(2.5, state.scale * f));
+  applyTransform();
+}
+
+function fitView() {
+  const wrap = document.getElementById('canvas-wrapper');
+  const sw = wrap.clientWidth, sh = wrap.clientHeight;
+  state.scale = Math.min((sw-40)/930, (sh-40)/760, 1);
+  state.panX  = (sw - 930 * state.scale) / 2;
+  state.panY  = (sh - 760 * state.scale) / 2;
+  applyTransform();
+}
+
+let drag = { on:false, sx:0, sy:0, px:0, py:0 };
+const wrap = document.getElementById('canvas-wrapper');
+
+wrap.addEventListener('mousedown', e => {
+  if (e.target.closest('.node-group')) return;
+  drag = { on:true, sx:e.clientX, sy:e.clientY, px:state.panX, py:state.panY };
+  wrap.classList.add('dragging');
+  e.preventDefault();
+});
+document.addEventListener('mousemove', e => {
+  if (!drag.on) return;
+  state.panX = drag.px + (e.clientX - drag.sx);
+  state.panY = drag.py + (e.clientY - drag.sy);
+  applyTransform();
+});
+document.addEventListener('mouseup', () => { drag.on = false; wrap.classList.remove('dragging'); });
+
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f = e.deltaY < 0 ? 1.1 : 0.9;
+  const r = wrap.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const prev = state.scale, next = Math.max(0.25, Math.min(2.5, prev * f));
+  state.panX = mx - (mx - state.panX) * (next / prev);
+  state.panY = my - (my - state.panY) * (next / prev);
+  state.scale = next;
+  applyTransform();
+}, { passive: false });
+
+// ── COMMENTS ─────────────────────────────────────────────
+
+function openModal(node) {
+  activeNode = node;
+  document.getElementById('modal-title').textContent = node.label;
+  document.getElementById('modal-file').textContent  = node.sub;
+  const existing = state.comments.find(c => c.target === node.id);
+  document.getElementById('modal-textarea').value = existing ? existing.text : '';
+  document.getElementById('modal-del-btn').style.display = existing ? 'block' : 'none';
+  document.getElementById('modal').classList.add('active');
+  setTimeout(() => document.getElementById('modal-textarea').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  activeNode = null;
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+document.getElementById('modal-textarea').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); return; }
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveComment();
+});
+
+function saveComment() {
+  const text = document.getElementById('modal-textarea').value.trim();
+  if (!text || !activeNode) { closeModal(); return; }
+  state.comments = state.comments.filter(c => c.target !== activeNode.id);
+  state.comments.push({ id:Date.now(), target:activeNode.id, targetLabel:activeNode.label, targetFile:activeNode.sub, text });
+  closeModal();
+  render();
+}
+
+function deleteCurrentComment() {
+  if (!activeNode) return;
+  state.comments = state.comments.filter(c => c.target !== activeNode.id);
+  closeModal();
+  render();
+}
+
+function deleteComment(id) {
+  state.comments = state.comments.filter(c => c.id !== id);
+  render();
+}
+
+function updateCommentsList() {
+  const list = document.getElementById('comments-list');
+  const countEl = document.getElementById('comment-count');
+  countEl.textContent = String(state.comments.length);
+  clr(list);
+
+  if (!state.comments.length) {
+    const p = document.createElement('p');
+    p.className = 'no-comments';
+    p.textContent = 'Click any component in the diagram to add feedback or questions.';
+    list.appendChild(p);
+    return;
+  }
+
+  state.comments.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+
+    const tgt = document.createElement('div');
+    tgt.className = 'comment-target';
+    tgt.textContent = c.targetLabel;
+    item.appendChild(tgt);
+
+    const txt = document.createElement('div');
+    txt.className = 'comment-text';
+    txt.textContent = c.text.length > 70 ? c.text.slice(0, 70) + '…' : c.text;
+    item.appendChild(txt);
+
+    const del = document.createElement('span');
+    del.className = 'comment-delete';
+    del.textContent = '× remove';
+    const capturedId = c.id;
+    del.addEventListener('click', () => deleteComment(capturedId));
+    item.appendChild(del);
+
+    list.appendChild(item);
+  });
+}
+
+// ── PROMPT ────────────────────────────────────────────────
+
+function updatePrompt() {
+  const visLayerNames = Object.entries(state.layers)
+    .filter(([,v]) => v)
+    .map(([k]) => LAYERS[k].label);
+  const total = Object.keys(LAYERS).length;
+
+  let out = 'This is the Smart YouTube Reader architecture';
+  if (visLayerNames.length < total) {
+    out += ', filtered to show ' + visLayerNames.join(', ');
+  }
+  out += '.\n\n';
+  out += [
+    'System overview:',
+    '• yt-dlp downloads the YouTube video and extracts its transcript (VTT fallback)',
+    '• FFmpeg captures frames at fixed intervals; imagehash deduplicates via pHash',
+    '• An LLM (Ollama locally or NVIDIA NIM for cloud/vision) generates semantic chapters from the transcript',
+    '• Chapters are paired with representative frames and written to archive.json',
+    '• The Reader page polls GET /jobs/{id} every 2 seconds until processing completes',
+    '• The Slicer UI lets users select frame ranges and export clips via FFmpeg',
+  ].join('\n');
+
+  if (state.comments.length) {
+    out += '\n\nFeedback on specific components:\n';
+    state.comments.forEach(c => {
+      out += '\n**' + c.targetLabel + '** (' + c.targetFile + '):\n' + c.text + '\n';
+    });
+  }
+
+  document.getElementById('prompt-output').value = out;
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-output').value;
+  const btn  = document.getElementById('copy-btn');
+  const done = () => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 2000);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else { fallback(); }
+  function fallback() {
+    const ta = document.getElementById('prompt-output');
+    ta.removeAttribute('readonly');
+    ta.select();
+    document.execCommand('copy');
+    ta.setAttribute('readonly', '');
+    done();
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────
+
+buildPresets();
+buildLayerToggles();
+buildConnToggles();
+render();
+applyTransform();
+</script>
+</body>
+</html>
