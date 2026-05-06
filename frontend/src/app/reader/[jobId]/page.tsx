@@ -2,16 +2,46 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getApiBase } from '@/lib/api';
+import { getApiBase, getShareOrigin } from '@/lib/api';
+
+type Job = {
+    id: string;
+    status: string;
+    video_url?: string | null;
+    title?: string | null;
+    created_at: number;
+    error?: string | null;
+    data_folder_name?: string | null;
+    current_step?: string | null;
+};
+
+type TranscriptLine = {
+    text: string;
+    start: number;
+    duration?: number;
+};
+
+type ArchiveChapter = {
+    concept: string;
+    summary: string;
+    content: string;
+    timestamp_start: number;
+    timestamp_end?: number;
+    images?: string[];
+    _slice_id?: string;
+    type: 'chapter';
+    sortTime: number;
+};
 
 export default function ReaderPage() {
     const { jobId } = useParams();
-    const [job, setJob] = useState<any>(null);
-    const [transcript, setTranscript] = useState<any[] | null>(null);
+    const [job, setJob] = useState<Job | null>(null);
+    const [transcript, setTranscript] = useState<TranscriptLine[] | null>(null);
     const [error, setError] = useState('');
     const [promptCopied, setPromptCopied] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
 
-    const copyLearningPrompt = (job: any) => {
+    const copyLearningPrompt = (job: Job) => {
         const archiveUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}/archive.json`;
         const baseUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}`;
         const prompt = `You have access to a structured archive of a YouTube video.
@@ -51,6 +81,30 @@ What would you like to know about this video?`;
             document.body.removeChild(ta);
             onCopied();
         }
+    };
+
+    const copyProjectLink = async () => {
+        const shareOrigin = await getShareOrigin();
+        const url = `${shareOrigin}/reader/${jobId}`;
+        const onCopied = () => {
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(onCopied);
+            return;
+        }
+
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        onCopied();
     };
 
     useEffect(() => {
@@ -103,14 +157,20 @@ What would you like to know about this video?`;
                             >
                                 {promptCopied ? '✓ Copied!' : '⊕ Copy Learning Prompt'}
                             </button>
+                            <button
+                                onClick={copyProjectLink}
+                                className="btn"
+                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: linkCopied ? 'var(--secondary)' : undefined }}
+                            >
+                                {linkCopied ? 'Copied Link' : 'Copy Project Link'}
+                            </button>
                             <a
-                                href={`${getApiBase()}/data/jobs/${job.data_folder_name}/archive.json`}
-                                target="_blank"
-                                download="archive.json"
+                                href={`${getApiBase()}/jobs/${job.id}/download`}
+                                download={`${job.data_folder_name || job.id}.zip`}
                                 className="btn"
                                 style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none' }}
                             >
-                                Download AI Archive
+                                Download Project ZIP
                             </a>
                         </>
                     )}
@@ -152,7 +212,7 @@ What would you like to know about this video?`;
                     <details className="glass-card">
                         <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: '0.5rem' }}>Raw Transcript</summary>
                         <div style={{ marginTop: '1rem' }}>
-                            {transcript.map((line: any, idx: number) => {
+                            {transcript.map((line: TranscriptLine, idx: number) => {
                                 const videoId = job.video_url?.match(/[?&]v=([^&]+)/)?.[1];
                                 const tsUrl = videoId
                                     ? `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(line.start)}`
@@ -183,7 +243,7 @@ What would you like to know about this video?`;
 
 function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folderName?: string, videoUrl?: string }) {
     const videoId = videoUrl?.match(/[?&]v=([^&]+)/)?.[1];
-    const [timeline, setTimeline] = useState<any[]>([]);
+    const [timeline, setTimeline] = useState<ArchiveChapter[]>([]);
     const [loading, setLoading] = useState(true);
 
     const deleteSlice = async (sliceId: string) => {
@@ -203,7 +263,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                 const archiveRes = await fetch(`${getApiBase()}/data/jobs/${folderName}/archive.json`);
                 if (archiveRes.ok) {
                     const data = await archiveRes.json();
-                    const chapters = (data.archive || []).map((a: any) => ({
+                    const chapters = ((data.archive || []) as Omit<ArchiveChapter, 'type' | 'sortTime'>[]).map((a) => ({
                         ...a,
                         type: 'chapter',
                         sortTime: a.timestamp_start
@@ -225,7 +285,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {timeline.map((item: any, idx: number) => (
+            {timeline.map((item: ArchiveChapter, idx: number) => (
                 <div key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -275,5 +335,3 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
         </div>
     );
 }
-
-

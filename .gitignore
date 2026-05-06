@@ -4,6 +4,9 @@
 .vscode/
 *.swp
 
+# Agent local worktrees
+.claude/
+
 # Python Backend
 __pycache__/
 *.py[cod]

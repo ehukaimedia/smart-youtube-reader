@@ -1,7 +1,14 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+import os
+import socket
+import subprocess
+import tempfile
+import zipfile
+from ipaddress import ip_address, ip_network
+
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +41,45 @@ app.mount("/data/jobs", StaticFiles(directory=DATA_ROOT), name="jobs_data")
 
 job_store = JobStore()
 
+
+def _get_tailscale_ip() -> str | None:
+    try:
+        result = subprocess.run(
+            ["tailscale", "ip", "-4"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.splitlines():
+                candidate = line.strip()
+                if candidate:
+                    return candidate
+    except Exception:
+        pass
+
+    tailscale_network = ip_network("100.64.0.0/10")
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            candidate = info[4][0]
+            if ip_address(candidate) in tailscale_network:
+                return candidate
+    except Exception:
+        pass
+
+    return None
+
+
+def _build_job_zip(job_dir: Path, zip_path: Path) -> None:
+    top_level = job_dir.name
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+        for path in sorted(job_dir.rglob("*")):
+            if not path.is_file():
+                continue
+            archive_name = Path(top_level) / path.relative_to(job_dir)
+            zf.write(path, archive_name)
+
 @app.post("/jobs", response_model=JobResponse, status_code=201)
 async def create_job(payload: JobCreateRequest, background_tasks: BackgroundTasks):
     job = job_store.create_job(payload)
@@ -43,6 +89,20 @@ async def create_job(payload: JobCreateRequest, background_tasks: BackgroundTask
 @app.get("/jobs", response_model=list[JobResponse])
 async def list_jobs():
     return [job.to_response() for job in job_store.list_jobs()]
+
+@app.get("/share-info")
+async def get_share_info(request: Request):
+    frontend_port = os.environ.get("FRONTEND_PORT", "3001")
+    configured_origin = os.environ.get("PUBLIC_SHARE_ORIGIN")
+    if configured_origin:
+        return {"share_origin": configured_origin.rstrip("/")}
+
+    request_host = request.url.hostname or "localhost"
+    local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+    share_host = _get_tailscale_ip() if request_host in local_hosts else request_host
+    share_host = share_host or request_host
+
+    return {"share_origin": f"{request.url.scheme}://{share_host}:{frontend_port}"}
 
 @app.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: str):
@@ -61,14 +121,33 @@ async def delete_job(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
 
 @app.get("/jobs/{job_id}/download")
-async def download_job(job_id: str):
+async def download_job(job_id: str, background_tasks: BackgroundTasks):
     try:
         job = job_store.get(job_id)
-        if not job.package_path:
-             raise HTTPException(status_code=400, detail="Job not ready or package missing")
-        # TODO: Implement zip creation if not done in pipeline
-        # For now, return a placeholder or file
-        return {"message": "Download not fully implemented in pipeline yet, but job is done."}
+        if not job.data_dir or not job.data_dir.exists():
+            raise HTTPException(status_code=404, detail="Job files not found")
+
+        data_root = DATA_ROOT.resolve()
+        job_dir = job.data_dir.resolve()
+        if not job_dir.is_relative_to(data_root):
+            raise HTTPException(status_code=400, detail="Invalid job directory")
+
+        fd, temp_name = tempfile.mkstemp(prefix=f"{job.data_folder_name}-", suffix=".zip")
+        os.close(fd)
+        zip_path = Path(temp_name)
+
+        try:
+            _build_job_zip(job_dir, zip_path)
+        except Exception:
+            zip_path.unlink(missing_ok=True)
+            raise
+
+        background_tasks.add_task(zip_path.unlink, missing_ok=True)
+        return FileResponse(
+            zip_path,
+            media_type="application/zip",
+            filename=f"{job.data_folder_name}.zip",
+        )
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -91,11 +170,13 @@ async def get_transcript(job_id: str):
 async def list_models():
     models = []
 
-    # Local Ollama models
+    # Only expose smart-reader — the tuned Modelfile for archive generation
     try:
         import ollama
         result = ollama.list()
-        models.extend([m.model for m in result.models if m.model])
+        available = {m.model for m in result.models if m.model}
+        if "smart-reader:latest" in available:
+            models.append("smart-reader:latest")
     except Exception:
         pass
 

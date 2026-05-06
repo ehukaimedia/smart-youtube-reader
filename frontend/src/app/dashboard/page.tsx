@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { getApiBase } from '@/lib/api';
+import { getApiBase, getShareOrigin } from '@/lib/api';
+
+type Job = {
+    id: string;
+    status: string;
+    video_url: string;
+    title?: string | null;
+    created_at: number;
+    data_folder_name?: string | null;
+};
 
 export default function DashboardPage() {
-    const [jobs, setJobs] = useState<any[]>([]);
+    const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
+    const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
 
     const fetchJobs = () => {
         fetch(`${getApiBase()}/jobs`)
@@ -37,6 +45,30 @@ export default function DashboardPage() {
         } catch (err) {
             console.error(err);
         }
+    };
+
+    const copyProjectLink = async (id: string) => {
+        const shareOrigin = await getShareOrigin();
+        const url = `${shareOrigin}/reader/${id}`;
+        const onCopied = () => {
+            setCopiedJobId(id);
+            setTimeout(() => setCopiedJobId(null), 2000);
+        };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(onCopied);
+            return;
+        }
+
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        onCopied();
     };
 
     return (
@@ -88,6 +120,27 @@ export default function DashboardPage() {
                             <Link href={`/reader/${job.id}`} className="btn" style={{ textAlign: 'center' }}>
                                 Open Project
                             </Link>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: job.status === 'complete' ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                                <button
+                                    onClick={() => copyProjectLink(job.id)}
+                                    className="btn"
+                                    style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
+                                >
+                                    {copiedJobId === job.id ? 'Copied Link' : 'Copy Link'}
+                                </button>
+
+                                {job.status === 'complete' && (
+                                    <a
+                                        href={`${getApiBase()}/jobs/${job.id}/download`}
+                                        download={`${job.data_folder_name || job.id}.zip`}
+                                        className="btn"
+                                        style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem', textDecoration: 'none' }}
+                                    >
+                                        Download ZIP
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>
