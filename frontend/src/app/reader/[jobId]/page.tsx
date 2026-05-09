@@ -57,11 +57,9 @@ export default function ReaderPage() {
     const [promptCopied, setPromptCopied] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
     const [imageTaskCopied, setImageTaskCopied] = useState(false);
-    const [digestModels, setDigestModels] = useState<DigestModel[]>([
-        { id: 'openai:gpt-5.5', label: 'Headless GPT 5.5', provider: 'openai', requires: 'OPENAI_API_KEY', available: false },
-        { id: 'anthropic:claude-opus-4.7', label: 'Headless Opus 4.7', provider: 'anthropic', requires: 'ANTHROPIC_API_KEY', available: false },
-    ]);
-    const [digestModel, setDigestModel] = useState('openai:gpt-5.5');
+    const [digestModels, setDigestModels] = useState<DigestModel[]>([]);
+    const [digestModelsLoaded, setDigestModelsLoaded] = useState(false);
+    const [digestModel, setDigestModel] = useState('');
     const [digesting, setDigesting] = useState(false);
     const router = useRouter();
     const toast = useToast();
@@ -206,16 +204,26 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
             .then(data => {
                 if (Array.isArray(data.models) && data.models.length > 0) {
                     setDigestModels(data.models);
-                    setDigestModel(data.models[0].id);
+                    const preferred = data.models.find((model: DigestModel) => model.available && model.provider !== 'local')
+                        || data.models.find((model: DigestModel) => model.available)
+                        || data.models[0];
+                    setDigestModel(preferred.id);
                 }
+                setDigestModelsLoaded(true);
             })
             .catch(err => {
                 console.error(err);
+                setDigestModelsLoaded(true);
+                toast.error('Failed to load AI digest model options');
             });
-    }, []);
+    }, [toast]);
 
     const createDigestVersion = async () => {
         if (!job) return;
+        if (!digestModel) {
+            toast.error('Choose an AI digest model first');
+            return;
+        }
         setDigesting(true);
         toast.info('Creating AI digest version. The original project will stay unchanged.');
 
@@ -271,19 +279,23 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
                                         aria-label="AI digest agent model"
                                         style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '0.3rem 0.45rem', fontSize: '0.78rem' }}
                                     >
-                                        {digestModels.map(model => (
-                                            <option key={model.id} value={model.id}>
-                                                {model.label}{model.available ? '' : ' (key required)'}
-                                            </option>
-                                        ))}
+                                        {digestModels.length === 0 ? (
+                                            <option value="">No models loaded</option>
+                                        ) : (
+                                            digestModels.map(model => (
+                                                <option key={model.id} value={model.id}>
+                                                    {model.label}{model.available ? '' : ' (key required)'}
+                                                </option>
+                                            ))
+                                        )}
                                     </select>
                                     <button
                                         onClick={createDigestVersion}
-                                        disabled={digesting}
+                                        disabled={digesting || !digestModelsLoaded || !digestModel}
                                         className="btn"
                                         style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: 'var(--success)' }}
                                     >
-                                        {digesting ? 'Creating Digest...' : 'Create AI Digest Version'}
+                                        {!digestModelsLoaded ? 'Loading Models...' : digesting ? 'Creating Digest...' : 'Create AI Digest Version'}
                                     </button>
                                 </span>
                             )}

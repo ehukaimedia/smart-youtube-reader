@@ -1,6 +1,11 @@
-import uuid
+import json
+import re
+import shutil
 import time
+import uuid
+from pathlib import Path
 from typing import Dict
+
 from .schemas import JobCreateRequest, JobResponse, JobStatus
 
 class Job:
@@ -20,6 +25,7 @@ class Job:
         self.source_job_id = None
         self.digest_model = None
         self.summary_image = None
+        self._manifest_mtime = None
 
     @property
     def data_folder_name(self) -> str:
@@ -36,11 +42,20 @@ class Job:
             return
 
         try:
+            mtime = manifest_path.stat().st_mtime
+        except OSError:
+            return
+
+        if self._manifest_mtime == mtime:
+            return
+
+        try:
             with open(manifest_path, "r") as f:
                 data = json.load(f)
         except Exception:
             return
 
+        self._manifest_mtime = mtime
         self.title = data.get("title", self.title)
         self.kind = data.get("kind", self.kind)
         self.source_job_id = data.get("source_job_id", self.source_job_id)
@@ -66,11 +81,6 @@ class Job:
             digest_model=self.digest_model,
             summary_image=self.summary_image
         )
-
-import shutil
-import json
-import re
-from pathlib import Path
 
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 DATA_ROOT.mkdir(parents=True, exist_ok=True)

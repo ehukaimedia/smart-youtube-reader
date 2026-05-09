@@ -23,14 +23,14 @@ DIGEST_AGENT_MODELS = [
         "requires": "OPENAI_API_KEY",
     },
     {
-        "id": "anthropic:claude-opus-4.7",
+        "id": "anthropic:claude-opus-4-7",
         "label": "Headless Opus 4.7",
         "provider": "anthropic",
         "requires": "ANTHROPIC_API_KEY",
     },
     {
         "id": "local:deterministic",
-        "label": "Local deterministic fallback",
+        "label": "Local deterministic digest",
         "provider": "local",
         "requires": None,
     },
@@ -39,8 +39,10 @@ DIGEST_AGENT_MODELS = [
 MODEL_ALIASES = {
     "gpt-5.5": "openai:gpt-5.5",
     "headless-gpt-5.5": "openai:gpt-5.5",
-    "opus-4.7": "anthropic:claude-opus-4.7",
-    "claude-opus-4.7": "anthropic:claude-opus-4.7",
+    "opus-4.7": "anthropic:claude-opus-4-7",
+    "claude-opus-4.7": "anthropic:claude-opus-4-7",
+    "claude-opus-4-7": "anthropic:claude-opus-4-7",
+    "anthropic:claude-opus-4.7": "anthropic:claude-opus-4-7",
 }
 
 FLUFF_PATTERNS = [
@@ -93,9 +95,10 @@ def create_digest_version(
     if not source_chapters:
         raise HTTPException(status_code=400, detail="Source project has no archive chapters")
 
-    selected_model = _normalize_model(model)
-    source_title = source_job.title or source_manifest.get("title") or source_job.id
-
+    try:
+        selected_model = _normalize_model(model)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     changes_summary: list[str] = []
     title_suggestion = ""
     if selected_model == "local:deterministic":
@@ -123,7 +126,7 @@ def create_digest_version(
                 detail=f"AI digest agent returned no chapters for {selected_model}",
             )
 
-    digest_title = _no_fluff_title(title_suggestion, source_title, digest_chapters)
+    digest_title = _no_fluff_title(title_suggestion, digest_chapters)
     digest_id = str(uuid.uuid4())
     digest_dir = _unique_digest_dir(digest_title, digest_id)
     shutil.copytree(source_dir, digest_dir, ignore=shutil.ignore_patterns("__pycache__"))
@@ -187,10 +190,14 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 
 
 def _normalize_model(model: str | None) -> str:
-    if not model:
-        return "openai:gpt-5.5"
+    if not model or not model.strip():
+        raise ValueError("Digest model is required")
     model = model.strip()
-    return MODEL_ALIASES.get(model, model)
+    normalized = MODEL_ALIASES.get(model, model)
+    supported = {item["id"] for item in DIGEST_AGENT_MODELS}
+    if normalized not in supported:
+        raise ValueError(f"Unsupported digest model: {model}")
+    return normalized
 
 
 def _unique_digest_dir(title: str, digest_id: str) -> Path:
@@ -410,10 +417,9 @@ def _generate_deterministic_digest(
     return digest, changes
 
 
-def _no_fluff_title(suggestion: str, source_title: str, digest_chapters: list[dict[str, Any]]) -> str:
+def _no_fluff_title(suggestion: str, digest_chapters: list[dict[str, Any]]) -> str:
     candidates = [suggestion]
     candidates.extend(str(chapter.get("concept", "")) for chapter in digest_chapters[:3])
-    candidates.append(source_title)
 
     for candidate in candidates:
         cleaned = _clean_title(candidate)

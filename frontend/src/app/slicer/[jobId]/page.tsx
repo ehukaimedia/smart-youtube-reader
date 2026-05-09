@@ -19,6 +19,7 @@ export default function SlicerPage() {
     const toast = useToast();
     const returnTo = searchParams.get('return');
     const startParam = searchParams.get('start');
+    const appliedStartParam = useRef<string | null>(null);
     const [job, setJob] = useState<Job | null>(null);
     const [videoSrc, setVideoSrc] = useState('');
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,9 +62,11 @@ export default function SlicerPage() {
 
     useEffect(() => {
         if (!startParam) return;
+        if (appliedStartParam.current === startParam) return;
         const nextStart = Number(startParam);
         if (!Number.isFinite(nextStart)) return;
 
+        appliedStartParam.current = startParam;
         setStart(nextStart);
         setEnd(nextStart + sliceDuration);
         setSyncToPlayhead(false);
@@ -362,6 +365,7 @@ export default function SlicerPage() {
                                     <img
                                         onClick={() => toggleFrame(frame)}
                                         src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${frame}`}
+                                        alt={`Preview frame ${frame}`}
                                         style={{ width: '100%', height: 'auto', display: 'block', filter: isExcluded ? 'grayscale(100%)' : 'none' }}
                                     />
 
@@ -445,6 +449,7 @@ export default function SlicerPage() {
 
                     <img
                         src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${viewingFrame}`}
+                        alt={`Selected preview frame ${viewingFrame}`}
                         style={{ maxWidth: '80%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '4px' }}
                         onClick={(e) => e.stopPropagation()}
                     />

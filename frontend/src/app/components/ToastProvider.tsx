@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 type ToastTone = 'info' | 'success' | 'error';
 
@@ -32,6 +32,15 @@ const toneStyles: Record<ToastTone, { border: string, accent: string }> = {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<ToastItem[]>([]);
+    const pendingConfirmResolvers = useRef(new Map<number, (confirmed: boolean) => void>());
+
+    useEffect(() => {
+        const resolvers = pendingConfirmResolvers.current;
+        return () => {
+            resolvers.forEach(resolve => resolve(false));
+            resolvers.clear();
+        };
+    }, []);
 
     const removeToast = useCallback((id: number) => {
         setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -49,6 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         error: (message) => showToast(message, 'error'),
         confirm: (message, options) => new Promise<boolean>((resolve) => {
             const id = Date.now() + Math.random();
+            pendingConfirmResolvers.current.set(id, resolve);
             setToasts(prev => [...prev, {
                 id,
                 message,
@@ -56,7 +66,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 confirm: {
                     confirmLabel: options?.confirmLabel || 'Confirm',
                     cancelLabel: options?.cancelLabel || 'Cancel',
-                    resolve,
+                    resolve: (confirmed) => {
+                        pendingConfirmResolvers.current.delete(id);
+                        resolve(confirmed);
+                    },
                 },
             }]);
         }),

@@ -10,7 +10,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 - The action offers headless agent model choices:
   - Headless GPT 5.5
   - Headless Opus 4.7
-  - Local deterministic fallback
+  - Local deterministic digest
 - Summary images are created outside the backend by Codex after inspecting the current project's real archive text and frame images.
 - Prompt-only summary image generation is not acceptable because it can miss visual context from charts, slides, diagrams, and screenshots.
 - AI digest projects provide a `Copy Codex Image Task` action that includes the local CLI command for generating the image from the current archive and frame assets.
@@ -32,7 +32,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 
 ## Fallback Behavior
 
-If a selected headless provider is not configured or fails, the backend must fail the digest request clearly. Deterministic compaction is allowed only when the user explicitly selects `Local deterministic fallback`.
+If a selected headless provider is not configured or fails, the backend must fail the digest request clearly. Deterministic compaction is allowed only when the user explicitly selects `Local deterministic digest`.
 
 ## Non-Goals
 
