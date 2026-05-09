@@ -87,6 +87,28 @@ The model dropdown on the home page will then show both local and cloud options,
 
 The `archive.json` produced by each job is designed to be consumed by AI agents. See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
+## Summary Thumbnail CLI
+
+Create a project thumbnail from the archive text and attached frame images:
+
+```bash
+python3 tools/create_summary_thumbnail.py "data/jobs/<project-folder>"
+```
+
+You can also pass a job id:
+
+```bash
+python3 tools/create_summary_thumbnail.py "a24af63e-96e3-4ca5-9f59-5f04707889e4"
+```
+
+The tool writes `generated/summary.png` inside the project and updates both `archive.json` and `manifest.json` with:
+
+```json
+"summary_image": "generated/summary.png"
+```
+
+The dashboard uses that image as the project thumbnail.
+
 ## License
 
 MIT

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { getApiBase, getShareOrigin } from '@/lib/api';
+import { useToast } from '../../components/ToastProvider';
 
 type Job = {
     id: string;
@@ -13,6 +14,17 @@ type Job = {
     error?: string | null;
     data_folder_name?: string | null;
     current_step?: string | null;
+    kind?: string | null;
+    source_job_id?: string | null;
+    digest_model?: string | null;
+};
+
+type DigestModel = {
+    id: string;
+    label: string;
+    provider: string;
+    requires?: string | null;
+    available: boolean;
 };
 
 type TranscriptLine = {
@@ -33,6 +45,10 @@ type ArchiveChapter = {
     sortTime: number;
 };
 
+type ArchiveMetadata = {
+    summary_image?: string;
+};
+
 export default function ReaderPage() {
     const { jobId } = useParams();
     const [job, setJob] = useState<Job | null>(null);
@@ -40,9 +56,18 @@ export default function ReaderPage() {
     const [error, setError] = useState('');
     const [promptCopied, setPromptCopied] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
+    const [imageTaskCopied, setImageTaskCopied] = useState(false);
+    const [digestModels, setDigestModels] = useState<DigestModel[]>([
+        { id: 'openai:gpt-5.5', label: 'Headless GPT 5.5', provider: 'openai', requires: 'OPENAI_API_KEY', available: false },
+        { id: 'anthropic:claude-opus-4.7', label: 'Headless Opus 4.7', provider: 'anthropic', requires: 'ANTHROPIC_API_KEY', available: false },
+    ]);
+    const [digestModel, setDigestModel] = useState('openai:gpt-5.5');
+    const [digesting, setDigesting] = useState(false);
+    const router = useRouter();
+    const toast = useToast();
 
     const copyLearningPrompt = (job: Job) => {
-        const archiveUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}/archive.json`;
+        const archiveUrl = `${getApiBase()}/jobs/${job.id}/archive`;
         const baseUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}`;
         const prompt = `You have access to a structured archive of a YouTube video.
 
@@ -107,6 +132,45 @@ What would you like to know about this video?`;
         onCopied();
     };
 
+    const copyCodexImageTask = (job: Job) => {
+        const archiveUrl = `${getApiBase()}/jobs/${job.id}/archive`;
+        const baseUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}`;
+        const projectFolder = `/Volumes/Extreme SSD/AI-Applications/smart-youtube-reader/data/jobs/${job.data_folder_name}`;
+        const prompt = `Create a Smart YouTube Reader summary image for this project by running the local CLI.
+
+The CLI reads archive.json, inspects the attached frame images, creates generated/summary.png, and updates archive.json and manifest.json so the image becomes the dashboard thumbnail.
+
+Video: "${job.title || job.id}"
+YouTube: ${job.video_url || '(not available)'}
+Archive JSON: ${archiveUrl}
+Frame base URL: ${baseUrl}
+Local project folder: ${projectFolder}
+
+Command:
+python3 tools/create_summary_thumbnail.py "${projectFolder}"
+
+After running it, verify the reader shows "Video Summary Image" and the dashboard uses generated/summary.png as the project thumbnail.`;
+        const onCopied = () => {
+            setImageTaskCopied(true);
+            setTimeout(() => setImageTaskCopied(false), 2000);
+        };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(prompt).then(onCopied);
+            return;
+        }
+
+        const ta = document.createElement('textarea');
+        ta.value = prompt;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        onCopied();
+    };
+
     useEffect(() => {
         if (!jobId) return;
 
@@ -136,6 +200,50 @@ What would you like to know about this video?`;
         return () => clearInterval(interval);
     }, [jobId, transcript]);
 
+    useEffect(() => {
+        fetch(`${getApiBase()}/digest-models`)
+            .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to load digest models')))
+            .then(data => {
+                if (Array.isArray(data.models) && data.models.length > 0) {
+                    setDigestModels(data.models);
+                    setDigestModel(data.models[0].id);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+            });
+    }, []);
+
+    const createDigestVersion = async () => {
+        if (!job) return;
+        setDigesting(true);
+        toast.info('Creating AI digest version. The original project will stay unchanged.');
+
+        try {
+            const res = await fetch(`${getApiBase()}/jobs/${job.id}/digest`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: digestModel
+                })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                throw new Error(errorData?.detail || 'AI digest creation failed');
+            }
+
+            const digestJob: Job = await res.json();
+            toast.success(`Created no-fluff AI digest: ${digestJob.title || digestJob.id}`);
+            router.push(`/reader/${digestJob.id}`);
+        } catch (err) {
+            console.error(err);
+            toast.error(err instanceof Error ? err.message : 'AI digest creation failed');
+        } finally {
+            setDigesting(false);
+        }
+    };
+
     if (error) return <div className="container text-red-500">{error}</div>;
     if (!job) return <div className="container">Loading...</div>;
 
@@ -145,11 +253,40 @@ What would you like to know about this video?`;
                 <div>
                     <h2 className="title-gradient" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Smart Reader</h2>
                     {job.title && <h1 style={{ fontSize: '1.2rem', fontWeight: 500 }}>{job.title}</h1>}
+                    {job.kind === 'ai_digest' && (
+                        <p style={{ color: 'var(--success)', fontSize: '0.78rem', marginTop: '0.25rem' }}>
+                            AI Digest Version{job.source_job_id ? ` from ${job.source_job_id.slice(0, 8)}` : ''}
+                        </p>
+                    )}
                 </div>
-                <span className="glass-card" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <span className="glass-card" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <strong>{job.status}</strong>
                     {job.status === 'complete' && job.data_folder_name && (
                         <>
+                            {job.kind !== 'ai_digest' && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                    <select
+                                        value={digestModel}
+                                        onChange={(event) => setDigestModel(event.target.value)}
+                                        aria-label="AI digest agent model"
+                                        style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '0.3rem 0.45rem', fontSize: '0.78rem' }}
+                                    >
+                                        {digestModels.map(model => (
+                                            <option key={model.id} value={model.id}>
+                                                {model.label}{model.available ? '' : ' (key required)'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={createDigestVersion}
+                                        disabled={digesting}
+                                        className="btn"
+                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: 'var(--success)' }}
+                                    >
+                                        {digesting ? 'Creating Digest...' : 'Create AI Digest Version'}
+                                    </button>
+                                </span>
+                            )}
                             <button
                                 onClick={() => copyLearningPrompt(job)}
                                 className="btn"
@@ -164,6 +301,15 @@ What would you like to know about this video?`;
                             >
                                 {linkCopied ? 'Copied Link' : 'Copy Project Link'}
                             </button>
+                            {job.kind === 'ai_digest' && (
+                                <button
+                                    onClick={() => copyCodexImageTask(job)}
+                                    className="btn"
+                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: imageTaskCopied ? 'var(--secondary)' : undefined }}
+                                >
+                                    {imageTaskCopied ? 'Copied Image Task' : 'Copy Codex Image Task'}
+                                </button>
+                            )}
                             <a
                                 href={`${getApiBase()}/jobs/${job.id}/download`}
                                 download={`${job.data_folder_name || job.id}.zip`}
@@ -205,7 +351,7 @@ What would you like to know about this video?`;
                     {/* AI Archive — primary content */}
                     <div className="glass-card" style={{ borderColor: 'var(--secondary)' }}>
                         <h3 className="title-gradient" style={{ marginBottom: '1rem' }}>AI Archive</h3>
-                        <ArchivePreview jobId={job.id} folderName={job.data_folder_name} videoUrl={job.video_url} />
+                        <ArchivePreview jobId={job.id} folderName={job.data_folder_name || undefined} videoUrl={job.video_url || undefined} />
                     </div>
 
                     {/* Raw Transcript — collapsible secondary */}
@@ -242,49 +388,132 @@ What would you like to know about this video?`;
 }
 
 function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folderName?: string, videoUrl?: string }) {
+    const router = useRouter();
+    const toast = useToast();
     const videoId = videoUrl?.match(/[?&]v=([^&]+)/)?.[1];
     const [timeline, setTimeline] = useState<ArchiveChapter[]>([]);
+    const [archiveMeta, setArchiveMeta] = useState<ArchiveMetadata>({});
     const [loading, setLoading] = useState(true);
+    const [imageAction, setImageAction] = useState('');
 
-    const deleteSlice = async (sliceId: string) => {
-        if (!confirm('Remove curated visuals from this chapter? The AI-selected images will be cleared.')) return;
-        await fetch(`${getApiBase()}/jobs/${jobId}/slices/${sliceId}`, { method: 'DELETE' });
-        // Clear images and _slice_id from the matching chapter in local state
-        setTimeline(prev => prev.map(item =>
-            item._slice_id === sliceId ? { ...item, images: [], _slice_id: undefined } : item
+    const loadArchive = useCallback(async () => {
+        if (!folderName) return;
+
+        try {
+            const archiveRes = await fetch(`${getApiBase()}/jobs/${jobId}/archive`, { cache: 'no-store' });
+            if (archiveRes.ok) {
+                const data = await archiveRes.json();
+                const chapters: ArchiveChapter[] = ((data.archive || []) as Omit<ArchiveChapter, 'type' | 'sortTime'>[]).map((a) => ({
+                    ...a,
+                    type: 'chapter' as const,
+                    sortTime: a.timestamp_start
+                }));
+                setTimeline(chapters);
+                setArchiveMeta({
+                    summary_image: data.summary_image
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [folderName, jobId]);
+
+    const deleteSlice = async (sliceId: string | undefined) => {
+        if (!sliceId) return;
+        const confirmed = await toast.confirm('Remove curated visuals from this chapter? The AI-selected images will be cleared.', { confirmLabel: 'Remove Visuals' });
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch(`${getApiBase()}/jobs/${jobId}/slices/${sliceId}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const error = await res.json().catch(() => null);
+                throw new Error(error?.detail || 'Failed to remove curated visuals');
+            }
+            await loadArchive();
+        } catch (err) {
+            console.error(err);
+            toast.error(err instanceof Error ? err.message : 'Failed to remove curated visuals');
+        }
+    };
+
+    const setChapterImages = (chapterIndex: number, images: string[]) => {
+        setTimeline(prev => prev.map((chapter, index) =>
+            index === chapterIndex ? { ...chapter, images } : chapter
         ));
     };
 
-    useEffect(() => {
-        if (!folderName) return;
+    const removeArchiveImage = async (chapterIndex: number, imagePath: string, timestampStart: number): Promise<boolean> => {
+        setImageAction(`${chapterIndex}:${imagePath}`);
+        try {
+            const res = await fetch(`${getApiBase()}/jobs/${jobId}/archive/image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chapter_index: chapterIndex,
+                    image_path: imagePath,
+                    timestamp_start: timestampStart
+                })
+            });
 
-        const fetchData = async () => {
-            try {
-                const archiveRes = await fetch(`${getApiBase()}/data/jobs/${folderName}/archive.json`);
-                if (archiveRes.ok) {
-                    const data = await archiveRes.json();
-                    const chapters = ((data.archive || []) as Omit<ArchiveChapter, 'type' | 'sortTime'>[]).map((a) => ({
-                        ...a,
-                        type: 'chapter',
-                        sortTime: a.timestamp_start
-                    }));
-                    setTimeline(chapters);
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
+            if (!res.ok) {
+                const error = await res.json().catch(() => null);
+                throw new Error(error?.detail || 'Image update failed');
             }
-        };
 
-        fetchData();
-    }, [jobId, folderName]);
+            const data = await res.json();
+            setChapterImages(data.chapter_index ?? chapterIndex, data.images || []);
+            if (!data.removed) {
+                toast.info('That image was already removed. The archive has been refreshed.');
+                await loadArchive();
+            }
+            return true;
+        } catch (err) {
+            console.error(err);
+            toast.error(err instanceof Error ? err.message : 'Image update failed');
+            return false;
+        } finally {
+            setImageAction('');
+        }
+    };
+
+    const removeImage = async (chapterIndex: number, imagePath: string) => {
+        const confirmed = await toast.confirm('Remove this image from the chapter context? The source file will stay in the project.', { confirmLabel: 'Remove Image' });
+        if (!confirmed) return;
+        const chapter = timeline[chapterIndex];
+        await removeArchiveImage(chapterIndex, imagePath, chapter?.timestamp_start ?? 0);
+    };
+
+    const replaceInSlicer = async (chapterIndex: number, imagePath: string, timestampStart: number) => {
+        const confirmed = await toast.confirm('Remove this image from the chapter and open the slicer to create a replacement?', { confirmLabel: 'Open Slicer' });
+        if (!confirmed) return;
+        const removed = await removeArchiveImage(chapterIndex, imagePath, timestampStart);
+        if (!removed) return;
+        const start = Math.max(0, Math.floor(timestampStart));
+        const returnTo = encodeURIComponent(`/reader/${jobId}`);
+        router.push(`/slicer/${jobId}?start=${start}&return=${returnTo}`);
+    };
+
+    useEffect(() => {
+        loadArchive();
+    }, [loadArchive]);
 
     if (loading) return <div className="blink">Loading Archive Preview... (Waiting for file)</div>;
     if (timeline.length === 0) return <div style={{ color: 'red' }}>Archive could not be loaded.</div>;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {archiveMeta.summary_image && (
+                <section style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
+                    <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)', marginBottom: '0.75rem' }}>Video Summary Image</h4>
+                    <img
+                        src={`${getApiBase()}/data/jobs/${folderName}/${archiveMeta.summary_image}`}
+                        alt="AI-generated video summary"
+                        style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block' }}
+                    />
+                </section>
+            )}
             {timeline.map((item: ArchiveChapter, idx: number) => (
                 <div key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -321,12 +550,31 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                     {item.images && item.images.length > 0 && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                             {item.images.map((img: string, i: number) => (
-                                <img
-                                    key={i}
-                                    src={`${getApiBase()}/data/jobs/${folderName}/${img}`}
-                                    alt={`Scene ${i}`}
-                                    style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)' }}
-                                />
+                                <div key={`${img}-${i}`} style={{ position: 'relative' }}>
+                                    <img
+                                        src={`${getApiBase()}/data/jobs/${folderName}/${img}`}
+                                        alt={`Scene ${i}`}
+                                        style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block' }}
+                                    />
+                                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.4rem' }}>
+                                        <button
+                                            onClick={() => replaceInSlicer(idx, img, item.timestamp_start)}
+                                            disabled={Boolean(imageAction)}
+                                            title="Remove this image and open slicer"
+                                            style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.75rem' }}
+                                        >
+                                            Replace
+                                        </button>
+                                        <button
+                                            onClick={() => removeImage(idx, img)}
+                                            disabled={Boolean(imageAction)}
+                                            title="Remove this image from chapter context"
+                                            style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', width: '1.75rem', height: '1.75rem', fontSize: '1rem', lineHeight: 1 }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     )}

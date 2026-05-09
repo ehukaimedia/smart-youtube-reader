@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getApiBase, getShareOrigin } from '@/lib/api';
+import { useToast } from '../components/ToastProvider';
 
 type Job = {
     id: string;
@@ -11,13 +12,39 @@ type Job = {
     title?: string | null;
     created_at: number;
     data_folder_name?: string | null;
+    kind?: string | null;
+    source_job_id?: string | null;
+    digest_model?: string | null;
+    summary_image?: string | null;
 };
+
+function getYouTubeVideoId(videoUrl: string): string | null {
+    try {
+        const url = new URL(videoUrl);
+        if (url.hostname.includes('youtu.be')) {
+            return url.pathname.split('/').filter(Boolean)[0] || null;
+        }
+        if (url.pathname.startsWith('/shorts/') || url.pathname.startsWith('/embed/')) {
+            return url.pathname.split('/').filter(Boolean)[1] || null;
+        }
+        return url.searchParams.get('v');
+    } catch {
+        const match = videoUrl.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{6,})/);
+        return match?.[1] || null;
+    }
+}
+
+function getYouTubeThumbnailUrl(videoUrl: string): string | null {
+    const videoId = getYouTubeVideoId(videoUrl);
+    return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+}
 
 export default function DashboardPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
     const [shareOrigin, setShareOrigin] = useState('');
+    const toast = useToast();
 
     const fetchJobs = () => {
         fetch(`${getApiBase()}/jobs`)
@@ -39,13 +66,15 @@ export default function DashboardPage() {
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
-        if (!confirm('Are you sure you want to delete this project?')) return;
+        const confirmed = await toast.confirm('Are you sure you want to delete this project?', { confirmLabel: 'Delete Project' });
+        if (!confirmed) return;
 
         try {
             await fetch(`${getApiBase()}/jobs/${id}`, { method: 'DELETE' });
             fetchJobs(); // Refresh
         } catch (err) {
             console.error(err);
+            toast.error('Failed to delete project');
         }
     };
 
@@ -98,13 +127,42 @@ export default function DashboardPage() {
 
                     {jobs.map(job => {
                         const projectShareUrl = `${shareOrigin || window.location.origin}/reader/${job.id}`;
+                        const thumbnailUrl = job.summary_image && job.data_folder_name
+                            ? `${getApiBase()}/data/jobs/${job.data_folder_name}/${job.summary_image}`
+                            : getYouTubeThumbnailUrl(job.video_url);
 
                         return (
                         <div key={job.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s' }}>
+                            <div
+                                style={{
+                                    position: 'relative',
+                                    aspectRatio: '16 / 9',
+                                    borderRadius: '8px',
+                                    overflow: 'hidden',
+                                    border: '1px solid var(--card-border)',
+                                    background: thumbnailUrl
+                                        ? `linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.18)), url(${thumbnailUrl}) center / cover`
+                                        : 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(139,92,246,0.16))'
+                                }}
+                            >
+                                {!thumbnailUrl && (
+                                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.85rem' }}>
+                                        No thumbnail
+                                    </div>
+                                )}
+                            </div>
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <span className={`status-badge status-${job.status}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }}>
-                                    {job.status}
-                                </span>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                    <span className={`status-badge status-${job.status}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }}>
+                                        {job.status}
+                                    </span>
+                                    {job.kind === 'ai_digest' && (
+                                        <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(16,185,129,0.16)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.35)' }}>
+                                            AI Digest
+                                        </span>
+                                    )}
+                                </div>
                                 <button
                                     onClick={(e) => handleDelete(job.id, e)}
                                     style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.2rem' }}
@@ -120,6 +178,7 @@ export default function DashboardPage() {
 
                             <p style={{ fontSize: '0.8rem', color: '#666' }}>
                                 {new Date(job.created_at * 1000).toLocaleDateString()}
+                                {job.kind === 'ai_digest' && job.digest_model ? ` • ${job.digest_model.replace(/^.*:/, '')}` : ''}
                             </p>
 
                             <Link href={`/reader/${job.id}`} className="btn" style={{ textAlign: 'center' }}>

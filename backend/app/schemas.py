@@ -27,6 +27,10 @@ class JobResponse(BaseModel):
     data_folder_name: Optional[str] = None
     current_step: Optional[str] = None
     video_ext: Optional[str] = None
+    kind: Optional[str] = None
+    source_job_id: Optional[str] = None
+    digest_model: Optional[str] = None
+    summary_image: Optional[str] = None
 
 class SliceRequest(BaseModel):
     start: float
@@ -46,3 +50,11 @@ class FinalizeRequest(BaseModel):
 class SaveSliceRequest(BaseModel):
     preview_id: str
     selected_files: List[str]
+
+class ArchiveImageUpdateRequest(BaseModel):
+    chapter_index: int
+    image_path: str
+    timestamp_start: Optional[float] = None
+
+class DigestCreateRequest(BaseModel):
+    model: Optional[str] = None

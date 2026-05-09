@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { getApiBase } from '@/lib/api';
+import { useToast } from '../../components/ToastProvider';
+
+type Job = {
+    id: string;
+    title?: string | null;
+    data_folder_name?: string | null;
+    video_ext?: string | null;
+};
 
 export default function SlicerPage() {
     const { jobId } = useParams();
-    const router = useRouter(); // Although not explicitly used in view, preserving imports if needed, otherwise clean up.
-    // Actually router was unused in the view, but imported. Let's keep it clean.
-    const [job, setJob] = useState<any>(null);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const toast = useToast();
+    const returnTo = searchParams.get('return');
+    const startParam = searchParams.get('start');
+    const [job, setJob] = useState<Job | null>(null);
     const [videoSrc, setVideoSrc] = useState('');
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -17,11 +28,13 @@ export default function SlicerPage() {
     const [processing, setProcessing] = useState(false);
 
     // Input State
-    const [duration, setDuration] = useState(0);
     const [start, setStart] = useState(0);
     const [end, setEnd] = useState(5);
     const [fps, setFps] = useState(24);
     const [format, setFormat] = useState<'mp4' | 'sequence'>('sequence');
+    const [sliceDuration, setSliceDuration] = useState(5);
+    const [syncToPlayhead, setSyncToPlayhead] = useState(true);
+    const [isPreviewing, setIsPreviewing] = useState(false);
 
     // Review State
     const [previewId, setPreviewId] = useState('');
@@ -37,7 +50,7 @@ export default function SlicerPage() {
         if (!jobId) return;
         fetch(`${getApiBase()}/jobs/${jobId}`)
             .then(res => res.json())
-            .then(data => {
+            .then((data: Job) => {
                 setJob(data);
                 if (data.data_folder_name) {
                     const ext = data.video_ext || 'mp4';
@@ -46,9 +59,18 @@ export default function SlicerPage() {
             });
     }, [jobId]);
 
+    useEffect(() => {
+        if (!startParam) return;
+        const nextStart = Number(startParam);
+        if (!Number.isFinite(nextStart)) return;
+
+        setStart(nextStart);
+        setEnd(nextStart + sliceDuration);
+        setSyncToPlayhead(false);
+    }, [startParam, sliceDuration]);
+
     const onLoadedMetadata = () => {
         if (videoRef.current) {
-            setDuration(videoRef.current.duration);
             setEnd(Math.min(5, videoRef.current.duration));
         }
     };
@@ -58,7 +80,7 @@ export default function SlicerPage() {
     const handlePreview = async () => {
         if (!job) return;
         if ((end - start) > 10) {
-            alert("Max duration is 10 seconds");
+            toast.error("Max duration is 10 seconds");
             return;
         }
 
@@ -91,16 +113,17 @@ export default function SlicerPage() {
             }
         } catch (e) {
             console.error(e);
-            alert("Failed");
+            toast.error("Failed to generate slice");
         } finally {
             setProcessing(false);
         }
     };
 
     const handleFinalize = async () => {
+        if (!job) return;
         const selected = previewFrames.filter(f => !excludedFrames.has(f));
         if (selected.length === 0) {
-            alert("No frames selected!");
+            toast.error("No frames selected");
             return;
         }
 
@@ -120,7 +143,7 @@ export default function SlicerPage() {
             setStep('done');
         } catch (e) {
             console.error(e);
-            alert("Failed to create zip");
+            toast.error("Failed to create zip");
         } finally {
             setProcessing(false);
         }
@@ -141,10 +164,6 @@ export default function SlicerPage() {
     };
 
     const [viewingFrame, setViewingFrame] = useState<string | null>(null);
-
-    const [sliceDuration, setSliceDuration] = useState(5);
-    const [syncToPlayhead, setSyncToPlayhead] = useState(true);
-    const [isPreviewing, setIsPreviewing] = useState(false);
 
     // Helpers to preview video
     const previewTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -175,9 +194,10 @@ export default function SlicerPage() {
     }
 
     const handleSaveToProject = async () => {
+        if (!job) return;
         const selected = previewFrames.filter(f => !excludedFrames.has(f));
         if (selected.length === 0) {
-            alert("No frames selected!");
+            toast.error("No frames selected");
             return;
         }
 
@@ -193,10 +213,13 @@ export default function SlicerPage() {
             });
             if (!res.ok) throw new Error("Save failed");
             await res.json();
-            alert("Slice saved to project!");
+            toast.success("Slice saved to project");
+            if (returnTo) {
+                router.push(returnTo);
+            }
         } catch (e) {
             console.error(e);
-            alert("Failed to save slice");
+            toast.error("Failed to save slice");
         } finally {
             setProcessing(false);
         }
@@ -211,7 +234,7 @@ export default function SlicerPage() {
                     <h1 className="title-gradient">Video Slicer</h1>
                     <p style={{ color: '#888' }}>{job.title}</p>
                 </div>
-                <a href={`/reader/${job.id}`} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>
+                <a href={returnTo || `/reader/${job.id}`} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>
                     &larr; Back to Project
                 </a>
             </header>
@@ -365,7 +388,7 @@ export default function SlicerPage() {
                     <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button className="btn" style={{ background: '#444' }} onClick={() => setStep('input')}>Back</button>
                         <button className="btn" style={{ background: 'var(--secondary)' }} onClick={handleSaveToProject} disabled={processing}>
-                            Add to Project
+                            {returnTo ? 'Add to Project & Return' : 'Add to Project'}
                         </button>
                         <button className="btn" onClick={handleFinalize} disabled={processing}>
                             {processing ? 'Processing...' : 'Download ZIP'}
@@ -438,5 +461,3 @@ export default function SlicerPage() {
         </div>
     );
 }
-
-

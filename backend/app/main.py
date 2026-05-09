@@ -10,13 +10,14 @@ from ipaddress import ip_address, ip_network
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .jobs import JobStore
-from .schemas import JobCreateRequest, JobResponse, SliceRequest, PreviewRequest, FinalizeRequest, SaveSliceRequest
+from .schemas import JobCreateRequest, JobResponse, SliceRequest, PreviewRequest, FinalizeRequest, SaveSliceRequest, ArchiveImageUpdateRequest, DigestCreateRequest
 from .pipeline import run_pipeline
 from .slicing import create_slice, generate_preview, finalize_sequence
+from .digest import create_digest_version, get_digest_agent_models
 
 # Adjust path to point to project_root/data/jobs
 # main.py is in backend/app/main.py
@@ -99,6 +100,23 @@ def _build_job_zip(job_dir: Path, zip_path: Path) -> None:
             archive_name = Path(top_level) / path.relative_to(job_dir)
             zf.write(path, archive_name)
 
+
+def _validate_job_relative_path(job_dir: Path, relative_path: str, require_exists: bool = True) -> Path:
+    if not relative_path or Path(relative_path).is_absolute():
+        raise HTTPException(status_code=400, detail="Invalid image path")
+
+    resolved = (job_dir / relative_path).resolve()
+    if not resolved.is_relative_to(job_dir.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid image path")
+
+    if require_exists and (not resolved.exists() or not resolved.is_file()):
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    if require_exists and resolved.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+        raise HTTPException(status_code=400, detail="Path is not an image")
+
+    return resolved
+
 @app.post("/jobs", response_model=JobResponse, status_code=201)
 async def create_job(payload: JobCreateRequest, background_tasks: BackgroundTasks):
     job = job_store.create_job(payload)
@@ -170,6 +188,15 @@ async def download_job(job_id: str, background_tasks: BackgroundTasks):
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
 
+@app.get("/digest-models")
+async def list_digest_models():
+    return {"models": get_digest_agent_models()}
+
+@app.post("/jobs/{job_id}/digest", response_model=JobResponse)
+async def create_ai_digest(job_id: str, request: DigestCreateRequest):
+    job = create_digest_version(job_store, job_id, request.model)
+    return job.to_response()
+
 @app.get("/jobs/{job_id}/transcript")
 async def get_transcript(job_id: str):
     try:
@@ -182,6 +209,93 @@ async def get_transcript(job_id: str):
             raise HTTPException(status_code=404, detail="Transcript file not found")
             
         return FileResponse(transcript_path)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+@app.get("/jobs/{job_id}/archive")
+async def get_archive(job_id: str):
+    try:
+        import json
+        job = job_store.get(job_id)
+        if not job.data_dir or not job.data_dir.exists():
+            raise HTTPException(status_code=404, detail="Job files not found")
+
+        archive_path = job.data_dir / "archive.json"
+        if not archive_path.exists():
+            raise HTTPException(status_code=404, detail="Archive file not found")
+
+        with open(archive_path, "r") as f:
+            archive = json.load(f)
+
+        return JSONResponse(
+            archive,
+            headers={
+                "Cache-Control": "no-store, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+@app.post("/jobs/{job_id}/archive/image")
+async def update_archive_image(job_id: str, request: ArchiveImageUpdateRequest):
+    try:
+        import json
+        job = job_store.get(job_id)
+        if not job.data_dir or not job.data_dir.exists():
+            raise HTTPException(status_code=404, detail="Job files not found")
+
+        job_dir = job.data_dir.resolve()
+        archive_path = job_dir / "archive.json"
+        if not archive_path.exists():
+            raise HTTPException(status_code=404, detail="Archive file not found")
+
+        _validate_job_relative_path(job_dir, request.image_path, require_exists=False)
+        with open(archive_path, "r") as f:
+            archive = json.load(f)
+
+        chapters = archive.get("archive", [])
+        if request.chapter_index < 0 or request.chapter_index >= len(chapters):
+            raise HTTPException(status_code=404, detail="Chapter not found")
+
+        target_index = request.chapter_index
+        chapter = chapters[target_index]
+        images = list(chapter.get("images", []))
+        if request.image_path not in images:
+            if request.timestamp_start is not None:
+                for index, candidate in enumerate(chapters):
+                    candidate_time = candidate.get("timestamp_start")
+                    candidate_images = list(candidate.get("images", []))
+                    if (
+                        candidate_time is not None
+                        and abs(float(candidate_time) - request.timestamp_start) < 0.001
+                        and request.image_path in candidate_images
+                    ):
+                        target_index = index
+                        chapter = candidate
+                        images = candidate_images
+                        break
+
+            if request.image_path not in images:
+                for index, candidate in enumerate(chapters):
+                    candidate_images = list(candidate.get("images", []))
+                    if request.image_path in candidate_images:
+                        target_index = index
+                        chapter = candidate
+                        images = candidate_images
+                        break
+
+            if request.image_path not in images:
+                return {"images": images, "removed": False, "chapter_index": target_index}
+
+        images = [image for image in images if image != request.image_path]
+
+        chapter["images"] = images
+        with open(archive_path, "w") as f:
+            json.dump(archive, f, indent=2)
+
+        return {"images": images, "removed": True, "chapter_index": target_index}
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
 

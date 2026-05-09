@@ -16,6 +16,10 @@ class Job:
         self.data_dir = None  # Will be set by pipeline
         self.current_step = None # For UI feedback
         self.video_ext = None
+        self.kind = None
+        self.source_job_id = None
+        self.digest_model = None
+        self.summary_image = None
 
     @property
     def data_folder_name(self) -> str:
@@ -23,7 +27,28 @@ class Job:
              return self.data_dir.name
          return self.id
 
+    def refresh_manifest_metadata(self):
+        if not self.data_dir:
+            return
+
+        manifest_path = self.data_dir / "manifest.json"
+        if not manifest_path.exists():
+            return
+
+        try:
+            with open(manifest_path, "r") as f:
+                data = json.load(f)
+        except Exception:
+            return
+
+        self.title = data.get("title", self.title)
+        self.kind = data.get("kind", self.kind)
+        self.source_job_id = data.get("source_job_id", self.source_job_id)
+        self.digest_model = data.get("digest_model", self.digest_model)
+        self.summary_image = data.get("summary_image", self.summary_image)
+
     def to_response(self) -> JobResponse:
+        self.refresh_manifest_metadata()
         return JobResponse(
             id=self.id,
             status=self.status,
@@ -35,7 +60,11 @@ class Job:
             transcript_preview=self.transcript_preview,
             data_folder_name=self.data_folder_name,
             current_step=self.current_step,
-            video_ext=self.video_ext
+            video_ext=self.video_ext,
+            kind=self.kind,
+            source_job_id=self.source_job_id,
+            digest_model=self.digest_model,
+            summary_image=self.summary_image
         )
 
 import shutil
@@ -92,7 +121,12 @@ class JobStore:
                     # Try to get title from transcript or inferred
                     # Ideally manifest should store title. We will update pipeline to store it.
                     job.title = data.get('title')
+                    job.created_at = data.get('created_at', job.created_at)
                     job.video_ext = data.get('video_ext', 'mp4')
+                    job.kind = data.get('kind')
+                    job.source_job_id = data.get('source_job_id')
+                    job.digest_model = data.get('digest_model')
+                    job.summary_image = data.get('summary_image')
 
                     self._jobs[job_id] = job
                 except Exception as e:
@@ -101,6 +135,34 @@ class JobStore:
     def create_job(self, payload: JobCreateRequest) -> Job:
         job_id = str(uuid.uuid4())
         job = Job(job_id, payload)
+        self._jobs[job_id] = job
+        return job
+
+    def register_completed_job(
+        self,
+        job_id: str,
+        video_url: str,
+        data_dir: Path,
+        title: str,
+        created_at: float | None = None,
+        video_ext: str = "mp4",
+        kind: str | None = None,
+        source_job_id: str | None = None,
+        digest_model: str | None = None,
+        summary_image: str | None = None,
+    ) -> Job:
+        payload = JobCreateRequest(video_url=video_url)
+        job = Job(job_id, payload)
+        job.status = JobStatus.complete
+        job.created_at = created_at or time.time()
+        job.data_dir = data_dir
+        job.package_path = data_dir
+        job.title = title
+        job.video_ext = video_ext
+        job.kind = kind
+        job.source_job_id = source_job_id
+        job.digest_model = digest_model
+        job.summary_image = summary_image
         self._jobs[job_id] = job
         return job
 

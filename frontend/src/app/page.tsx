@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getApiBase } from '@/lib/api';
+import { useToast } from './components/ToastProvider';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -10,6 +11,7 @@ export default function Home() {
   const [models, setModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const router = useRouter();
+  const toast = useToast();
 
   useEffect(() => {
     fetch(`${getApiBase()}/models`)
@@ -40,7 +42,7 @@ export default function Home() {
       router.push(`/reader/${data.id}`);
     } catch (err) {
       console.error(err);
-      alert('Error creating job');
+      toast.error('Error creating job');
     } finally {
       setLoading(false);
     }
