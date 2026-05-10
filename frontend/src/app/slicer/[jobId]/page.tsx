@@ -273,7 +273,7 @@ export default function SlicerPage() {
             if (!res.ok) {
                 throw new Error(result?.detail || "Save failed");
             }
-            if (!result?.images_added) {
+            if (isReplacingImage && !result?.images_added) {
                 throw new Error("No replacement images were attached to the project");
             }
             toast.success(isReplacingImage ? "Replacement image saved to project" : "Slice saved to project");

@@ -17,7 +17,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.app.digest import _normalize_agent_chapter, _validate_digest_quality
+from backend.app.digest import (
+    DIGEST_SYSTEM_PROMPT,
+    build_digest_user_prompt,
+    _normalize_agent_chapter,
+    _validate_digest_quality,
+)
 
 DATA_ROOT = ROOT / "data" / "jobs"
 MODELFILE = ROOT / "backend" / "modelfiles" / "smart-youtube-digest.Modelfile"
@@ -26,18 +31,6 @@ DEFAULT_ARCHIVES = [
     "how-to-master-volume-profile-trading-in-less-than-15-minutes-and-never-guess-market-direction-again_e68163e9",
     "introduction-to-volume-profiles-on-tradingview-tutorial_cb887f63",
 ]
-
-SYSTEM_PROMPT = (
-    "You are a local editor agent for Smart YouTube Reader. "
-    "Create a compact AI learning digest from a YouTube archive. "
-    "Cut intros, outros, sponsor chatter, repetition, hype, and low-value transitions. "
-    "Keep durable concepts, procedures, definitions, examples, and caveats. "
-    "Return only JSON with keys title, chapters, and changes_summary. "
-    "changes_summary must be a non-empty array of short strings. "
-    "The title must be a short no-fluff learning title, not a YouTube headline. "
-    "Do not remove, replace, or judge images; humans curate images separately."
-)
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark the local Ollama AI digest Modelfile.")
@@ -70,7 +63,7 @@ def main() -> int:
 
         for run_index in range(args.runs):
             started = time.time()
-            raw = call_ollama(args.ollama_host, args.model, build_user_prompt(source_chapters))
+            raw = call_ollama(args.ollama_host, args.model, build_digest_user_prompt(source_chapters))
             elapsed = time.time() - started
             result = score_digest(raw, source_chapters, archive_path.parent)
             status = "PASS" if result["passed"] else "FAIL"
@@ -128,37 +121,11 @@ def resolve_archives(values: list[str]) -> list[Path]:
     return unique
 
 
-def build_user_prompt(source_chapters: list[dict[str, Any]]) -> str:
-    source_payload = []
-    for index, chapter in enumerate(source_chapters):
-        source_payload.append({
-            "index": index,
-            "concept": chapter.get("concept", ""),
-            "summary": chapter.get("summary", ""),
-            "content": truncate(str(chapter.get("content", "")), 1800),
-            "timestamp_start": chapter.get("timestamp_start", 0),
-            "timestamp_end": chapter.get("timestamp_end"),
-            "image_count": len(chapter.get("images", []) or []),
-        })
-
-    return (
-        "Build the digest from these source chapters. Each output chapter must include: "
-        "source_indices, concept, summary, content, timestamp_start, timestamp_end. "
-        "source_indices must be an array of integer indexes only, never text labels. "
-        "Use source_indices to preserve the original images attached to the kept source chapters. "
-        "Do not include markdown fences or commentary. Required shape: "
-        '{"title":"Plain Learning Title","chapters":[{"source_indices":[0,1],"concept":"Concept",'
-        '"summary":"One sentence.","content":"Teaching text.","timestamp_start":0,"timestamp_end":120}],'
-        '"changes_summary":["Removed filler.","Merged repeated concepts."]}\n\n'
-        f"{json.dumps(source_payload, ensure_ascii=False)}"
-    )
-
-
 def call_ollama(host: str, model: str, prompt: str) -> str:
     body = json.dumps({
         "model": model,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": DIGEST_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
         "stream": False,
@@ -303,13 +270,6 @@ def count_source_images(chapters: list[dict[str, Any]]) -> int:
 
 def has_hype(title: str) -> bool:
     return bool(re.search(r"\b(ultimate|insane|secret|shocking|must watch|you won't believe|complete guide|actually works)\b", title, re.I))
-
-
-def truncate(text: str, limit: int) -> str:
-    text = re.sub(r"\s+", " ", text).strip()
-    if len(text) <= limit:
-        return text
-    return text[:limit].rsplit(" ", 1)[0] + "..."
 
 
 if __name__ == "__main__":

@@ -6,6 +6,13 @@ import zipfile
 import shutil
 from .jobs import JobStore
 
+def _slice_id_from_image_path(image_path: str) -> str | None:
+    parts = image_path.split("/")
+    if len(parts) >= 2 and parts[0] == "slices" and parts[1]:
+        return parts[1]
+    return None
+
+
 def generate_preview(job_id: str, start: float, end: float, fps: int, job_store: JobStore):
     """
     Extracts all frames in the range to a temporary preview directory.
@@ -257,6 +264,15 @@ def save_slice_to_project(
             if '_original_images' not in best_chapter:
                 best_chapter['_original_images'] = best_chapter.get('images', [])
             existing_images = list(best_chapter.get('images', []))
+            existing_slice_ids = {
+                slice_id_value
+                for slice_id_value in [
+                    best_chapter.get('_slice_id'),
+                    *(best_chapter.get('_slice_ids') or []),
+                    *(_slice_id_from_image_path(image) for image in existing_images),
+                ]
+                if slice_id_value
+            }
             if replace_image_path:
                 if replace_image_path not in existing_images:
                     raise ValueError("Image being replaced is no longer attached to this chapter")
@@ -267,10 +283,15 @@ def save_slice_to_project(
                     else:
                         next_images.append(image)
                 best_chapter['images'] = next_images
+                next_slice_ids = existing_slice_ids | {slice_id}
+                best_chapter['_slice_ids'] = sorted(next_slice_ids)
+                if not best_chapter.get('_slice_id'):
+                    best_chapter['_slice_id'] = slice_id
             else:
                 # Replace existing images with operator-curated ones
                 best_chapter['images'] = image_paths
-            best_chapter['_slice_id'] = slice_id  # track which slice owns these images
+                best_chapter['_slice_ids'] = [slice_id]
+                best_chapter['_slice_id'] = slice_id  # legacy single-owner field
 
             with open(archive_path, 'w') as f:
                 json.dump(archive, f)

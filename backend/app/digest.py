@@ -51,6 +51,17 @@ FLUFF_PATTERNS = [
     "discord",
 ]
 
+DIGEST_SYSTEM_PROMPT = (
+    "You are a local editor agent for Smart YouTube Reader. "
+    "Create a compact AI learning digest from a YouTube archive. "
+    "Cut intros, outros, sponsor chatter, repetition, hype, and low-value transitions. "
+    "Keep durable concepts, procedures, definitions, examples, and caveats. "
+    "Return only JSON with keys title, chapters, and changes_summary. "
+    "changes_summary must be a non-empty array of short strings. "
+    "The title must be a short no-fluff learning title, not a YouTube headline. "
+    "Do not remove, replace, or judge images; humans curate images separately."
+)
+
 
 def get_digest_agent_models() -> list[dict[str, Any]]:
     return [
@@ -215,42 +226,10 @@ def _generate_agent_digest(
     source_chapters: list[dict[str, Any]],
     selected_model: str,
 ) -> tuple[list[dict[str, Any]], list[str], str]:
-    source_payload = []
-    for index, chapter in enumerate(source_chapters):
-        source_payload.append({
-            "index": index,
-            "concept": chapter.get("concept", ""),
-            "summary": chapter.get("summary", ""),
-            "content": _truncate(str(chapter.get("content", "")), 1800),
-            "timestamp_start": chapter.get("timestamp_start", 0),
-            "timestamp_end": chapter.get("timestamp_end"),
-            "image_count": len(chapter.get("images", []) or []),
-        })
-
-    system_prompt = (
-        "You are a local editor agent for Smart YouTube Reader. "
-        "Create a compact AI learning digest from a YouTube archive. "
-        "Cut intros, outros, sponsor chatter, repetition, hype, and low-value transitions. "
-        "Keep durable concepts, procedures, definitions, examples, and caveats. "
-        "Return only JSON with keys title, chapters, and changes_summary. "
-        "changes_summary must be a non-empty array of short strings. "
-        "The title must be a short no-fluff learning title, not a YouTube headline. "
-        "Do not remove, replace, or judge images; humans curate images separately."
-    )
-    user_prompt = (
-        "Build the digest from these source chapters. Each output chapter must include: "
-        "source_indices, concept, summary, content, timestamp_start, timestamp_end. "
-        "source_indices must be an array of integer indexes only, never text labels. "
-        "Use source_indices to preserve the original images attached to the kept source chapters. "
-        "Do not include markdown fences or commentary. Required shape: "
-        '{"title":"Plain Learning Title","chapters":[{"source_indices":[0,1],"concept":"Concept",'
-        '"summary":"One sentence.","content":"Teaching text.","timestamp_start":0,"timestamp_end":120}],'
-        '"changes_summary":["Removed filler.","Merged repeated concepts."]}\n\n'
-        f"{json.dumps(source_payload, ensure_ascii=False)}"
-    )
+    user_prompt = build_digest_user_prompt(source_chapters)
 
     if selected_model.startswith("ollama:"):
-        raw = _call_ollama_agent(selected_model, system_prompt, user_prompt)
+        raw = _call_ollama_agent(selected_model, DIGEST_SYSTEM_PROMPT, user_prompt)
     else:
         raise RuntimeError(f"Unsupported digest agent model: {selected_model}")
 
@@ -271,13 +250,55 @@ def _generate_agent_digest(
         raise RuntimeError("Digest agent returned an empty title")
 
     digest_chapters = []
-    for chapter in chapters:
-        normalized = _normalize_agent_chapter(source_dir, source_chapters, chapter, strict=True)
+    normalization_errors = []
+    for index, chapter in enumerate(chapters):
+        try:
+            normalized = _normalize_agent_chapter(source_dir, source_chapters, chapter, strict=True)
+        except RuntimeError as exc:
+            normalization_errors.append(f"chapter {index + 1}: {exc}")
+            continue
         if normalized:
             digest_chapters.append(normalized)
 
-    _validate_digest_quality(digest_chapters, source_chapters)
+    if normalization_errors and not digest_chapters:
+        raise RuntimeError("Digest agent returned no usable chapters: " + "; ".join(normalization_errors[:3]))
+
+    try:
+        _validate_digest_quality(digest_chapters, source_chapters)
+    except RuntimeError as exc:
+        if normalization_errors:
+            raise RuntimeError(f"{exc}; skipped malformed agent chapters: {'; '.join(normalization_errors[:3])}") from exc
+        raise
+
+    if normalization_errors:
+        changes.append(f"Skipped {len(normalization_errors)} malformed agent chapter(s).")
     return digest_chapters, changes, title
+
+
+def build_digest_user_prompt(source_chapters: list[dict[str, Any]]) -> str:
+    source_payload = []
+    for index, chapter in enumerate(source_chapters):
+        source_payload.append({
+            "index": index,
+            "concept": chapter.get("concept", ""),
+            "summary": chapter.get("summary", ""),
+            "content": _truncate(str(chapter.get("content", "")), 1800),
+            "timestamp_start": chapter.get("timestamp_start", 0),
+            "timestamp_end": chapter.get("timestamp_end"),
+            "image_count": len(chapter.get("images", []) or []),
+        })
+
+    return (
+        "Build the digest from these source chapters. Each output chapter must include: "
+        "source_indices, concept, summary, content, timestamp_start, timestamp_end. "
+        "source_indices must be an array of integer indexes only, never text labels. "
+        "Use source_indices to preserve the original images attached to the kept source chapters. "
+        "Do not include markdown fences or commentary. Required shape: "
+        '{"title":"Plain Learning Title","chapters":[{"source_indices":[0,1],"concept":"Concept",'
+        '"summary":"One sentence.","content":"Teaching text.","timestamp_start":0,"timestamp_end":120}],'
+        '"changes_summary":["Removed filler.","Merged repeated concepts."]}\n\n'
+        f"{json.dumps(source_payload, ensure_ascii=False)}"
+    )
 
 
 def _call_ollama_agent(selected_model: str, system_prompt: str, user_prompt: str) -> str:
@@ -340,7 +361,13 @@ def _extract_json_object(raw: str) -> dict[str, Any]:
     end = cleaned.rfind("}") + 1
     if start < 0 or end <= start:
         raise RuntimeError("Digest agent did not return JSON")
-    return json.loads(cleaned[start:end])
+    try:
+        parsed = json.loads(cleaned[start:end])
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Digest agent did not return valid JSON") from exc
+    if not isinstance(parsed, dict):
+        raise RuntimeError("Digest agent did not return a JSON object")
+    return parsed
 
 
 def _normalize_agent_chapter(

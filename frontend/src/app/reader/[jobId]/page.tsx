@@ -520,11 +520,30 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
         await removeArchiveImage(chapterIndex, imagePath, chapter?.timestamp_start ?? 0);
     };
 
+    const findFrameTimestamp = (imagePath: string) => {
+        const filename = imagePath.split('/').pop() || imagePath;
+        const stem = filename.replace(/\.[^.]+$/, '');
+        const candidates = [
+            imagePath,
+            filename,
+            `${stem}.png`,
+            `${stem}.jpg`,
+            `${stem}.jpeg`,
+            `frames/${stem}.png`,
+            `frames/${stem}.jpg`,
+            `frames/${stem}.jpeg`,
+        ];
+        for (const candidate of candidates) {
+            const timestamp = frameMetadata[candidate]?.timestamp;
+            if (typeof timestamp === 'number') return timestamp;
+        }
+        return undefined;
+    };
+
     const replaceInSlicer = async (chapterIndex: number, imagePath: string, timestampStart: number) => {
         const confirmed = await toast.confirm('Open the slicer to choose a replacement? The current image will stay attached until the replacement is saved.', { confirmLabel: 'Open Slicer' });
         if (!confirmed) return;
-        const filename = imagePath.split('/').pop() || imagePath;
-        const imageTimestamp = frameMetadata[imagePath]?.timestamp ?? frameMetadata[filename]?.timestamp;
+        const imageTimestamp = findFrameTimestamp(imagePath);
         const replacementStart = typeof imageTimestamp === 'number' ? imageTimestamp - 2 : timestampStart;
         const start = Math.max(0, Math.floor(replacementStart));
         const returnTo = encodeURIComponent(`/reader/${jobId}#chapter-${chapterIndex}`);

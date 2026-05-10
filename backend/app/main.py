@@ -195,8 +195,14 @@ async def list_digest_models():
 
 @app.post("/jobs/{job_id}/digest", response_model=JobResponse)
 async def create_ai_digest(job_id: str, request: DigestCreateRequest):
-    job = await run_in_threadpool(create_digest_version, job_store, job_id, request.model)
-    return job.to_response()
+    try:
+        job = await run_in_threadpool(create_digest_version, job_store, job_id, request.model)
+        return job.to_response()
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"AI digest error: {e}")
+        raise HTTPException(status_code=500, detail="AI digest creation failed")
 
 @app.get("/jobs/{job_id}/transcript")
 async def get_transcript(job_id: str):
@@ -417,9 +423,36 @@ async def delete_slice(job_id: str, slice_id: str):
             with open(archive_path, 'r') as f:
                 archive = json.load(f)
             for chapter in archive.get('archive', []):
-                if chapter.get('_slice_id') == slice_id:
-                    chapter['images'] = chapter.pop('_original_images', [])
-                    del chapter['_slice_id']
+                images = list(chapter.get('images', []))
+                slice_prefix = f"slices/{slice_id}/"
+                slice_ids = set(chapter.get('_slice_ids') or [])
+                if chapter.get('_slice_id'):
+                    slice_ids.add(chapter['_slice_id'])
+                for image in images:
+                    parts = image.split("/")
+                    if len(parts) >= 2 and parts[0] == "slices":
+                        slice_ids.add(parts[1])
+
+                if slice_id not in slice_ids and not any(image.startswith(slice_prefix) for image in images):
+                    continue
+
+                remaining_images = [image for image in images if not image.startswith(slice_prefix)]
+                remaining_slice_ids = set()
+                for image in remaining_images:
+                    parts = image.split("/")
+                    if len(parts) >= 2 and parts[0] == "slices":
+                        remaining_slice_ids.add(parts[1])
+                remaining_slice_ids.update(slice_ids - {slice_id})
+
+                if remaining_slice_ids:
+                    chapter['images'] = remaining_images
+                    chapter['_slice_ids'] = sorted(remaining_slice_ids)
+                    if chapter.get('_slice_id') == slice_id:
+                        chapter['_slice_id'] = sorted(remaining_slice_ids)[0]
+                else:
+                    chapter['images'] = chapter.pop('_original_images', remaining_images)
+                    chapter.pop('_slice_id', None)
+                    chapter.pop('_slice_ids', None)
             with open(archive_path, 'w') as f:
                 json.dump(archive, f)
 
