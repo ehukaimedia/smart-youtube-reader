@@ -13,6 +13,11 @@ def _slice_id_from_image_path(image_path: str) -> str | None:
     return None
 
 
+def _append_unique(values: list[str], value: str | None) -> None:
+    if value and value not in values:
+        values.append(value)
+
+
 def generate_preview(job_id: str, start: float, end: float, fps: int, job_store: JobStore):
     """
     Extracts all frames in the range to a temporary preview directory.
@@ -264,15 +269,12 @@ def save_slice_to_project(
             if '_original_images' not in best_chapter:
                 best_chapter['_original_images'] = best_chapter.get('images', [])
             existing_images = list(best_chapter.get('images', []))
-            existing_slice_ids = {
-                slice_id_value
-                for slice_id_value in [
-                    best_chapter.get('_slice_id'),
-                    *(best_chapter.get('_slice_ids') or []),
-                    *(_slice_id_from_image_path(image) for image in existing_images),
-                ]
-                if slice_id_value
-            }
+            existing_slice_ids = []
+            for slice_id_value in best_chapter.get('_slice_ids') or []:
+                _append_unique(existing_slice_ids, slice_id_value)
+            _append_unique(existing_slice_ids, best_chapter.get('_slice_id'))
+            for image in existing_images:
+                _append_unique(existing_slice_ids, _slice_id_from_image_path(image))
             if replace_image_path:
                 if replace_image_path not in existing_images:
                     raise ValueError("Image being replaced is no longer attached to this chapter")
@@ -283,13 +285,14 @@ def save_slice_to_project(
                     else:
                         next_images.append(image)
                 best_chapter['images'] = next_images
-                next_slice_ids = existing_slice_ids | {slice_id}
-                best_chapter['_slice_ids'] = sorted(next_slice_ids)
+                _append_unique(existing_slice_ids, slice_id)
+                best_chapter['_slice_ids'] = existing_slice_ids
                 best_chapter['_slice_id'] = slice_id
             else:
                 # Replace existing images with operator-curated ones
                 best_chapter['images'] = image_paths
-                best_chapter['_slice_ids'] = sorted(existing_slice_ids | {slice_id})
+                _append_unique(existing_slice_ids, slice_id)
+                best_chapter['_slice_ids'] = existing_slice_ids
                 best_chapter['_slice_id'] = slice_id  # legacy single-owner field
 
             with open(archive_path, 'w') as f:

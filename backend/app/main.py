@@ -118,6 +118,19 @@ def _validate_job_relative_path(job_dir: Path, relative_path: str, require_exist
 
     return resolved
 
+
+def _slice_id_from_archive_image(image_path: str) -> str | None:
+    parts = image_path.split("/")
+    if len(parts) >= 2 and parts[0] == "slices" and parts[1]:
+        return parts[1]
+    return None
+
+
+def _append_unique_slice_id(slice_ids: list[str], slice_id: str | None) -> None:
+    if slice_id and slice_id not in slice_ids:
+        slice_ids.append(slice_id)
+
+
 @app.post("/jobs", response_model=JobResponse, status_code=201)
 async def create_job(payload: JobCreateRequest, background_tasks: BackgroundTasks):
     job = job_store.create_job(payload)
@@ -425,45 +438,56 @@ async def delete_slice(job_id: str, slice_id: str):
             for chapter in archive.get('archive', []):
                 images = list(chapter.get('images', []))
                 slice_prefix = f"slices/{slice_id}/"
-                slice_ids = set(chapter.get('_slice_ids') or [])
-                if chapter.get('_slice_id'):
-                    slice_ids.add(chapter['_slice_id'])
+                ordered_slice_ids = []
+                for existing_slice_id in chapter.get('_slice_ids') or []:
+                    _append_unique_slice_id(ordered_slice_ids, existing_slice_id)
+                _append_unique_slice_id(ordered_slice_ids, chapter.get('_slice_id'))
                 for image in images:
-                    parts = image.split("/")
-                    if len(parts) >= 2 and parts[0] == "slices":
-                        slice_ids.add(parts[1])
+                    _append_unique_slice_id(ordered_slice_ids, _slice_id_from_archive_image(image))
 
                 has_deleted_slice_images = any(image.startswith(slice_prefix) for image in images)
-                if slice_id not in slice_ids and not has_deleted_slice_images:
+                if slice_id not in ordered_slice_ids and not has_deleted_slice_images:
                     continue
 
                 remaining_images = [image for image in images if not image.startswith(slice_prefix)]
-                remaining_image_slice_ids = set()
+                remaining_image_slice_ids = []
                 for image in remaining_images:
-                    parts = image.split("/")
-                    if len(parts) >= 2 and parts[0] == "slices":
-                        remaining_image_slice_ids.add(parts[1])
-                remaining_metadata_slice_ids = (slice_ids - {slice_id}) | remaining_image_slice_ids
+                    _append_unique_slice_id(remaining_image_slice_ids, _slice_id_from_archive_image(image))
+                remaining_metadata_slice_ids = [
+                    existing_slice_id
+                    for existing_slice_id in ordered_slice_ids
+                    if existing_slice_id != slice_id
+                ]
+                for remaining_image_slice_id in remaining_image_slice_ids:
+                    _append_unique_slice_id(remaining_metadata_slice_ids, remaining_image_slice_id)
+                latest_remaining_image_slice_id = next(
+                    (
+                        existing_slice_id
+                        for existing_slice_id in reversed(remaining_metadata_slice_ids)
+                        if existing_slice_id in remaining_image_slice_ids
+                    ),
+                    None,
+                )
 
                 if not has_deleted_slice_images:
                     if remaining_metadata_slice_ids:
-                        chapter['_slice_ids'] = sorted(remaining_metadata_slice_ids)
+                        chapter['_slice_ids'] = remaining_metadata_slice_ids
                     else:
                         chapter.pop('_slice_ids', None)
                     if chapter.get('_slice_id') == slice_id:
-                        if remaining_image_slice_ids:
-                            chapter['_slice_id'] = sorted(remaining_image_slice_ids)[-1]
+                        if latest_remaining_image_slice_id:
+                            chapter['_slice_id'] = latest_remaining_image_slice_id
                         else:
                             chapter.pop('_slice_id', None)
-                elif remaining_image_slice_ids:
+                elif latest_remaining_image_slice_id:
                     chapter['images'] = remaining_images
-                    chapter['_slice_ids'] = sorted(remaining_metadata_slice_ids)
-                    chapter['_slice_id'] = sorted(remaining_image_slice_ids)[-1]
+                    chapter['_slice_ids'] = remaining_metadata_slice_ids
+                    chapter['_slice_id'] = latest_remaining_image_slice_id
                 else:
                     chapter['images'] = chapter.pop('_original_images', remaining_images)
                     chapter.pop('_slice_id', None)
                     if remaining_metadata_slice_ids:
-                        chapter['_slice_ids'] = sorted(remaining_metadata_slice_ids)
+                        chapter['_slice_ids'] = remaining_metadata_slice_ids
                     else:
                         chapter.pop('_slice_ids', None)
             with open(archive_path, 'w') as f:
