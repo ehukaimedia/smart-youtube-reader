@@ -9,16 +9,14 @@ import zipfile
 from ipaddress import ip_address, ip_network
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .jobs import JobStore
-from .schemas import JobCreateRequest, JobResponse, SliceRequest, PreviewRequest, FinalizeRequest, SaveSliceRequest, ArchiveImageUpdateRequest, DigestCreateRequest
+from .schemas import JobCreateRequest, JobResponse, SliceRequest, PreviewRequest, FinalizeRequest, SaveSliceRequest, ArchiveImageUpdateRequest
 from .pipeline import run_pipeline
 from .slicing import create_slice, generate_preview, finalize_sequence
-from .digest import create_digest_version, get_digest_agent_models
 
 # Adjust path to point to project_root/data/jobs
 # main.py is in backend/app/main.py
@@ -201,21 +199,6 @@ async def download_job(job_id: str, background_tasks: BackgroundTasks):
         )
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
-
-@app.get("/digest-models")
-async def list_digest_models():
-    return {"models": get_digest_agent_models()}
-
-@app.post("/jobs/{job_id}/digest", response_model=JobResponse)
-async def create_ai_digest(job_id: str, request: DigestCreateRequest):
-    try:
-        job = await run_in_threadpool(create_digest_version, job_store, job_id, request.model)
-        return job.to_response()
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"AI digest error: {e}")
-        raise HTTPException(status_code=500, detail="AI digest creation failed")
 
 @app.get("/jobs/{job_id}/transcript")
 async def get_transcript(job_id: str):

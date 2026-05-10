@@ -19,14 +19,6 @@ type Job = {
     digest_model?: string | null;
 };
 
-type DigestModel = {
-    id: string;
-    label: string;
-    provider: string;
-    requires?: string | null;
-    available: boolean;
-};
-
 type TranscriptLine = {
     text: string;
     start: number;
@@ -68,12 +60,28 @@ export default function ReaderPage() {
     const [promptCopied, setPromptCopied] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
     const [imageTaskCopied, setImageTaskCopied] = useState(false);
-    const [digestModels, setDigestModels] = useState<DigestModel[]>([]);
-    const [digestModelsLoaded, setDigestModelsLoaded] = useState(false);
-    const [digestModel, setDigestModel] = useState('');
-    const [digesting, setDigesting] = useState(false);
-    const router = useRouter();
-    const toast = useToast();
+    const [digestTaskCopied, setDigestTaskCopied] = useState(false);
+
+    const copyText = (text: string, onCopied: () => void) => {
+        const fallbackCopy = () => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onCopied();
+        };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(onCopied).catch(fallbackCopy);
+            return;
+        }
+
+        fallbackCopy();
+    };
 
     const copyLearningPrompt = (job: Job) => {
         const archiveUrl = `${getApiBase()}/jobs/${job.id}/archive`;
@@ -101,20 +109,7 @@ What would you like to know about this video?`;
             setPromptCopied(true);
             setTimeout(() => setPromptCopied(false), 2000);
         };
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(prompt).then(onCopied);
-        } else {
-            // Fallback for non-secure contexts (HTTP over Tailscale)
-            const ta = document.createElement('textarea');
-            ta.value = prompt;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            onCopied();
-        }
+        copyText(prompt, onCopied);
     };
 
     const copyProjectLink = async () => {
@@ -125,20 +120,7 @@ What would you like to know about this video?`;
             setTimeout(() => setLinkCopied(false), 2000);
         };
 
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(onCopied);
-            return;
-        }
-
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        onCopied();
+        copyText(url, onCopied);
     };
 
     const copyCodexImageTask = (job: Job) => {
@@ -164,20 +146,36 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
             setTimeout(() => setImageTaskCopied(false), 2000);
         };
 
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(prompt).then(onCopied);
-            return;
-        }
+        copyText(prompt, onCopied);
+    };
 
-        const ta = document.createElement('textarea');
-        ta.value = prompt;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        onCopied();
+    const copyAiDigestTask = (job: Job) => {
+        const projectFolder = `/Volumes/Extreme SSD/AI-Applications/smart-youtube-reader/data/jobs/${job.data_folder_name}`;
+        const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
+        const prompt = `Create a Smart YouTube Reader AI digest version for this project using the local CLI.
+
+Do not use an in-app model option. You are the digest agent.
+
+Workflow:
+1. Run this command to print the exact digest task:
+   python3 tools/create_ai_digest_version.py "${projectFolder}"
+2. Read archive.json and inspect the attached frame images before deciding what to keep.
+3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
+4. Preserve durable concepts, procedures, definitions, examples, caveats, and useful visual explanations.
+5. Write the required JSON draft to:
+   ${draftPath}
+6. Materialize the new AI digest project:
+   python3 tools/create_ai_digest_version.py "${projectFolder}" --draft "${draftPath}"
+7. Verify the dashboard shows the new project with an AI Digest badge and the reader opens it.
+
+Source project:
+${projectFolder}`;
+        const onCopied = () => {
+            setDigestTaskCopied(true);
+            setTimeout(() => setDigestTaskCopied(false), 2000);
+        };
+
+        copyText(prompt, onCopied);
     };
 
     useEffect(() => {
@@ -209,76 +207,8 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
         return () => clearInterval(interval);
     }, [jobId, transcript]);
 
-    useEffect(() => {
-        fetch(`${getApiBase()}/digest-models`)
-            .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to load digest models')))
-            .then(data => {
-                if (Array.isArray(data.models) && data.models.length > 0) {
-                    setDigestModels(data.models);
-                    const preferred = data.models.find((model: DigestModel) => model.available && model.provider !== 'local')
-                        || data.models.find((model: DigestModel) => model.available)
-                        || data.models[0];
-                    setDigestModel(preferred.id);
-                }
-                setDigestModelsLoaded(true);
-            })
-            .catch(err => {
-                console.error(err);
-                setDigestModelsLoaded(true);
-                toast.error('Failed to load AI digest model options');
-            });
-    }, [toast]);
-
-    const createDigestVersion = async () => {
-        if (!job) return;
-        if (!digestModel) {
-            toast.error('Choose an AI digest model first');
-            return;
-        }
-        const selectedModel = digestModels.find(model => model.id === digestModel);
-        if (selectedModel && !selectedModel.available) {
-            toast.error(selectedModel.provider === 'ollama' ? 'Build the local Ollama digest model first' : 'Selected digest model is unavailable');
-            return;
-        }
-        setDigesting(true);
-        toast.info('Creating AI digest version. The original project will stay unchanged.');
-
-        try {
-            const res = await fetch(`${getApiBase()}/jobs/${job.id}/digest`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: digestModel
-                })
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => null);
-                throw new Error(errorData?.detail || 'AI digest creation failed');
-            }
-
-            const digestJob: Job = await res.json();
-            toast.success(`Created no-fluff AI digest: ${digestJob.title || digestJob.id}`);
-            router.push(`/reader/${digestJob.id}`);
-        } catch (err) {
-            console.error(err);
-            toast.error(err instanceof Error ? err.message : 'AI digest creation failed');
-        } finally {
-            setDigesting(false);
-        }
-    };
-
     if (error) return <div className="container text-red-500">{error}</div>;
     if (!job) return <div className="container">Loading...</div>;
-
-    const selectedDigestModel = digestModels.find(model => model.id === digestModel);
-    const selectedDigestModelUnavailable = Boolean(selectedDigestModel && !selectedDigestModel.available);
-    const digestModelStatus = (model: DigestModel) => {
-        if (model.available) return '';
-        if (model.provider === 'ollama') return ' (build Ollama model)';
-        if (model.requires) return ' (key required)';
-        return ' (unavailable)';
-    };
 
     return (
         <div className="container">
@@ -297,32 +227,13 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
                     {job.status === 'complete' && job.data_folder_name && (
                         <>
                             {job.kind !== 'ai_digest' && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                                    <select
-                                        value={digestModel}
-                                        onChange={(event) => setDigestModel(event.target.value)}
-                                        aria-label="AI digest agent model"
-                                        style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '0.3rem 0.45rem', fontSize: '0.78rem' }}
-                                    >
-                                        {digestModels.length === 0 ? (
-                                            <option value="">No models loaded</option>
-                                        ) : (
-                                            digestModels.map(model => (
-                                                <option key={model.id} value={model.id} disabled={!model.available}>
-                                                    {model.label}{digestModelStatus(model)}
-                                                </option>
-                                            ))
-                                        )}
-                                    </select>
-                                    <button
-                                        onClick={createDigestVersion}
-                                        disabled={digesting || !digestModelsLoaded || !digestModel || selectedDigestModelUnavailable}
-                                        className="btn"
-                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: 'var(--success)' }}
-                                    >
-                                        {!digestModelsLoaded ? 'Loading Models...' : selectedDigestModelUnavailable ? 'Model Unavailable' : digesting ? 'Creating Digest...' : 'Create AI Digest Version'}
-                                    </button>
-                                </span>
+                                <button
+                                    onClick={() => copyAiDigestTask(job)}
+                                    className="btn"
+                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: digestTaskCopied ? 'var(--secondary)' : 'var(--success)' }}
+                                >
+                                    {digestTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
+                                </button>
                             )}
                             <button
                                 onClick={() => copyLearningPrompt(job)}

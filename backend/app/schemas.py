@@ -57,6 +57,3 @@ class ArchiveImageUpdateRequest(BaseModel):
     chapter_index: int
     image_path: str
     timestamp_start: Optional[float] = None
-
-class DigestCreateRequest(BaseModel):
-    model: Optional[str] = None

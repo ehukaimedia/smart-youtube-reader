@@ -178,10 +178,13 @@ class JobStore:
 
     def get(self, job_id: str) -> Job:
         if job_id not in self._jobs:
+            self._load_from_disk()
+        if job_id not in self._jobs:
             raise KeyError(f"Job {job_id} not found")
         return self._jobs[job_id]
         
     def list_jobs(self) -> list[Job]:
+        self._load_from_disk()
         # Sort by created_at (newest first)
         # created_at is default time.time() for new jobs.
         # Restored jobs set created_at to now? Or we should store created_at in manifest.

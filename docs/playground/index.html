@@ -275,7 +275,7 @@ const NODES = [
   { id:'schemas',      label:'Schemas',         sub:'backend/app/schemas.py',          x:565, y:175,  w:145, h:52, layer:'api' },
   { id:'pipeline',     label:'Pipeline',        sub:'backend/app/pipeline.py',         x:120, y:300,  w:155, h:52, layer:'core' },
   { id:'jobs',         label:'Job Store',       sub:'backend/app/jobs.py',             x:390, y:300,  w:145, h:52, layer:'core' },
-  { id:'digest',       label:'AI Digest',       sub:'backend/app/digest.py',           x:740, y:300,  w:145, h:52, layer:'core' },
+  { id:'digest',       label:'AI Digest CLI',   sub:'tools/create_ai_digest_version.py', x:740, y:300,  w:145, h:52, layer:'core' },
   { id:'summary-cli',  label:'Summary CLI',     sub:'tools/create_summary_thumbnail.py', x:915, y:300,  w:145, h:52, layer:'core' },
   { id:'frames',       label:'Frame Manager',   sub:'backend/app/frames.py',           x: 40, y:425,  w:155, h:52, layer:'processing' },
   { id:'intelligence', label:'AI Intelligence', sub:'backend/app/intelligence.py',     x:270, y:425,  w:165, h:52, layer:'processing' },
@@ -286,10 +286,8 @@ const NODES = [
   { id:'data-dir',     label:'Job Directory',   sub:'data/jobs/{slug}_{uuid}/',        x:565, y:550,  w:145, h:52, layer:'data' },
   { id:'youtube',      label:'YouTube',         sub:'yt-dlp + TranscriptAPI',          x: 40, y:675,  w:155, h:52, layer:'external' },
   { id:'ffmpeg',       label:'FFmpeg',          sub:'Frame extraction + encoding',     x:230, y:675,  w:145, h:52, layer:'external' },
-  { id:'ollama',       label:'Ollama (Local)',   sub:'Gemma archive + digest models',   x:420, y:675,  w:155, h:52, layer:'external' },
+  { id:'ollama',       label:'Ollama (Local)',   sub:'archive generation models',       x:420, y:675,  w:155, h:52, layer:'external' },
   { id:'nvidia',       label:'NVIDIA NIM',      sub:'Cloud AI + Vision API',          x:615, y:675,  w:145, h:52, layer:'external' },
-  { id:'digest-model', label:'Digest Modelfile', sub:'smart-youtube-digest',           x:790, y:675,  w:135, h:52, layer:'external' },
-  { id:'digest-bench', label:'Digest Benchmark', sub:'quality gates',                  x:955, y:675,  w:135, h:52, layer:'external' },
 ];
 
 const CONN_TYPES = {
@@ -305,8 +303,7 @@ const CONNECTIONS = [
   { from:'reader',      to:'main',         type:'event',      label:'polls 2s' },
   { from:'reader',      to:'main',         type:'data-flow',  label:'curate images' },
   { from:'reader',      to:'data-dir',     type:'data-flow',  label:'load slice timestamps' },
-  { from:'reader',      to:'main',         type:'data-flow',  label:'POST /digest' },
-  { from:'reader',      to:'main',         type:'event',      label:'GET /digest-models' },
+  { from:'reader',      to:'digest',       type:'event',      label:'copy CLI task' },
   { from:'reader',      to:'summary-cli',  type:'event',      label:'copy CLI task' },
   { from:'slicer-ui',   to:'main',         type:'data-flow',  label:'POST /slicer' },
   { from:'dashboard',   to:'toast',        type:'event',      label:'confirm' },
@@ -316,7 +313,6 @@ const CONNECTIONS = [
   { from:'main',        to:'pipeline',     type:'tool-call',  label:'run_pipeline()' },
   { from:'main',        to:'jobs',         type:'tool-call',  label:'create/get/list' },
   { from:'main',        to:'slicing',      type:'tool-call',  label:'preview/finalize' },
-  { from:'main',        to:'digest',       type:'tool-call',  label:'create_digest_version()' },
   { from:'schemas',     to:'main',         type:'dependency', label:'validates' },
   { from:'pipeline',    to:'frames',       type:'tool-call',  label:'scan_and_hash()' },
   { from:'pipeline',    to:'intelligence', type:'tool-call',  label:'create_archive()' },
@@ -325,7 +321,7 @@ const CONNECTIONS = [
   { from:'digest',      to:'archive-json', type:'data-flow',  label:'writes derived' },
   { from:'digest',      to:'manifest',     type:'data-flow',  label:'lineage' },
   { from:'digest',      to:'data-dir',     type:'data-flow',  label:'copy project' },
-  { from:'digest',      to:'jobs',         type:'tool-call',  label:'register complete' },
+  { from:'jobs',        to:'data-dir',     type:'data-flow',  label:'discovers CLI jobs' },
   { from:'summary-cli', to:'archive-json', type:'data-flow',  label:'summary_image' },
   { from:'summary-cli', to:'manifest',     type:'data-flow',  label:'thumbnail metadata' },
   { from:'summary-cli', to:'data-dir',     type:'data-flow',  label:'generated/summary.png' },
@@ -337,10 +333,6 @@ const CONNECTIONS = [
   { from:'pipeline',    to:'ffmpeg',       type:'tool-call',  label:'extract frames' },
   { from:'intelligence',to:'ollama',       type:'tool-call',  label:'local chat' },
   { from:'intelligence',to:'nvidia',       type:'tool-call',  label:'cloud + vision' },
-  { from:'digest',      to:'ollama',       type:'tool-call',  label:'local digest chat' },
-  { from:'digest',      to:'ollama',       type:'event',      label:'availability tags' },
-  { from:'digest-model',to:'ollama',       type:'dependency', label:'ollama create' },
-  { from:'digest-bench',to:'digest-model', type:'tool-call',  label:'quality gates' },
   { from:'slicing',     to:'ffmpeg',       type:'tool-call',  label:'encode video' },
 ];
 
@@ -747,6 +739,7 @@ function updatePrompt() {
     '• An LLM (Ollama locally or NVIDIA NIM for cloud/vision) generates semantic chapters from the transcript',
     '• Chapters are paired with representative frames and written to archive.json',
     '• The Reader page polls GET /jobs/{id} every 2 seconds until processing completes',
+    '• AI digest versions are created by an external-agent CLI draft, not a backend digest model',
     '• The Slicer UI lets users select frame ranges and export clips via FFmpeg',
     '• Reader replacement flow uses source frames.json plus slice manifests for exact image timestamps',
   ].join('\n');

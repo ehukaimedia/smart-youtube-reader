@@ -1,10 +1,7 @@
 import json
-import os
 import re
 import shutil
 import time
-import urllib.error
-import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any
@@ -14,28 +11,14 @@ from fastapi import HTTPException
 from .jobs import DATA_ROOT, JobStore, slugify
 
 
-DIGEST_AGENT_MODELS = [
-    {
-        "id": "ollama:smart-youtube-digest",
-        "label": "Local Gemma AI Digest",
-        "provider": "ollama",
-        "requires": "ollama:smart-youtube-digest",
-    },
-    {
-        "id": "local:deterministic",
-        "label": "Local deterministic digest",
-        "provider": "local",
-        "requires": None,
-    },
-]
-
-MODEL_ALIASES = {
-    "gemma4": "ollama:smart-youtube-digest",
-    "gemma4:latest": "ollama:smart-youtube-digest",
-    "smart-youtube-digest": "ollama:smart-youtube-digest",
-    "ollama:gemma4": "ollama:smart-youtube-digest",
-    "ollama:gemma4:latest": "ollama:smart-youtube-digest",
-}
+DIGEST_AGENT_TASK = (
+    "Create a Smart YouTube Reader AI digest draft from a source project. "
+    "Inspect archive text and attached frame images before deciding what to keep. "
+    "Return JSON only with title, chapters, and changes_summary. "
+    "Each chapter must include source_indices, concept, summary, content, "
+    "timestamp_start, and timestamp_end. Do not remove, replace, or judge images; "
+    "humans curate images separately."
+)
 
 FLUFF_PATTERNS = [
     "like and subscribe",
@@ -51,106 +34,75 @@ FLUFF_PATTERNS = [
     "discord",
 ]
 
-DIGEST_SYSTEM_PROMPT = (
-    "You are a local editor agent for Smart YouTube Reader. "
-    "Create a compact AI learning digest from a YouTube archive. "
-    "Cut intros, outros, sponsor chatter, repetition, hype, and low-value transitions. "
-    "Keep durable concepts, procedures, definitions, examples, and caveats. "
-    "Return only JSON with keys title, chapters, and changes_summary. "
-    "changes_summary must be a non-empty array of short strings. "
-    "The title must be a short no-fluff learning title, not a YouTube headline. "
-    "Do not remove, replace, or judge images; humans curate images separately."
-)
+
+def create_digest_version_from_draft(
+    job_store: JobStore | None,
+    source_project: str | Path,
+    draft_path: str | Path,
+) -> dict[str, Any]:
+    source_dir = resolve_project(source_project)
+    draft = _read_json(Path(draft_path).expanduser().resolve())
+    digest_dir, digest_id, manifest = materialize_digest_project(source_dir, draft)
+
+    if job_store is not None:
+        job_store.register_completed_job(
+            job_id=digest_id,
+            video_url=manifest["url"],
+            data_dir=digest_dir,
+            title=manifest["title"],
+            created_at=manifest["created_at"],
+            video_ext=manifest["video_ext"],
+            kind="ai_digest",
+            source_job_id=manifest.get("source_job_id"),
+            digest_model=manifest.get("digest_model"),
+            summary_image=manifest.get("summary_image"),
+        )
+
+    return {
+        "job_id": digest_id,
+        "folder": digest_dir.name,
+        "path": str(digest_dir),
+        "title": manifest["title"],
+        "archive_chapters": manifest["archive_chapters"],
+    }
 
 
-def get_digest_agent_models() -> list[dict[str, Any]]:
-    return [
-        {
-            **model,
-            "available": _is_digest_model_available(model),
-        }
-        for model in DIGEST_AGENT_MODELS
-    ]
-
-
-def _is_digest_model_available(model: dict[str, Any]) -> bool:
-    if not model["requires"]:
-        return True
-    if model["provider"] == "ollama":
-        return _ollama_model_available(model["id"].split(":", 1)[1])
-    return bool(os.environ.get(model["requires"]))
-
-
-def create_digest_version(
-    job_store: JobStore,
-    job_id: str,
-    model: str | None,
-):
-    try:
-        source_job = job_store.get(job_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    if not source_job.data_dir or not source_job.data_dir.exists():
-        raise HTTPException(status_code=404, detail="Project files not found")
-
-    source_dir = source_job.data_dir.resolve()
+def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple[Path, str, dict[str, Any]]:
+    source_dir = source_dir.resolve()
     archive_path = source_dir / "archive.json"
     manifest_path = source_dir / "manifest.json"
     if not archive_path.exists():
-        raise HTTPException(status_code=404, detail="Archive file not found")
+        raise HTTPException(status_code=404, detail=f"Archive file not found: {archive_path}")
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail=f"Manifest file not found: {manifest_path}")
 
     source_archive = _read_json(archive_path)
-    source_manifest = _read_json(manifest_path) if manifest_path.exists() else {}
+    source_manifest = _read_json(manifest_path)
     source_chapters = source_archive.get("archive", [])
     if not source_chapters:
         raise HTTPException(status_code=400, detail="Source project has no archive chapters")
 
-    try:
-        selected_model = _normalize_model(model)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    changes_summary: list[str] = []
-    title_suggestion = ""
-    if selected_model == "local:deterministic":
-        digest_chapters, changes_summary = _generate_deterministic_digest(source_dir, source_chapters)
-        agent_status = "deterministic"
-        if not digest_chapters:
-            digest_chapters, changes_summary = _generate_deterministic_digest(source_dir, source_chapters, keep_at_least_one=True)
-    else:
-        try:
-            digest_chapters, changes_summary, title_suggestion = _generate_agent_digest(
-                source_dir=source_dir,
-                source_chapters=source_chapters,
-                selected_model=selected_model,
-            )
-            agent_status = "agent"
-        except Exception as exc:
-            raise HTTPException(
-                status_code=502,
-                detail=f"AI digest agent failed for {selected_model}: {exc}",
-            ) from exc
-
-        if not digest_chapters:
-            raise HTTPException(
-                status_code=502,
-                detail=f"AI digest agent returned no chapters for {selected_model}",
-            )
+    digest_chapters, changes_summary, title_suggestion = normalize_digest_draft(
+        source_dir=source_dir,
+        source_chapters=source_chapters,
+        draft=draft,
+    )
 
     digest_title = _no_fluff_title(title_suggestion, digest_chapters)
     digest_id = str(uuid.uuid4())
     digest_dir = _unique_digest_dir(digest_title, digest_id)
     shutil.copytree(source_dir, digest_dir, ignore=shutil.ignore_patterns("__pycache__"))
 
+    source_job_id = source_manifest.get("job_id") or source_archive.get("job_id")
     created_at = time.time()
     archive_data = {
         "job_id": digest_id,
         "folder": digest_dir.name,
         "kind": "ai_digest",
-        "source_job_id": source_job.id,
+        "source_job_id": source_job_id,
         "source_folder": source_dir.name,
-        "digest_model": selected_model,
-        "digest_agent_status": agent_status,
+        "digest_model": "external-agent-cli",
+        "digest_agent_status": "external_agent",
         "created_at": created_at,
         "digest_created_at": created_at,
         "archive": digest_chapters,
@@ -161,117 +113,72 @@ def create_digest_version(
     manifest = {
         **source_manifest,
         "job_id": digest_id,
-        "url": source_job.payload.video_url or source_manifest.get("url", ""),
+        "url": source_manifest.get("url", ""),
         "title": digest_title,
         "created_at": created_at,
         "status": "complete",
         "kind": "ai_digest",
-        "source_job_id": source_job.id,
+        "source_job_id": source_job_id,
         "source_folder": source_dir.name,
-        "digest_model": selected_model,
-        "digest_agent_status": agent_status,
+        "digest_model": "external-agent-cli",
+        "digest_agent_status": "external_agent",
         "digest_created_at": created_at,
         "archive_chapters": len(digest_chapters),
         "changes_summary": changes_summary,
-        "video_ext": source_job.video_ext or source_manifest.get("video_ext", "mp4"),
+        "video_ext": source_manifest.get("video_ext", "mp4"),
     }
+    if source_manifest.get("summary_image"):
+        manifest["summary_image"] = source_manifest["summary_image"]
+        archive_data["summary_image"] = source_manifest["summary_image"]
+        _write_json(digest_dir / "archive.json", archive_data)
+
     _write_json(digest_dir / "manifest.json", manifest)
-
-    return job_store.register_completed_job(
-        job_id=digest_id,
-        video_url=manifest["url"],
-        data_dir=digest_dir,
-        title=digest_title,
-        created_at=created_at,
-        video_ext=manifest["video_ext"],
-        kind="ai_digest",
-        source_job_id=source_job.id,
-        digest_model=selected_model,
-    )
+    return digest_dir, digest_id, manifest
 
 
-def _read_json(path: Path) -> dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _write_json(path: Path, data: dict[str, Any]) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-
-def _normalize_model(model: str | None) -> str:
-    if not model or not model.strip():
-        raise ValueError("Digest model is required")
-    model = model.strip()
-    normalized = MODEL_ALIASES.get(model, model)
-    supported = {item["id"] for item in DIGEST_AGENT_MODELS}
-    if normalized not in supported:
-        raise ValueError(f"Unsupported digest model: {model}")
-    return normalized
-
-
-def _unique_digest_dir(title: str, digest_id: str) -> Path:
-    base_name = f"{slugify(title) or 'ai-digest'}_{digest_id[:8]}"
-    candidate = DATA_ROOT / base_name
-    counter = 2
-    while candidate.exists():
-        candidate = DATA_ROOT / f"{base_name}-{counter}"
-        counter += 1
-    return candidate
-
-
-def _generate_agent_digest(
+def normalize_digest_draft(
     source_dir: Path,
     source_chapters: list[dict[str, Any]],
-    selected_model: str,
+    draft: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[str], str]:
-    user_prompt = build_digest_user_prompt(source_chapters)
-
-    if selected_model.startswith("ollama:"):
-        raw = _call_ollama_agent(selected_model, DIGEST_SYSTEM_PROMPT, user_prompt)
-    else:
-        raise RuntimeError(f"Unsupported digest agent model: {selected_model}")
-
-    parsed = _extract_json_object(raw)
-    chapters = parsed.get("chapters", [])
+    chapters = draft.get("chapters", [])
     if not isinstance(chapters, list) or not chapters:
-        raise RuntimeError("Digest agent returned invalid chapters")
+        raise RuntimeError("Digest draft must include a non-empty chapters array")
 
-    changes = parsed.get("changes_summary", [])
-    if not isinstance(changes, list) or not changes:
-        raise RuntimeError("Digest agent returned invalid changes_summary")
+    changes = draft.get("changes_summary", [])
+    if not isinstance(changes, list):
+        raise RuntimeError("Digest draft changes_summary must be an array")
     changes = [str(item).strip() for item in changes[:12] if str(item).strip()]
     if not changes:
-        raise RuntimeError("Digest agent returned empty changes_summary")
+        raise RuntimeError("Digest draft must include a non-empty changes_summary")
 
-    title = str(parsed.get("title") or "").strip()
+    title = str(draft.get("title") or "").strip()
     if not title:
-        raise RuntimeError("Digest agent returned an empty title")
+        raise RuntimeError("Digest draft must include a title")
 
     digest_chapters = []
-    normalization_errors = []
+    errors = []
     for index, chapter in enumerate(chapters):
         try:
             normalized = _normalize_agent_chapter(source_dir, source_chapters, chapter, strict=True)
         except RuntimeError as exc:
-            normalization_errors.append(f"chapter {index + 1}: {exc}")
+            errors.append(f"chapter {index + 1}: {exc}")
             continue
         if normalized:
             digest_chapters.append(normalized)
 
-    if normalization_errors and not digest_chapters:
-        raise RuntimeError("Digest agent returned no usable chapters: " + "; ".join(normalization_errors[:3]))
+    if errors and not digest_chapters:
+        raise RuntimeError("Digest draft returned no usable chapters: " + "; ".join(errors[:3]))
 
     try:
         _validate_digest_quality(digest_chapters, source_chapters)
     except RuntimeError as exc:
-        if normalization_errors:
-            raise RuntimeError(f"{exc}; skipped malformed agent chapters: {'; '.join(normalization_errors[:3])}") from exc
+        if errors:
+            raise RuntimeError(f"{exc}; skipped malformed chapters: {'; '.join(errors[:3])}") from exc
         raise
 
-    if normalization_errors:
-        changes.append(f"Skipped {len(normalization_errors)} malformed agent chapter(s).")
+    if errors:
+        changes.append(f"Skipped {len(errors)} malformed draft chapter(s).")
     return digest_chapters, changes, title
 
 
@@ -301,53 +208,25 @@ def build_digest_user_prompt(source_chapters: list[dict[str, Any]]) -> str:
     )
 
 
-def _call_ollama_agent(selected_model: str, system_prompt: str, user_prompt: str) -> str:
-    model = selected_model.split(":", 1)[1]
-    body = json.dumps({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "stream": False,
-        "options": {
-            "temperature": 0.05,
-            "num_ctx": 16384,
-        },
-    }).encode("utf-8")
-    request = urllib.request.Request(
-        os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/") + "/api/chat",
-        data=body,
-        method="POST",
-        headers={
-            "content-type": "application/json",
-        },
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=180) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Ollama digest request failed: HTTP {exc.code}: {detail}") from exc
-    except Exception as exc:
-        raise RuntimeError(f"Ollama digest request failed: {exc}") from exc
+def resolve_project(value: str | Path) -> Path:
+    candidate = Path(value).expanduser()
+    if candidate.exists():
+        return candidate.resolve()
 
-    return str(payload.get("message", {}).get("content") or "")
+    candidate = DATA_ROOT / str(value)
+    if candidate.exists():
+        return candidate.resolve()
 
+    if DATA_ROOT.exists():
+        for manifest_path in DATA_ROOT.glob("*/manifest.json"):
+            try:
+                manifest = _read_json(manifest_path)
+            except Exception:
+                continue
+            if manifest.get("job_id") == str(value):
+                return manifest_path.parent.resolve()
 
-def _ollama_model_available(model: str) -> bool:
-    try:
-        request = urllib.request.Request(
-            os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/") + "/api/tags",
-            method="GET",
-        )
-        with urllib.request.urlopen(request, timeout=3) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except Exception:
-        return False
-
-    names = {item.get("name") for item in payload.get("models", [])}
-    return model in names or f"{model}:latest" in names
+    raise HTTPException(status_code=404, detail=f"Project not found: {value}")
 
 
 def _extract_json_object(raw: str) -> dict[str, Any]:
@@ -360,13 +239,13 @@ def _extract_json_object(raw: str) -> dict[str, Any]:
     start = cleaned.find("{")
     end = cleaned.rfind("}") + 1
     if start < 0 or end <= start:
-        raise RuntimeError("Digest agent did not return JSON")
+        raise RuntimeError("Digest draft did not contain JSON")
     try:
         parsed = json.loads(cleaned[start:end])
     except json.JSONDecodeError as exc:
-        raise RuntimeError("Digest agent did not return valid JSON") from exc
+        raise RuntimeError("Digest draft did not contain valid JSON") from exc
     if not isinstance(parsed, dict):
-        raise RuntimeError("Digest agent did not return a JSON object")
+        raise RuntimeError("Digest draft must be a JSON object")
     return parsed
 
 
@@ -378,18 +257,18 @@ def _normalize_agent_chapter(
 ) -> dict[str, Any] | None:
     if not isinstance(chapter, dict):
         if strict:
-            raise RuntimeError("Digest agent chapter must be a JSON object")
+            raise RuntimeError("Digest chapter must be a JSON object")
         return None
 
     indices = chapter.get("source_indices", [])
     if not isinstance(indices, list):
         if strict:
-            raise RuntimeError("Digest agent chapter has invalid source_indices")
+            raise RuntimeError("Digest chapter has invalid source_indices")
         indices = []
     invalid_indices = [idx for idx in indices if not isinstance(idx, int) or idx < 0 or idx >= len(source_chapters)]
     valid_indices = [idx for idx in indices if isinstance(idx, int) and 0 <= idx < len(source_chapters)]
     if strict and (not indices or invalid_indices or len(valid_indices) != len(indices)):
-        raise RuntimeError(f"Digest agent chapter has invalid source_indices: {indices}")
+        raise RuntimeError(f"Digest chapter has invalid source_indices: {indices}")
     if not valid_indices:
         valid_indices = [_nearest_chapter_index(source_chapters, chapter.get("timestamp_start", 0))]
 
@@ -397,16 +276,16 @@ def _normalize_agent_chapter(
     content = _compact_content(str(chapter.get("content") or " ".join(str(c.get("content", "")) for c in source_group)))
     if not content:
         if strict:
-            raise RuntimeError("Digest agent chapter has empty content")
+            raise RuntimeError("Digest chapter has empty content")
         return None
 
     if strict:
         raw_start = chapter.get("timestamp_start")
         raw_end = chapter.get("timestamp_end")
         if not isinstance(raw_start, (int, float)) or not isinstance(raw_end, (int, float)):
-            raise RuntimeError("Digest agent chapter timestamps must be numeric")
+            raise RuntimeError("Digest chapter timestamps must be numeric")
         if raw_end < raw_start:
-            raise RuntimeError("Digest agent chapter timestamp_end precedes timestamp_start")
+            raise RuntimeError("Digest chapter timestamp_end precedes timestamp_start")
 
     start = _to_float(chapter.get("timestamp_start"), source_group[0].get("timestamp_start", 0))
     end = _to_float(chapter.get("timestamp_end"), source_group[-1].get("timestamp_end", start + 60))
@@ -430,60 +309,35 @@ def _normalize_agent_chapter(
 
 def _validate_digest_quality(digest_chapters: list[dict[str, Any]], source_chapters: list[dict[str, Any]]) -> None:
     if not digest_chapters:
-        raise RuntimeError("Digest agent returned no usable chapters")
+        raise RuntimeError("Digest draft returned no usable chapters")
     if len(source_chapters) > 3 and len(digest_chapters) >= len(source_chapters):
-        raise RuntimeError("Digest agent did not reduce chapter count")
+        raise RuntimeError("Digest draft did not reduce chapter count")
 
     content_lengths = [len(str(chapter.get("content") or "")) for chapter in digest_chapters]
     if any(length < 120 for length in content_lengths):
-        raise RuntimeError("Digest agent returned chapter content that is too short")
+        raise RuntimeError("Digest draft returned chapter content that is too short")
     if sum(content_lengths) / len(content_lengths) < 240:
-        raise RuntimeError("Digest agent returned average chapter content that is too thin")
+        raise RuntimeError("Digest draft returned average chapter content that is too thin")
 
 
-def _generate_deterministic_digest(
-    source_dir: Path,
-    source_chapters: list[dict[str, Any]],
-    keep_at_least_one: bool = False,
-) -> tuple[list[dict[str, Any]], list[str]]:
-    digest = []
-    removed = 0
-    for index, chapter in enumerate(source_chapters):
-        content = _compact_content(str(chapter.get("content", "")))
-        text_for_filter = " ".join([
-            str(chapter.get("concept", "")),
-            str(chapter.get("summary", "")),
-            str(chapter.get("content", "")),
-        ]).lower()
-        if not keep_at_least_one and (_is_fluff(text_for_filter) or len(content) < 120):
-            removed += 1
-            continue
+def _read_json(path: Path) -> dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-        images = _collect_source_images([chapter])
-        digest.append({
-            "concept": chapter.get("concept") or "AI Digest Chapter",
-            "summary": chapter.get("summary") or "",
-            "content": content,
-            "timestamp_start": _to_float(chapter.get("timestamp_start"), 0),
-            "timestamp_end": _to_float(chapter.get("timestamp_end"), chapter.get("timestamp_start", 0)),
-            "images": images,
-            "source_indices": [index],
-            "image_review": {
-                "mode": "human_curated",
-                "kept": len(images),
-                "note": "Images are preserved from kept source chapters. Human review handles removal or replacement.",
-            },
-        })
 
-    if not digest and keep_at_least_one and source_chapters:
-        return _generate_deterministic_digest(source_dir, source_chapters[:1], keep_at_least_one=True)
+def _write_json(path: Path, data: dict[str, Any]) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
-    changes = [
-        f"Removed {removed} low-value or filler chapter(s).",
-        "Compacted chapter text for agent learning context.",
-        "Preserved image references from kept source chapters for human curation.",
-    ]
-    return digest, changes
+
+def _unique_digest_dir(title: str, digest_id: str) -> Path:
+    base_name = f"{slugify(title) or 'ai-digest'}_{digest_id[:8]}"
+    candidate = DATA_ROOT / base_name
+    counter = 2
+    while candidate.exists():
+        candidate = DATA_ROOT / f"{base_name}-{counter}"
+        counter += 1
+    return candidate
 
 
 def _no_fluff_title(suggestion: str, digest_chapters: list[dict[str, Any]]) -> str:

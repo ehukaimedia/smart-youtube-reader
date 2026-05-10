@@ -87,21 +87,21 @@ The model dropdown on the home page will then show both local and cloud options,
 
 The `archive.json` produced by each job is designed to be consumed by AI agents. See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
-## Local AI Digest Model
+## AI Digest CLI
 
-Build the local Ollama digest model from Gemma:
-
-```bash
-ollama create smart-youtube-digest -f backend/modelfiles/smart-youtube-digest.Modelfile
-```
-
-Benchmark it against real archives before using it for review-sensitive work:
+AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend.
 
 ```bash
-python3 tools/benchmark_digest_model.py --build --runs 1
+python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>"
 ```
 
-The digest model cuts transcript fluff and creates a separate AI learning project. It preserves image references from kept source chapters; image removal and replacement stay in the human curation workflow.
+That prints the exact task for Codex, Claude, or another agent. The agent writes a JSON draft, then materializes the digest project:
+
+```bash
+python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "data/jobs/<project-folder>/generated/ai-digest-draft.json"
+```
+
+The CLI creates a separate `kind: ai_digest` project under `data/jobs/`. It preserves image references from kept source chapters; image removal and replacement stay in the human curation workflow.
 
 ## Summary Thumbnail CLI
 
