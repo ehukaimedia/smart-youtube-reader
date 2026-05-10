@@ -285,12 +285,11 @@ def save_slice_to_project(
                 best_chapter['images'] = next_images
                 next_slice_ids = existing_slice_ids | {slice_id}
                 best_chapter['_slice_ids'] = sorted(next_slice_ids)
-                if not best_chapter.get('_slice_id'):
-                    best_chapter['_slice_id'] = slice_id
+                best_chapter['_slice_id'] = slice_id
             else:
                 # Replace existing images with operator-curated ones
                 best_chapter['images'] = image_paths
-                best_chapter['_slice_ids'] = [slice_id]
+                best_chapter['_slice_ids'] = sorted(existing_slice_ids | {slice_id})
                 best_chapter['_slice_id'] = slice_id  # legacy single-owner field
 
             with open(archive_path, 'w') as f:

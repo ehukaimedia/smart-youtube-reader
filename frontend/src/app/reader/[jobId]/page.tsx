@@ -53,6 +53,13 @@ type FrameMetadata = {
     timestamp?: number;
 };
 
+type SliceManifest = {
+    frames?: Array<{
+        filename?: string;
+        timestamp?: number;
+    }>;
+};
+
 export default function ReaderPage() {
     const { jobId } = useParams();
     const [job, setJob] = useState<Job | null>(null);
@@ -443,10 +450,35 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                 setArchiveMeta({
                     summary_image: data.summary_image
                 });
-                fetch(`${getApiBase()}/data/jobs/${folderName}/frames.json`, { cache: 'no-store' })
+                const nextFrameMetadata: Record<string, FrameMetadata> = await fetch(`${getApiBase()}/data/jobs/${folderName}/frames.json`, { cache: 'no-store' })
                     .then(res => res.ok ? res.json() : {})
-                    .then((frames: Record<string, FrameMetadata>) => setFrameMetadata(frames || {}))
-                    .catch(() => setFrameMetadata({}));
+                    .catch(() => ({}));
+
+                const sliceIds = Array.from(new Set(
+                    chapters.flatMap(chapter => (chapter.images || [])
+                        .map(imagePath => imagePath.match(/^slices\/([^/]+)\/frames\/.+$/)?.[1])
+                        .filter((sliceId): sliceId is string => Boolean(sliceId))
+                    )
+                ));
+
+                const sliceManifests = await Promise.all(sliceIds.map(async sliceId => {
+                    const manifest = await fetch(`${getApiBase()}/data/jobs/${folderName}/slices/${sliceId}/slice.json`, { cache: 'no-store' })
+                        .then(res => res.ok ? res.json() : null)
+                        .catch(() => null) as SliceManifest | null;
+                    return { sliceId, manifest };
+                }));
+
+                for (const { sliceId, manifest } of sliceManifests) {
+                    if (!manifest?.frames) continue;
+                    for (const frame of manifest.frames) {
+                        if (!frame.filename || typeof frame.timestamp !== 'number') continue;
+                        nextFrameMetadata[`slices/${sliceId}/frames/${frame.filename}`] = {
+                            timestamp: frame.timestamp
+                        };
+                    }
+                }
+
+                setFrameMetadata(nextFrameMetadata);
             }
         } catch (e) {
             console.error(e);
