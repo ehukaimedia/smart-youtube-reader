@@ -2,14 +2,13 @@
 
 ## Context
 
-Smart YouTube Reader projects should preserve the original archive while allowing users to create a separate AI-optimized version for agent learning. The digest version should reduce wasted context from filler transcript sections and low-value images, then behave like any other project for reader, dashboard, Tailscale sharing, and ZIP download.
+Smart YouTube Reader projects should preserve the original archive while allowing users to create a separate AI-optimized version for agent learning. The digest version should reduce wasted context from filler transcript sections while preserving image references for human curation, then behave like any other project for reader, dashboard, Tailscale sharing, and ZIP download.
 
 ## Expected Behavior
 
 - Reader exposes a `Create AI Digest Version` action for completed source projects.
-- The action offers headless agent model choices:
-  - Headless GPT 5.5
-  - Headless Opus 4.7
+- The action offers local model choices:
+  - Local Gemma AI Digest
   - Local deterministic digest
 - Summary images are created outside the backend by Codex after inspecting the current project's real archive text and frame images.
 - Prompt-only summary image generation is not acceptable because it can miss visual context from charts, slides, diagrams, and screenshots.
@@ -19,6 +18,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 - The backend creates a new completed project directory under `data/jobs/`.
 - The original project is not modified.
 - The derived project receives a new no-fluff title based on the lesson content, not the source YouTube headline.
+- The digest agent preserves image references from kept source chapters. Human users handle image removal and replacement.
 - The derived `manifest.json` and `archive.json` store lineage fields:
   - `kind: ai_digest`
   - `source_job_id`
@@ -32,7 +32,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 
 ## Fallback Behavior
 
-If a selected headless provider is not configured or fails, the backend must fail the digest request clearly. Deterministic compaction is allowed only when the user explicitly selects `Local deterministic digest`.
+If the selected local Ollama model is missing or fails, the backend must fail the digest request clearly. Deterministic compaction is allowed only when the user explicitly selects `Local deterministic digest`.
 
 ## Non-Goals
 

@@ -50,6 +50,8 @@ class FinalizeRequest(BaseModel):
 class SaveSliceRequest(BaseModel):
     preview_id: str
     selected_files: List[str]
+    target_chapter_index: Optional[int] = None
+    replace_image_path: Optional[str] = None
 
 class ArchiveImageUpdateRequest(BaseModel):
     chapter_index: int

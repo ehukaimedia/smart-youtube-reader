@@ -49,6 +49,10 @@ type ArchiveMetadata = {
     summary_image?: string;
 };
 
+type FrameMetadata = {
+    timestamp?: number;
+};
+
 export default function ReaderPage() {
     const { jobId } = useParams();
     const [job, setJob] = useState<Job | null>(null);
@@ -224,6 +228,11 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
             toast.error('Choose an AI digest model first');
             return;
         }
+        const selectedModel = digestModels.find(model => model.id === digestModel);
+        if (selectedModel && !selectedModel.available) {
+            toast.error(selectedModel.provider === 'ollama' ? 'Build the local Ollama digest model first' : 'Selected digest model is unavailable');
+            return;
+        }
         setDigesting(true);
         toast.info('Creating AI digest version. The original project will stay unchanged.');
 
@@ -255,6 +264,15 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
     if (error) return <div className="container text-red-500">{error}</div>;
     if (!job) return <div className="container">Loading...</div>;
 
+    const selectedDigestModel = digestModels.find(model => model.id === digestModel);
+    const selectedDigestModelUnavailable = Boolean(selectedDigestModel && !selectedDigestModel.available);
+    const digestModelStatus = (model: DigestModel) => {
+        if (model.available) return '';
+        if (model.provider === 'ollama') return ' (build Ollama model)';
+        if (model.requires) return ' (key required)';
+        return ' (unavailable)';
+    };
+
     return (
         <div className="container">
             <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -283,19 +301,19 @@ After running it, verify the reader shows "Video Summary Image" and the dashboar
                                             <option value="">No models loaded</option>
                                         ) : (
                                             digestModels.map(model => (
-                                                <option key={model.id} value={model.id}>
-                                                    {model.label}{model.available ? '' : ' (key required)'}
+                                                <option key={model.id} value={model.id} disabled={!model.available}>
+                                                    {model.label}{digestModelStatus(model)}
                                                 </option>
                                             ))
                                         )}
                                     </select>
                                     <button
                                         onClick={createDigestVersion}
-                                        disabled={digesting || !digestModelsLoaded || !digestModel}
+                                        disabled={digesting || !digestModelsLoaded || !digestModel || selectedDigestModelUnavailable}
                                         className="btn"
                                         style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: 'var(--success)' }}
                                     >
-                                        {!digestModelsLoaded ? 'Loading Models...' : digesting ? 'Creating Digest...' : 'Create AI Digest Version'}
+                                        {!digestModelsLoaded ? 'Loading Models...' : selectedDigestModelUnavailable ? 'Model Unavailable' : digesting ? 'Creating Digest...' : 'Create AI Digest Version'}
                                     </button>
                                 </span>
                             )}
@@ -405,6 +423,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
     const videoId = videoUrl?.match(/[?&]v=([^&]+)/)?.[1];
     const [timeline, setTimeline] = useState<ArchiveChapter[]>([]);
     const [archiveMeta, setArchiveMeta] = useState<ArchiveMetadata>({});
+    const [frameMetadata, setFrameMetadata] = useState<Record<string, FrameMetadata>>({});
     const [loading, setLoading] = useState(true);
     const [imageAction, setImageAction] = useState('');
 
@@ -424,6 +443,10 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                 setArchiveMeta({
                     summary_image: data.summary_image
                 });
+                fetch(`${getApiBase()}/data/jobs/${folderName}/frames.json`, { cache: 'no-store' })
+                    .then(res => res.ok ? res.json() : {})
+                    .then((frames: Record<string, FrameMetadata>) => setFrameMetadata(frames || {}))
+                    .catch(() => setFrameMetadata({}));
             }
         } catch (e) {
             console.error(e);
@@ -498,18 +521,27 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
     };
 
     const replaceInSlicer = async (chapterIndex: number, imagePath: string, timestampStart: number) => {
-        const confirmed = await toast.confirm('Remove this image from the chapter and open the slicer to create a replacement?', { confirmLabel: 'Open Slicer' });
+        const confirmed = await toast.confirm('Open the slicer to choose a replacement? The current image will stay attached until the replacement is saved.', { confirmLabel: 'Open Slicer' });
         if (!confirmed) return;
-        const removed = await removeArchiveImage(chapterIndex, imagePath, timestampStart);
-        if (!removed) return;
-        const start = Math.max(0, Math.floor(timestampStart));
-        const returnTo = encodeURIComponent(`/reader/${jobId}`);
-        router.push(`/slicer/${jobId}?start=${start}&return=${returnTo}`);
+        const filename = imagePath.split('/').pop() || imagePath;
+        const imageTimestamp = frameMetadata[imagePath]?.timestamp ?? frameMetadata[filename]?.timestamp;
+        const replacementStart = typeof imageTimestamp === 'number' ? imageTimestamp - 2 : timestampStart;
+        const start = Math.max(0, Math.floor(replacementStart));
+        const returnTo = encodeURIComponent(`/reader/${jobId}#chapter-${chapterIndex}`);
+        router.push(`/slicer/${jobId}?start=${start}&return=${returnTo}&replaceChapter=${chapterIndex}&replaceImage=${encodeURIComponent(imagePath)}`);
     };
 
     useEffect(() => {
         loadArchive();
     }, [loadArchive]);
+
+    useEffect(() => {
+        if (loading || timeline.length === 0 || !window.location.hash) return;
+        window.setTimeout(() => {
+            const target = document.querySelector(window.location.hash);
+            target?.scrollIntoView({ block: 'start' });
+        }, 100);
+    }, [loading, timeline.length]);
 
     if (loading) return <div className="blink">Loading Archive Preview... (Waiting for file)</div>;
     if (timeline.length === 0) return <div style={{ color: 'red' }}>Archive could not be loaded.</div>;
@@ -527,7 +559,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                 </section>
             )}
             {timeline.map((item: ArchiveChapter, idx: number) => (
-                <div key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
+                <div id={`chapter-${idx}`} key={`chapter-${idx}`} style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem', scrollMarginTop: '5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)' }}>{item.concept}</h4>
@@ -572,7 +604,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                                         <button
                                             onClick={() => replaceInSlicer(idx, img, item.timestamp_start)}
                                             disabled={Boolean(imageAction)}
-                                            title="Remove this image and open slicer"
+                                            title="Open slicer and replace this image after saving"
                                             style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.75rem' }}
                                         >
                                             Replace

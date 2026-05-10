@@ -9,6 +9,7 @@ import zipfile
 from ipaddress import ip_address, ip_network
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -194,7 +195,7 @@ async def list_digest_models():
 
 @app.post("/jobs/{job_id}/digest", response_model=JobResponse)
 async def create_ai_digest(job_id: str, request: DigestCreateRequest):
-    job = create_digest_version(job_store, job_id, request.model)
+    job = await run_in_threadpool(create_digest_version, job_store, job_id, request.model)
     return job.to_response()
 
 @app.get("/jobs/{job_id}/transcript")
@@ -351,8 +352,14 @@ async def create_new_slice(job_id: str, request: SliceRequest):
 async def create_preview(job_id: str, request: PreviewRequest):
     try:
         return generate_preview(job_id, request.start, request.end, request.fps, job_store)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Job not found")
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         print(f"Preview error: {e}")
         raise HTTPException(status_code=500, detail="Preview generation failed")
@@ -369,7 +376,14 @@ async def finalize_slice(job_id: str, request: FinalizeRequest):
 async def save_slicer_to_project(job_id: str, request: SaveSliceRequest):
     try:
         from .slicing import save_slice_to_project
-        result = save_slice_to_project(job_id, request.preview_id, request.selected_files, job_store)
+        result = save_slice_to_project(
+            job_id,
+            request.preview_id,
+            request.selected_files,
+            job_store,
+            target_chapter_index=request.target_chapter_index,
+            replace_image_path=request.replace_image_path,
+        )
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

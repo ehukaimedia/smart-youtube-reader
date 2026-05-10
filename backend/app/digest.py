@@ -10,23 +10,16 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
-from PIL import Image, ImageStat
 
 from .jobs import DATA_ROOT, JobStore, slugify
 
 
 DIGEST_AGENT_MODELS = [
     {
-        "id": "openai:gpt-5.5",
-        "label": "Headless GPT 5.5",
-        "provider": "openai",
-        "requires": "OPENAI_API_KEY",
-    },
-    {
-        "id": "anthropic:claude-opus-4-7",
-        "label": "Headless Opus 4.7",
-        "provider": "anthropic",
-        "requires": "ANTHROPIC_API_KEY",
+        "id": "ollama:smart-youtube-digest",
+        "label": "Local Gemma AI Digest",
+        "provider": "ollama",
+        "requires": "ollama:smart-youtube-digest",
     },
     {
         "id": "local:deterministic",
@@ -37,12 +30,11 @@ DIGEST_AGENT_MODELS = [
 ]
 
 MODEL_ALIASES = {
-    "gpt-5.5": "openai:gpt-5.5",
-    "headless-gpt-5.5": "openai:gpt-5.5",
-    "opus-4.7": "anthropic:claude-opus-4-7",
-    "claude-opus-4.7": "anthropic:claude-opus-4-7",
-    "claude-opus-4-7": "anthropic:claude-opus-4-7",
-    "anthropic:claude-opus-4.7": "anthropic:claude-opus-4-7",
+    "gemma4": "ollama:smart-youtube-digest",
+    "gemma4:latest": "ollama:smart-youtube-digest",
+    "smart-youtube-digest": "ollama:smart-youtube-digest",
+    "ollama:gemma4": "ollama:smart-youtube-digest",
+    "ollama:gemma4:latest": "ollama:smart-youtube-digest",
 }
 
 FLUFF_PATTERNS = [
@@ -64,10 +56,18 @@ def get_digest_agent_models() -> list[dict[str, Any]]:
     return [
         {
             **model,
-            "available": not model["requires"] or bool(os.environ.get(model["requires"])),
+            "available": _is_digest_model_available(model),
         }
         for model in DIGEST_AGENT_MODELS
     ]
+
+
+def _is_digest_model_available(model: dict[str, Any]) -> bool:
+    if not model["requires"]:
+        return True
+    if model["provider"] == "ollama":
+        return _ollama_model_available(model["id"].split(":", 1)[1])
+    return bool(os.environ.get(model["requires"]))
 
 
 def create_digest_version(
@@ -228,103 +228,105 @@ def _generate_agent_digest(
         })
 
     system_prompt = (
-        "You are a headless editor agent for Smart YouTube Reader. "
+        "You are a local editor agent for Smart YouTube Reader. "
         "Create a compact AI learning digest from a YouTube archive. "
         "Cut intros, outros, sponsor chatter, repetition, hype, and low-value transitions. "
         "Keep durable concepts, procedures, definitions, examples, and caveats. "
         "Return only JSON with keys title, chapters, and changes_summary. "
-        "The title must be a short no-fluff learning title, not a YouTube headline."
+        "changes_summary must be a non-empty array of short strings. "
+        "The title must be a short no-fluff learning title, not a YouTube headline. "
+        "Do not remove, replace, or judge images; humans curate images separately."
     )
     user_prompt = (
         "Build the digest from these source chapters. Each output chapter must include: "
-        "source_indices, concept, summary, content, timestamp_start, timestamp_end, image_policy. "
-        "image_policy must be minimal, keep, or drop. Use minimal for most chapters.\n\n"
+        "source_indices, concept, summary, content, timestamp_start, timestamp_end. "
+        "source_indices must be an array of integer indexes only, never text labels. "
+        "Use source_indices to preserve the original images attached to the kept source chapters. "
+        "Do not include markdown fences or commentary. Required shape: "
+        '{"title":"Plain Learning Title","chapters":[{"source_indices":[0,1],"concept":"Concept",'
+        '"summary":"One sentence.","content":"Teaching text.","timestamp_start":0,"timestamp_end":120}],'
+        '"changes_summary":["Removed filler.","Merged repeated concepts."]}\n\n'
         f"{json.dumps(source_payload, ensure_ascii=False)}"
     )
 
-    if selected_model.startswith("openai:"):
-        raw = _call_openai_agent(selected_model, system_prompt, user_prompt)
-    elif selected_model.startswith("anthropic:"):
-        raw = _call_anthropic_agent(selected_model, system_prompt, user_prompt)
+    if selected_model.startswith("ollama:"):
+        raw = _call_ollama_agent(selected_model, system_prompt, user_prompt)
     else:
         raise RuntimeError(f"Unsupported digest agent model: {selected_model}")
 
     parsed = _extract_json_object(raw)
     chapters = parsed.get("chapters", [])
-    if not isinstance(chapters, list):
+    if not isinstance(chapters, list) or not chapters:
         raise RuntimeError("Digest agent returned invalid chapters")
+
+    changes = parsed.get("changes_summary", [])
+    if not isinstance(changes, list) or not changes:
+        raise RuntimeError("Digest agent returned invalid changes_summary")
+    changes = [str(item).strip() for item in changes[:12] if str(item).strip()]
+    if not changes:
+        raise RuntimeError("Digest agent returned empty changes_summary")
+
+    title = str(parsed.get("title") or "").strip()
+    if not title:
+        raise RuntimeError("Digest agent returned an empty title")
 
     digest_chapters = []
     for chapter in chapters:
-        normalized = _normalize_agent_chapter(source_dir, source_chapters, chapter)
+        normalized = _normalize_agent_chapter(source_dir, source_chapters, chapter, strict=True)
         if normalized:
             digest_chapters.append(normalized)
 
-    changes = parsed.get("changes_summary", [])
-    if not isinstance(changes, list):
-        changes = []
-    changes = [str(item) for item in changes[:12]]
-    if not changes:
-        changes = ["Removed filler sections and reduced image context to verified minimal visuals."]
-
-    title = str(parsed.get("title") or "")
+    _validate_digest_quality(digest_chapters, source_chapters)
     return digest_chapters, changes, title
 
 
-def _call_openai_agent(selected_model: str, system_prompt: str, user_prompt: str) -> str:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
-
-    from openai import OpenAI
-
-    model = os.environ.get("OPENAI_DIGEST_MODEL", selected_model.split(":", 1)[1])
-    client = OpenAI(api_key=api_key)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
+def _call_ollama_agent(selected_model: str, system_prompt: str, user_prompt: str) -> str:
+    model = selected_model.split(":", 1)[1]
+    body = json.dumps({
+        "model": model,
+        "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.2,
-        max_tokens=6000,
-    )
-    return response.choices[0].message.content or ""
-
-
-def _call_anthropic_agent(selected_model: str, system_prompt: str, user_prompt: str) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-
-    model = os.environ.get("ANTHROPIC_DIGEST_MODEL", selected_model.split(":", 1)[1])
-    body = json.dumps({
-        "model": model,
-        "max_tokens": 6000,
-        "temperature": 0.2,
-        "system": system_prompt,
-        "messages": [{"role": "user", "content": user_prompt}],
+        "stream": False,
+        "options": {
+            "temperature": 0.05,
+            "num_ctx": 16384,
+        },
     }).encode("utf-8")
     request = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
+        os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/") + "/api/chat",
         data=body,
         method="POST",
         headers={
             "content-type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
+        with urllib.request.urlopen(request, timeout=180) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Anthropic digest request failed: {detail}") from exc
+        raise RuntimeError(f"Ollama digest request failed: HTTP {exc.code}: {detail}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"Ollama digest request failed: {exc}") from exc
 
-    content = payload.get("content", [])
-    text_parts = [part.get("text", "") for part in content if part.get("type") == "text"]
-    return "\n".join(text_parts)
+    return str(payload.get("message", {}).get("content") or "")
+
+
+def _ollama_model_available(model: str) -> bool:
+    try:
+        request = urllib.request.Request(
+            os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/") + "/api/tags",
+            method="GET",
+        )
+        with urllib.request.urlopen(request, timeout=3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return False
+
+    names = {item.get("name") for item in payload.get("models", [])}
+    return model in names or f"{model}:latest" in names
 
 
 def _extract_json_object(raw: str) -> dict[str, Any]:
@@ -345,24 +347,43 @@ def _normalize_agent_chapter(
     source_dir: Path,
     source_chapters: list[dict[str, Any]],
     chapter: dict[str, Any],
+    strict: bool = False,
 ) -> dict[str, Any] | None:
+    if not isinstance(chapter, dict):
+        if strict:
+            raise RuntimeError("Digest agent chapter must be a JSON object")
+        return None
+
     indices = chapter.get("source_indices", [])
     if not isinstance(indices, list):
+        if strict:
+            raise RuntimeError("Digest agent chapter has invalid source_indices")
         indices = []
+    invalid_indices = [idx for idx in indices if not isinstance(idx, int) or idx < 0 or idx >= len(source_chapters)]
     valid_indices = [idx for idx in indices if isinstance(idx, int) and 0 <= idx < len(source_chapters)]
+    if strict and (not indices or invalid_indices or len(valid_indices) != len(indices)):
+        raise RuntimeError(f"Digest agent chapter has invalid source_indices: {indices}")
     if not valid_indices:
         valid_indices = [_nearest_chapter_index(source_chapters, chapter.get("timestamp_start", 0))]
 
     source_group = [source_chapters[idx] for idx in valid_indices]
     content = _compact_content(str(chapter.get("content") or " ".join(str(c.get("content", "")) for c in source_group)))
     if not content:
+        if strict:
+            raise RuntimeError("Digest agent chapter has empty content")
         return None
+
+    if strict:
+        raw_start = chapter.get("timestamp_start")
+        raw_end = chapter.get("timestamp_end")
+        if not isinstance(raw_start, (int, float)) or not isinstance(raw_end, (int, float)):
+            raise RuntimeError("Digest agent chapter timestamps must be numeric")
+        if raw_end < raw_start:
+            raise RuntimeError("Digest agent chapter timestamp_end precedes timestamp_start")
 
     start = _to_float(chapter.get("timestamp_start"), source_group[0].get("timestamp_start", 0))
     end = _to_float(chapter.get("timestamp_end"), source_group[-1].get("timestamp_end", start + 60))
-    image_policy = str(chapter.get("image_policy", "minimal")).lower()
-    max_images = 0 if image_policy == "drop" else (2 if image_policy == "keep" else 1)
-    images, review = _select_verified_images(source_dir, source_group, max_images=max_images)
+    images = _collect_source_images(source_group)
 
     return {
         "concept": str(chapter.get("concept") or source_group[0].get("concept") or "AI Digest Chapter"),
@@ -372,8 +393,25 @@ def _normalize_agent_chapter(
         "timestamp_end": max(end, start),
         "images": images,
         "source_indices": valid_indices,
-        "image_review": review,
+        "image_review": {
+            "mode": "human_curated",
+            "kept": len(images),
+            "note": "Images are preserved from kept source chapters. Human review handles removal or replacement.",
+        },
     }
+
+
+def _validate_digest_quality(digest_chapters: list[dict[str, Any]], source_chapters: list[dict[str, Any]]) -> None:
+    if not digest_chapters:
+        raise RuntimeError("Digest agent returned no usable chapters")
+    if len(source_chapters) > 3 and len(digest_chapters) >= len(source_chapters):
+        raise RuntimeError("Digest agent did not reduce chapter count")
+
+    content_lengths = [len(str(chapter.get("content") or "")) for chapter in digest_chapters]
+    if any(length < 120 for length in content_lengths):
+        raise RuntimeError("Digest agent returned chapter content that is too short")
+    if sum(content_lengths) / len(content_lengths) < 240:
+        raise RuntimeError("Digest agent returned average chapter content that is too thin")
 
 
 def _generate_deterministic_digest(
@@ -394,7 +432,7 @@ def _generate_deterministic_digest(
             removed += 1
             continue
 
-        images, review = _select_verified_images(source_dir, [chapter], max_images=1)
+        images = _collect_source_images([chapter])
         digest.append({
             "concept": chapter.get("concept") or "AI Digest Chapter",
             "summary": chapter.get("summary") or "",
@@ -403,7 +441,11 @@ def _generate_deterministic_digest(
             "timestamp_end": _to_float(chapter.get("timestamp_end"), chapter.get("timestamp_start", 0)),
             "images": images,
             "source_indices": [index],
-            "image_review": review,
+            "image_review": {
+                "mode": "human_curated",
+                "kept": len(images),
+                "note": "Images are preserved from kept source chapters. Human review handles removal or replacement.",
+            },
         })
 
     if not digest and keep_at_least_one and source_chapters:
@@ -412,7 +454,7 @@ def _generate_deterministic_digest(
     changes = [
         f"Removed {removed} low-value or filler chapter(s).",
         "Compacted chapter text for agent learning context.",
-        "Reduced visual context to verified minimal images.",
+        "Preserved image references from kept source chapters for human curation.",
     ]
     return digest, changes
 
@@ -441,71 +483,13 @@ def _clean_title(title: str) -> str:
     return title[:90].strip()
 
 
-def _select_verified_images(
-    source_dir: Path,
-    source_chapters: list[dict[str, Any]],
-    max_images: int,
-) -> tuple[list[str], dict[str, Any]]:
-    candidates: list[str] = []
+def _collect_source_images(source_chapters: list[dict[str, Any]]) -> list[str]:
+    images: list[str] = []
     for chapter in source_chapters:
         for image in chapter.get("images", []) or []:
-            if image not in candidates:
-                candidates.append(image)
-
-    scored = []
-    rejected = []
-    for image in candidates:
-        score, reason = _score_image(source_dir, image)
-        if score > 0:
-            scored.append((score, image))
-        else:
-            rejected.append({"image": image, "reason": reason})
-
-    scored.sort(reverse=True)
-    kept = [image for _, image in scored[:max_images]]
-    review = {
-        "considered": len(candidates),
-        "kept": len(kept),
-        "rejected": rejected[:8],
-    }
-    return kept, review
-
-
-def _score_image(source_dir: Path, relative_path: str) -> tuple[float, str]:
-    if not relative_path or Path(relative_path).is_absolute():
-        return 0, "invalid path"
-
-    image_path = (source_dir / relative_path).resolve()
-    if not image_path.is_relative_to(source_dir) or not image_path.exists():
-        return 0, "missing image"
-
-    try:
-        with Image.open(image_path) as image:
-            width, height = image.size
-            if width < 120 or height < 90:
-                return 0, "too small"
-
-            gray = image.convert("L")
-            gray.thumbnail((180, 180))
-            stat = ImageStat.Stat(gray)
-            mean = stat.mean[0]
-            contrast = stat.stddev[0]
-            histogram = gray.histogram()
-            total = sum(histogram) or 1
-            dark_ratio = sum(histogram[:18]) / total
-            light_ratio = sum(histogram[238:]) / total
-
-            if dark_ratio > 0.92:
-                return 0, "mostly black"
-            if light_ratio > 0.94:
-                return 0, "mostly white"
-            if contrast < 8:
-                return 0, "low contrast"
-
-            score = contrast + abs(mean - 128) * 0.05 - dark_ratio * 10
-            return score, "kept"
-    except Exception:
-        return 0, "unreadable image"
+            if image and image not in images:
+                images.append(image)
+    return images
 
 
 def _compact_content(content: str) -> str:

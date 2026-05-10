@@ -14,6 +14,11 @@ def generate_preview(job_id: str, start: float, end: float, fps: int, job_store:
     if not job_store:
         raise ValueError("JobStore required")
 
+    if end <= start:
+        raise ValueError("Slice end time must be after start time")
+    if fps <= 0 or fps > 60:
+        raise ValueError("Preview FPS must be between 1 and 60")
+
     # Validation: Max 10 seconds
     if (end - start) > 10.0:
         raise ValueError("Slice duration cannot exceed 10 seconds")
@@ -47,11 +52,14 @@ def generate_preview(job_id: str, start: float, end: float, fps: int, job_store:
             .run(quiet=True, overwrite_output=True)
         )
     except ffmpeg.Error as e:
-        print(e.stderr.decode() if e.stderr else str(e))
-        raise RuntimeError("FFmpeg frame extraction failed")
+        detail = e.stderr.decode(errors="replace") if e.stderr else str(e)
+        print(detail)
+        raise RuntimeError(f"FFmpeg frame extraction failed: {detail[-500:]}")
 
     # List generated files
     frames = sorted([f.name for f in preview_dir.glob("*.jpg")])
+    if not frames:
+        raise ValueError("No preview frames were generated for that time range")
     
     # Save metadata for later timestamp calculation
     import json
@@ -148,7 +156,14 @@ def create_slice(job_id: str, start: float, end: float, format_type: str, fps: i
         return { "id": slice_id, "path": f"slices/{slice_id}/clip.mp4", "format": "mp4" }
         raise ValueError("For sequences, please use the preview flow.")
 
-def save_slice_to_project(job_id: str, preview_id: str, selected_files: list[str], job_store: JobStore):
+def save_slice_to_project(
+    job_id: str,
+    preview_id: str,
+    selected_files: list[str],
+    job_store: JobStore,
+    target_chapter_index: int | None = None,
+    replace_image_path: str | None = None,
+):
     """
     Saves selected frames into the job's archive.json, updating the matching chapter's images.
     The operator uses this to curate the visual evidence shown to agents and readers.
@@ -213,26 +228,48 @@ def save_slice_to_project(job_id: str, preview_id: str, selected_files: list[str
 
         chapters = archive.get('archive', [])
 
-        # Find the chapter whose time window best contains the slice start time
         best_chapter = None
-        for chapter in chapters:
-            c_start = chapter.get('timestamp_start', 0)
-            c_end = chapter.get('timestamp_end', c_start + 60)
-            if c_start <= start_time <= c_end:
-                best_chapter = chapter
-                break
+        chapter_index = None
+        if target_chapter_index is not None:
+            if target_chapter_index < 0 or target_chapter_index >= len(chapters):
+                raise ValueError("Target chapter is no longer available")
+            best_chapter = chapters[target_chapter_index]
+            chapter_index = target_chapter_index
+        else:
+            # Find the chapter whose time window best contains the slice start time
+            for index, chapter in enumerate(chapters):
+                c_start = chapter.get('timestamp_start', 0)
+                c_end = chapter.get('timestamp_end', c_start + 60)
+                if c_start <= start_time <= c_end:
+                    best_chapter = chapter
+                    chapter_index = index
+                    break
 
-        # Fallback: nearest chapter by start time
-        if best_chapter is None and chapters:
-            best_chapter = min(chapters, key=lambda c: abs(c.get('timestamp_start', 0) - start_time))
+            # Fallback: nearest chapter by start time
+            if best_chapter is None and chapters:
+                chapter_index, best_chapter = min(
+                    enumerate(chapters),
+                    key=lambda item: abs(item[1].get('timestamp_start', 0) - start_time)
+                )
 
         if best_chapter is not None:
             # Stash original AI-generated images so delete can restore them
             if '_original_images' not in best_chapter:
                 best_chapter['_original_images'] = best_chapter.get('images', [])
-            # Replace existing images with operator-curated ones
-            # Tag each path so we can remove them if the slice is deleted
-            best_chapter['images'] = image_paths
+            existing_images = list(best_chapter.get('images', []))
+            if replace_image_path:
+                if replace_image_path not in existing_images:
+                    raise ValueError("Image being replaced is no longer attached to this chapter")
+                next_images = []
+                for image in existing_images:
+                    if image == replace_image_path:
+                        next_images.extend(image_paths)
+                    else:
+                        next_images.append(image)
+                best_chapter['images'] = next_images
+            else:
+                # Replace existing images with operator-curated ones
+                best_chapter['images'] = image_paths
             best_chapter['_slice_id'] = slice_id  # track which slice owns these images
 
             with open(archive_path, 'w') as f:
@@ -242,7 +279,9 @@ def save_slice_to_project(job_id: str, preview_id: str, selected_files: list[str
         "id": slice_id,
         "path": f"slices/{slice_id}",
         "manifest": manifest,
-        "images_added": len(image_paths)
+        "images_added": len(image_paths),
+        "chapter_index": chapter_index,
+        "replaced_image_path": replace_image_path,
     }
 
 def list_slices(job_id: str, job_store: JobStore):

@@ -58,8 +58,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         error: (message) => showToast(message, 'error'),
         confirm: (message, options) => new Promise<boolean>((resolve) => {
             const id = Date.now() + Math.random();
+            pendingConfirmResolvers.current.forEach(existingResolve => existingResolve(false));
+            pendingConfirmResolvers.current.clear();
             pendingConfirmResolvers.current.set(id, resolve);
-            setToasts(prev => [...prev, {
+            setToasts(prev => [...prev.filter(toast => !toast.confirm), {
                 id,
                 message,
                 tone: 'info',

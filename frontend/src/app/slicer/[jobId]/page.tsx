@@ -19,9 +19,14 @@ export default function SlicerPage() {
     const toast = useToast();
     const returnTo = searchParams.get('return');
     const startParam = searchParams.get('start');
+    const replaceChapterParam = searchParams.get('replaceChapter');
+    const replaceImagePath = searchParams.get('replaceImage');
+    const targetChapterIndex = replaceChapterParam === null ? null : Number(replaceChapterParam);
+    const isReplacingImage = Number.isInteger(targetChapterIndex) && Boolean(replaceImagePath);
     const appliedStartParam = useRef<string | null>(null);
     const [job, setJob] = useState<Job | null>(null);
     const [videoSrc, setVideoSrc] = useState('');
+    const [loadError, setLoadError] = useState('');
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // UI State
@@ -50,15 +55,27 @@ export default function SlicerPage() {
     useEffect(() => {
         if (!jobId) return;
         fetch(`${getApiBase()}/jobs/${jobId}`)
-            .then(res => res.json())
+            .then(async res => {
+                const data = await res.json().catch(() => null);
+                if (!res.ok) {
+                    throw new Error(data?.detail || 'Project not found');
+                }
+                return data;
+            })
             .then((data: Job) => {
                 setJob(data);
+                setLoadError('');
                 if (data.data_folder_name) {
                     const ext = data.video_ext || 'mp4';
                     setVideoSrc(`${getApiBase()}/data/jobs/${data.data_folder_name}/video.${ext}`);
                 }
+            })
+            .catch(err => {
+                const message = err instanceof Error ? err.message : 'Failed to load project';
+                setLoadError(message);
+                toast.error(message);
             });
-    }, [jobId]);
+    }, [jobId, toast]);
 
     useEffect(() => {
         if (!startParam) return;
@@ -70,18 +87,46 @@ export default function SlicerPage() {
         setStart(nextStart);
         setEnd(nextStart + sliceDuration);
         setSyncToPlayhead(false);
+        if (videoRef.current) {
+            videoRef.current.currentTime = nextStart;
+        }
     }, [startParam, sliceDuration]);
 
     const onLoadedMetadata = () => {
-        if (videoRef.current) {
-            setEnd(Math.min(5, videoRef.current.duration));
+        const duration = videoRef.current?.duration;
+        if (!Number.isFinite(duration) || !duration) return;
+        if (videoRef.current && start < duration) {
+            videoRef.current.currentTime = start;
         }
+
+        setEnd(prevEnd => {
+            if (start >= duration) return duration;
+            const minimumEnd = start + sliceDuration;
+            const nextEnd = Math.min(Math.max(prevEnd, minimumEnd), duration);
+            return Number(nextEnd.toFixed(3));
+        });
     };
 
     // --- Actions ---
 
     const handlePreview = async () => {
-        if (!job) return;
+        if (!job?.id) {
+            toast.error(loadError || 'Project is not loaded');
+            return;
+        }
+        if (!Number.isFinite(start) || !Number.isFinite(end)) {
+            toast.error("Slice start and end must be valid numbers");
+            return;
+        }
+        const videoDuration = videoRef.current?.duration;
+        if (Number.isFinite(videoDuration) && videoDuration && start >= videoDuration) {
+            toast.error("Slice start time is beyond the video duration");
+            return;
+        }
+        if (end <= start) {
+            toast.error("Slice end time must be after start time");
+            return;
+        }
         if ((end - start) > 10) {
             toast.error("Max duration is 10 seconds");
             return;
@@ -96,6 +141,10 @@ export default function SlicerPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ start, end, format: 'mp4' })
                 });
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => null);
+                    throw new Error(errorData?.detail || 'Video export failed');
+                }
                 const result = await res.json();
                 setDownloadUrl(`${getApiBase()}/data/jobs/${job.data_folder_name}/${result.path}`);
                 setStep('done');
@@ -106,7 +155,10 @@ export default function SlicerPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ start, end, fps })
                 });
-                if (!res.ok) throw new Error("Preview failed");
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => null);
+                    throw new Error(errorData?.detail || 'Preview failed');
+                }
                 const data = await res.json();
                 setPreviewId(data.preview_id);
                 setPreviewFrames(data.frames);
@@ -115,8 +167,7 @@ export default function SlicerPage() {
                 setStep('review');
             }
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to generate slice");
+            toast.error(e instanceof Error ? e.message : "Failed to generate slice");
         } finally {
             setProcessing(false);
         }
@@ -140,13 +191,15 @@ export default function SlicerPage() {
                     selected_files: selected
                 })
             });
-            if (!res.ok) throw new Error("Finalize failed");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                throw new Error(errorData?.detail || "Finalize failed");
+            }
             const result = await res.json();
             setDownloadUrl(`${getApiBase()}/data/jobs/${job.data_folder_name}/${result.path}`);
             setStep('done');
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to create zip");
+            toast.error(e instanceof Error ? e.message : "Failed to create zip");
         } finally {
             setProcessing(false);
         }
@@ -211,23 +264,30 @@ export default function SlicerPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     preview_id: previewId,
-                    selected_files: selected
+                    selected_files: selected,
+                    target_chapter_index: Number.isInteger(targetChapterIndex) ? targetChapterIndex : undefined,
+                    replace_image_path: replaceImagePath || undefined
                 })
             });
-            if (!res.ok) throw new Error("Save failed");
-            await res.json();
-            toast.success("Slice saved to project");
+            const result = await res.json().catch(() => null);
+            if (!res.ok) {
+                throw new Error(result?.detail || "Save failed");
+            }
+            if (!result?.images_added) {
+                throw new Error("No replacement images were attached to the project");
+            }
+            toast.success(isReplacingImage ? "Replacement image saved to project" : "Slice saved to project");
             if (returnTo) {
                 router.push(returnTo);
             }
         } catch (e) {
-            console.error(e);
-            toast.error("Failed to save slice");
+            toast.error(e instanceof Error ? e.message : "Failed to save slice");
         } finally {
             setProcessing(false);
         }
     };
 
+    if (loadError) return <div className="container">{loadError}</div>;
     if (!job) return <div className="container">Loading...</div>;
 
     return (
@@ -236,6 +296,11 @@ export default function SlicerPage() {
                 <div>
                     <h1 className="title-gradient">Video Slicer</h1>
                     <p style={{ color: '#888' }}>{job.title}</p>
+                    {isReplacingImage && (
+                        <p style={{ color: 'var(--secondary)', fontSize: '0.86rem', marginTop: '0.35rem' }}>
+                            Replacing one image in chapter {(targetChapterIndex ?? 0) + 1}. The original remains until you save selected frames.
+                        </p>
+                    )}
                 </div>
                 <a href={returnTo || `/reader/${job.id}`} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>
                     &larr; Back to Project
@@ -311,6 +376,17 @@ export default function SlicerPage() {
                                                 onClick={() => setFps(val)}>{val}</button>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+
+                            {isReplacingImage && replaceImagePath && job.data_folder_name && (
+                                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--card-border)', paddingTop: '1rem' }}>
+                                    <div style={{ fontSize: '0.78rem', color: '#aaa', marginBottom: '0.5rem' }}>Current image being replaced</div>
+                                    <img
+                                        src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${replaceImagePath}`}
+                                        alt="Current image being replaced"
+                                        style={{ width: '100%', borderRadius: '6px', border: '1px solid var(--card-border)', display: 'block' }}
+                                    />
                                 </div>
                             )}
 
@@ -392,7 +468,7 @@ export default function SlicerPage() {
                     <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button className="btn" style={{ background: '#444' }} onClick={() => setStep('input')}>Back</button>
                         <button className="btn" style={{ background: 'var(--secondary)' }} onClick={handleSaveToProject} disabled={processing}>
-                            {returnTo ? 'Add to Project & Return' : 'Add to Project'}
+                            {isReplacingImage ? 'Save Replacement & Return' : returnTo ? 'Add to Project & Return' : 'Add to Project'}
                         </button>
                         <button className="btn" onClick={handleFinalize} disabled={processing}>
                             {processing ? 'Processing...' : 'Download ZIP'}

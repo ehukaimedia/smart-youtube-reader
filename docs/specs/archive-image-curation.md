@@ -9,9 +9,10 @@ AI-selected chapter images can include poor context frames such as overlays, unr
 On the reader page, each chapter image should provide controls to:
 
 - Remove the image from that chapter's `archive.json` image list.
-- Replace the image by first removing the bad image from the chapter, then opening the slicer near that chapter's timestamp so the user can create and save a better visual.
+- Replace the image by opening the slicer near that chapter's timestamp while keeping the current image attached until replacement frames are successfully saved.
 
 The backend must persist these edits in `archive.json` so refreshes, learning prompts, and project ZIP downloads use the curated image set.
+Replacement saves must target the original chapter and image path so the backend atomically swaps only that image after the new frames are copied.
 
 ## Non-Goals
 
