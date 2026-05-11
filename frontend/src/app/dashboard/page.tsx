@@ -43,6 +43,20 @@ export default function DashboardPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+    const [groupTaskCopied, setGroupTaskCopied] = useState(false);
+    const [groupTitle, setGroupTitle] = useState('Combined Learning Digest');
+    const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(() => {
+        if (typeof window === 'undefined') return [];
+        const stored = window.localStorage.getItem('smart-reader-group-selection');
+        if (!stored) return [];
+        try {
+            const parsed = JSON.parse(stored);
+            return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
+        } catch {
+            window.localStorage.removeItem('smart-reader-group-selection');
+            return [];
+        }
+    });
     const [shareOrigin, setShareOrigin] = useState('');
     const toast = useToast();
 
@@ -63,6 +77,10 @@ export default function DashboardPage() {
         fetchJobs();
         getShareOrigin().then(setShareOrigin);
     }, []);
+
+    useEffect(() => {
+        window.localStorage.setItem('smart-reader-group-selection', JSON.stringify(selectedGroupIds));
+    }, [selectedGroupIds]);
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
@@ -102,6 +120,74 @@ export default function DashboardPage() {
         onCopied();
     };
 
+    const copyText = (text: string, onCopied: () => void) => {
+        const fallbackCopy = () => {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onCopied();
+        };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(onCopied).catch(fallbackCopy);
+            return;
+        }
+
+        fallbackCopy();
+    };
+
+    const toggleGroupSelection = (job: Job) => {
+        if (job.status !== 'complete' || !job.data_folder_name) return;
+        setSelectedGroupIds(prev => (
+            prev.includes(job.id)
+                ? prev.filter(id => id !== job.id)
+                : [...prev, job.id]
+        ));
+    };
+
+    const selectedJobs = jobs.filter(job => selectedGroupIds.includes(job.id) && job.status === 'complete' && job.data_folder_name);
+    const copyGroupAiDigestTask = () => {
+        if (selectedJobs.length < 2) {
+            toast.error('Select at least two completed projects for a group digest.');
+            return;
+        }
+
+        const projectFolders = selectedJobs.map(job => `/Volumes/Extreme SSD/AI-Applications/smart-youtube-reader/data/jobs/${job.data_folder_name}`);
+        const quotedProjects = projectFolders.map(path => `"${path}"`).join(' ');
+        const prompt = `Create a Smart YouTube Reader GROUP AI digest using the local CLI.
+
+Do not use an in-app model option. You are the group digest agent.
+
+Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel AI teaching images from that new transcript.
+
+Teaching goal:
+- Teach digestible facts, theory, and testable hypotheses.
+- Do not concatenate or lightly paraphrase the source transcripts.
+- Build a new mental model that explains what is true, why it works, when it fails, and what evidence confirms it.
+
+Workflow:
+1. Run this command to print the exact group digest task:
+   python3 tools/create_group_ai_digest_version.py ${quotedProjects} --title "${groupTitle || 'Combined Learning Digest'}"
+2. Read every archive.json and inspect the attached frame images before deciding what to keep.
+3. Merge repeated lessons across videos into a new transcript with chapter-level facts, theory, and hypotheses. Cut fluff, repetition, intros/outros, and low-value transitions.
+4. Create exactly 3 new AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
+5. Write the required JSON draft and the 3 generated images to the staging paths printed by the CLI.
+6. Materialize the group AI digest with the command printed by the CLI.
+7. Verify the dashboard shows the new project with a Group AI Digest badge and the reader opens it.
+
+Source projects:
+${projectFolders.join('\n')}`;
+        copyText(prompt, () => {
+            setGroupTaskCopied(true);
+            setTimeout(() => setGroupTaskCopied(false), 2000);
+        });
+    };
+
     return (
         <div className="container" style={{ padding: '2rem' }}>
             <header style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -117,6 +203,38 @@ export default function DashboardPage() {
             {loading ? (
                 <div>Loading projects...</div>
             ) : (
+                <>
+                <section className="glass-card" style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto auto', gap: '0.75rem', alignItems: 'center' }}>
+                    <input
+                        value={groupTitle}
+                        onChange={(event) => setGroupTitle(event.target.value)}
+                        placeholder="Group digest title"
+                        style={{
+                            width: '100%',
+                            padding: '0.75rem 0.9rem',
+                            borderRadius: '6px',
+                            border: '1px solid var(--card-border)',
+                            background: 'rgba(255,255,255,0.04)',
+                            color: 'var(--foreground)'
+                        }}
+                    />
+                    <button
+                        onClick={copyGroupAiDigestTask}
+                        disabled={selectedJobs.length < 2}
+                        className="btn"
+                        style={{ background: groupTaskCopied ? 'var(--secondary)' : 'var(--success)', opacity: selectedJobs.length < 2 ? 0.5 : 1 }}
+                    >
+                        {groupTaskCopied ? 'Copied Group Task' : `Copy Group AI Digest CLI Task (${selectedJobs.length})`}
+                    </button>
+                    <button
+                        onClick={() => setSelectedGroupIds([])}
+                        className="btn"
+                        style={{ background: 'rgba(255,255,255,0.08)' }}
+                    >
+                        Clear Group
+                    </button>
+                </section>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem' }}>
                     {jobs.length === 0 && (
                         <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', border: '1px dashed var(--card-border)', borderRadius: '12px' }}>
@@ -130,6 +248,15 @@ export default function DashboardPage() {
                         const thumbnailUrl = job.summary_image && job.data_folder_name
                             ? `${getApiBase()}/data/jobs/${job.data_folder_name}/${job.summary_image}`
                             : getYouTubeThumbnailUrl(job.video_url);
+                        const isSelectedForGroup = selectedGroupIds.includes(job.id);
+                        const canGroup = job.status === 'complete' && Boolean(job.data_folder_name);
+                        const kindLabel = job.kind === 'group_ai_digest'
+                            ? 'Group AI Digest'
+                            : job.kind === 'ai_digest'
+                                ? 'AI Digest'
+                                : job.summary_image
+                                    ? 'AI Summary'
+                                    : null;
 
                         return (
                         <div key={job.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s' }}>
@@ -157,9 +284,9 @@ export default function DashboardPage() {
                                     <span className={`status-badge status-${job.status}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }}>
                                         {job.status}
                                     </span>
-                                    {job.kind === 'ai_digest' && (
+                                    {kindLabel && (
                                         <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(16,185,129,0.16)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.35)' }}>
-                                            AI Digest
+                                            {kindLabel}
                                         </span>
                                     )}
                                 </div>
@@ -184,6 +311,16 @@ export default function DashboardPage() {
                             <Link href={`/reader/${job.id}`} className="btn" style={{ textAlign: 'center' }}>
                                 Open Project
                             </Link>
+
+                            {canGroup && (
+                                <button
+                                    onClick={() => toggleGroupSelection(job)}
+                                    className="btn"
+                                    style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem', background: isSelectedForGroup ? 'var(--success)' : 'rgba(255,255,255,0.08)' }}
+                                >
+                                    {isSelectedForGroup ? 'Added to Group' : 'Add to Group'}
+                                </button>
+                            )}
 
                             <a
                                 href={projectShareUrl}
@@ -227,6 +364,7 @@ export default function DashboardPage() {
                         </div>
                     )})}
                 </div>
+                </>
             )}
         </div>
     );

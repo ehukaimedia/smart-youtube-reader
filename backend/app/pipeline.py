@@ -207,9 +207,15 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         if archive_result and archive_result.get('archive'):
             final_folder = job_dir.name
             for chapter in archive_result['archive']:
+                image_context = chapter.get('_image_context') or {}
                 chapter['images'] = [
                     f"frames/{img}" for img in chapter.get('images', [])
                 ]
+                if image_context:
+                    chapter['_image_context'] = {
+                        f"frames/{image_path}": metadata
+                        for image_path, metadata in image_context.items()
+                    }
             archive_result['folder'] = final_folder
             with open(job_dir / "archive.json", "w") as f:
                 json.dump(archive_result, f)

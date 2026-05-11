@@ -267,7 +267,7 @@ const BANDS = [
 const NODES = [
   { id:'home',         label:'Home Page',       sub:'app/page.tsx',                     x: 40, y: 50,  w:145, h:52, layer:'ui' },
   { id:'dashboard',    label:'Dashboard',       sub:'cards, digest thumbnails, links',  x:215, y: 50,  w:145, h:52, layer:'ui' },
-  { id:'reader',       label:'Reader',          sub:'archive preview, slice manifests', x:390, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'reader',       label:'Reader',          sub:'archive preview, image QA',        x:390, y: 50,  w:145, h:52, layer:'ui' },
   { id:'slicer-ui',    label:'Slicer UI',       sub:'app/slicer/[jobId]/page.tsx',      x:565, y: 50,  w:145, h:52, layer:'ui' },
   { id:'api-client',   label:'API Client',      sub:'frontend/lib/api.ts',             x:740, y: 50,  w:145, h:52, layer:'ui' },
   { id:'toast',        label:'Toast Provider',  sub:'DOM alerts + confirmations',      x:915, y: 50,  w:145, h:52, layer:'ui' },
@@ -275,8 +275,8 @@ const NODES = [
   { id:'schemas',      label:'Schemas',         sub:'backend/app/schemas.py',          x:565, y:175,  w:145, h:52, layer:'api' },
   { id:'pipeline',     label:'Pipeline',        sub:'backend/app/pipeline.py',         x:120, y:300,  w:155, h:52, layer:'core' },
   { id:'jobs',         label:'Job Store',       sub:'backend/app/jobs.py',             x:390, y:300,  w:145, h:52, layer:'core' },
-  { id:'digest',       label:'AI Digest CLI',   sub:'tools/create_ai_digest_version.py', x:740, y:300,  w:145, h:52, layer:'core' },
-  { id:'summary-cli',  label:'Summary CLI',     sub:'tools/create_summary_thumbnail.py', x:915, y:300,  w:145, h:52, layer:'core' },
+  { id:'digest',       label:'AI Digest CLI',   sub:'text-only or generated images', x:740, y:300,  w:145, h:52, layer:'core' },
+  { id:'summary-cli',  label:'Summary CLI',     sub:'manual thumbnail utility', x:915, y:300,  w:145, h:52, layer:'core' },
   { id:'frames',       label:'Frame Manager',   sub:'backend/app/frames.py',           x: 40, y:425,  w:155, h:52, layer:'processing' },
   { id:'intelligence', label:'AI Intelligence', sub:'backend/app/intelligence.py',     x:270, y:425,  w:165, h:52, layer:'processing' },
   { id:'slicing',      label:'Video Slicer',    sub:'backend/app/slicing.py',          x:565, y:425,  w:145, h:52, layer:'processing' },
@@ -286,8 +286,7 @@ const NODES = [
   { id:'data-dir',     label:'Job Directory',   sub:'data/jobs/{slug}_{uuid}/',        x:565, y:550,  w:145, h:52, layer:'data' },
   { id:'youtube',      label:'YouTube',         sub:'yt-dlp + TranscriptAPI',          x: 40, y:675,  w:155, h:52, layer:'external' },
   { id:'ffmpeg',       label:'FFmpeg',          sub:'Frame extraction + encoding',     x:230, y:675,  w:145, h:52, layer:'external' },
-  { id:'ollama',       label:'Ollama (Local)',   sub:'archive generation models',       x:420, y:675,  w:155, h:52, layer:'external' },
-  { id:'nvidia',       label:'NVIDIA NIM',      sub:'Cloud AI + Vision API',          x:615, y:675,  w:145, h:52, layer:'external' },
+  { id:'ollama',       label:'Ollama Local',     sub:'Gemma4 smart-reader model',       x:420, y:675,  w:155, h:52, layer:'external' },
 ];
 
 const CONN_TYPES = {
@@ -303,8 +302,7 @@ const CONNECTIONS = [
   { from:'reader',      to:'main',         type:'event',      label:'polls 2s' },
   { from:'reader',      to:'main',         type:'data-flow',  label:'curate images' },
   { from:'reader',      to:'data-dir',     type:'data-flow',  label:'load slice timestamps' },
-  { from:'reader',      to:'digest',       type:'event',      label:'copy CLI task' },
-  { from:'reader',      to:'summary-cli',  type:'event',      label:'copy CLI task' },
+  { from:'reader',      to:'digest',       type:'event',      label:'copy digest tasks' },
   { from:'slicer-ui',   to:'main',         type:'data-flow',  label:'POST /slicer' },
   { from:'dashboard',   to:'toast',        type:'event',      label:'confirm' },
   { from:'reader',      to:'toast',        type:'event',      label:'confirm' },
@@ -332,7 +330,6 @@ const CONNECTIONS = [
   { from:'pipeline',    to:'youtube',      type:'tool-call',  label:'download + transcript' },
   { from:'pipeline',    to:'ffmpeg',       type:'tool-call',  label:'extract frames' },
   { from:'intelligence',to:'ollama',       type:'tool-call',  label:'local chat' },
-  { from:'intelligence',to:'nvidia',       type:'tool-call',  label:'cloud + vision' },
   { from:'slicing',     to:'ffmpeg',       type:'tool-call',  label:'encode video' },
 ];
 
@@ -735,13 +732,13 @@ function updatePrompt() {
   out += [
     'System overview:',
     '• yt-dlp downloads the YouTube video and extracts its transcript (VTT fallback)',
-    '• FFmpeg captures frames at fixed intervals; imagehash deduplicates via pHash',
-    '• An LLM (Ollama locally or NVIDIA NIM for cloud/vision) generates semantic chapters from the transcript',
-    '• Chapters are paired with representative frames and written to archive.json',
+    '• FFmpeg captures frames at fixed intervals; imagehash records pHash plus local visual-quality signals',
+    '• The Gemma4-based smart-reader Ollama model generates semantic chapters from timestamped transcript evidence',
+    '• Chapters are paired with representative frames by metadata ranking and written to archive.json with image context',
     '• The Reader page polls GET /jobs/{id} every 2 seconds until processing completes',
     '• AI digest versions are created by an external-agent CLI draft, not a backend digest model',
     '• The Slicer UI lets users select frame ranges and export clips via FFmpeg',
-    '• Reader replacement flow uses source frames.json plus slice manifests for exact image timestamps',
+    '• Reader image QA shows timestamp/quality signals and opens the slicer for operator replacement',
   ].join('\n');
 
   if (state.comments.length) {

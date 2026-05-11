@@ -16,8 +16,8 @@
 ## Features
 
 - **Semantic chapters** — AI reads the transcript and groups it into logical sections with titles and summaries
-- **Visual matching** — Each chapter is paired with the most relevant frames from the video
-- **Model choice** — Use a local Ollama model (free, private) or a cloud NVIDIA NIM model (more powerful)
+- **Visual matching** — Each chapter is paired with high-signal frames from the video using local frame metadata
+- **Local model** — Archive generation uses `smart-reader:latest`, built from the Gemma4-based Modelfile
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
 - **Video Slicer** — Cut precise clips from any job and export them with full metadata
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
@@ -53,24 +53,9 @@ Then open `http://localhost:3001`.
 ## Prerequisites
 
 - [Ollama](https://ollama.com/) installed and running (`ollama serve`)
-- At least one model pulled, e.g. `ollama pull gemma4`
+- `smart-reader:latest` built from `backend/modelfiles/smart-reader.Modelfile`
 - [FFmpeg](https://ffmpeg.org/) — `brew install ffmpeg`
 - Node.js 18+ and Python 3.10+
-
-## Using NVIDIA Cloud Models (optional)
-
-If you have an [NVIDIA NIM API key](https://build.nvidia.com/), you can use powerful cloud models instead of (or alongside) local Ollama models.
-
-1. Open `backend/.env`
-2. Replace the placeholder with your key:
-   ```
-   NVIDIA_API_KEY=nvapi-your-key-here
-   ```
-3. Restart the backend
-
-The model dropdown on the home page will then show both local and cloud options, including free-tier models like `minimax/minimax-m2.7`.
-
-> **Tip:** Vision-capable models (e.g. `nvidia/llama-3.2-11b-vision-instruct`) do AI-verified image matching. Text-only models still generate chapters but use timestamp-based image selection instead.
 
 ## Tech Stack
 
@@ -78,8 +63,7 @@ The model dropdown on the home page will then show both local and cloud options,
 |---|---|
 | Frontend | Next.js (React) — `http://localhost:3001` |
 | Backend | FastAPI (Python) — `http://localhost:8001` |
-| Local AI | Ollama |
-| Cloud AI | NVIDIA NIM (OpenAI-compatible) |
+| Local AI | Ollama (`smart-reader:latest`) |
 | Video | yt-dlp + FFmpeg |
 | Storage | Local filesystem (no database) |
 
@@ -102,6 +86,16 @@ python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "
 ```
 
 The CLI creates a separate `kind: ai_digest` project under `data/jobs/`. It preserves image references from kept source chapters; image removal and replacement stay in the human curation workflow.
+
+## Group AI Digest CLI
+
+Group digest creation combines two or more completed projects into one new learning project. Unlike a single-video digest, a group digest does not preserve original frame paths. Source frames are evidence only. The materialized group project contains a novel transcript and exactly three newly generated teaching images. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
+
+```bash
+python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/jobs/<project-two>" --title "Combined Learning Digest"
+```
+
+That prints the exact task for Codex, Claude, or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge.
 
 ## Summary Thumbnail CLI
 

@@ -17,6 +17,7 @@ type Job = {
     kind?: string | null;
     source_job_id?: string | null;
     digest_model?: string | null;
+    media_policy?: string | null;
 };
 
 type TranscriptLine = {
@@ -32,6 +33,7 @@ type ArchiveChapter = {
     timestamp_start: number;
     timestamp_end?: number;
     images?: string[];
+    _image_context?: Record<string, FrameMetadata>;
     _slice_id?: string;
     type: 'chapter';
     sortTime: number;
@@ -39,10 +41,15 @@ type ArchiveChapter = {
 
 type ArchiveMetadata = {
     summary_image?: string;
+    media_policy?: string;
 };
 
 type FrameMetadata = {
     timestamp?: number;
+    visual_score?: number;
+    edge_density?: number;
+    dark_ratio?: number;
+    skin_ratio?: number;
 };
 
 type SliceManifest = {
@@ -59,8 +66,8 @@ export default function ReaderPage() {
     const [error, setError] = useState('');
     const [promptCopied, setPromptCopied] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
-    const [imageTaskCopied, setImageTaskCopied] = useState(false);
     const [digestTaskCopied, setDigestTaskCopied] = useState(false);
+    const [digestWithImagesTaskCopied, setDigestWithImagesTaskCopied] = useState(false);
 
     const copyText = (text: string, onCopied: () => void) => {
         const fallbackCopy = () => {
@@ -95,7 +102,7 @@ Archive JSON: ${archiveUrl}
 Each chapter in the archive has:
 - concept: topic title
 - summary: one-sentence overview
-- content: full transcript text for the section
+- content: compact transcript-grounded teaching evidence for the section
 - timestamp_start / timestamp_end: seconds into the video
 - images: array of frame filenames — fetch and read these, they often contain slides, diagrams, and visual explanations that are NOT in the transcript text
 
@@ -123,38 +130,52 @@ What would you like to know about this video?`;
         copyText(url, onCopied);
     };
 
-    const copyCodexImageTask = (job: Job) => {
-        const archiveUrl = `${getApiBase()}/jobs/${job.id}/archive`;
-        const baseUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}`;
-        const projectFolder = `/Volumes/Extreme SSD/AI-Applications/smart-youtube-reader/data/jobs/${job.data_folder_name}`;
-        const prompt = `Create a Smart YouTube Reader summary image for this project by running the local CLI.
+    const copyAiDigestWithImagesTask = (job: Job) => {
+        const projectFolder = `data/jobs/${job.data_folder_name}`;
+        const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
+        const prompt = `Create a Smart YouTube Reader AI digest version with generated teaching images for this project using the local CLI.
 
-The CLI reads archive.json, inspects the attached frame images, creates generated/summary.png, and updates archive.json and manifest.json so the image becomes the dashboard thumbnail.
+Do not use an in-app model option. You are the digest-and-image agent.
+Run commands from the smart-youtube-reader repo root.
 
-Video: "${job.title || job.id}"
-YouTube: ${job.video_url || '(not available)'}
-Archive JSON: ${archiveUrl}
-Frame base URL: ${baseUrl}
-Local project folder: ${projectFolder}
+Important:
+- Read archive.json and inspect the attached frame images before deciding what to keep.
+- Create a new digestible chapter structure, not a light paraphrase.
+- Create one novel generated teaching image per digest chapter.
+- Keep the digest to at most 6 chapters/images. If the material truly needs more than 6 images, explain the needed count in operator_image_note and still produce the best 6-image digest.
+- Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
 
-Command:
-python3 tools/create_summary_thumbnail.py "${projectFolder}"
+Workflow:
+1. Run this command to print the exact digest-with-images task:
+   python3 tools/create_ai_digest_version.py "${projectFolder}" --with-images
+2. Read archive.json and inspect the attached frame images as evidence.
+3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
+4. Preserve durable facts, theory, procedures, examples, caveats, failure modes, and useful visual explanations.
+5. Save the generated images under:
+   ${projectFolder}/generated/
+6. Write the required JSON draft to:
+   ${draftPath}
+7. Materialize the new AI digest project:
+   python3 tools/create_ai_digest_version.py "${projectFolder}" --draft "${draftPath}"
+8. Verify the dashboard shows the new project with an AI Digest badge and the reader opens it with one generated image per chapter.
 
-After running it, verify the reader shows "Video Summary Image" and the dashboard uses generated/summary.png as the project thumbnail.`;
+Source project:
+${projectFolder}`;
         const onCopied = () => {
-            setImageTaskCopied(true);
-            setTimeout(() => setImageTaskCopied(false), 2000);
+            setDigestWithImagesTaskCopied(true);
+            setTimeout(() => setDigestWithImagesTaskCopied(false), 2000);
         };
 
         copyText(prompt, onCopied);
     };
 
     const copyAiDigestTask = (job: Job) => {
-        const projectFolder = `/Volumes/Extreme SSD/AI-Applications/smart-youtube-reader/data/jobs/${job.data_folder_name}`;
+        const projectFolder = `data/jobs/${job.data_folder_name}`;
         const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
         const prompt = `Create a Smart YouTube Reader AI digest version for this project using the local CLI.
 
 Do not use an in-app model option. You are the digest agent.
+Run commands from the smart-youtube-reader repo root.
 
 Workflow:
 1. Run this command to print the exact digest task:
@@ -216,9 +237,10 @@ ${projectFolder}`;
                 <div>
                     <h2 className="title-gradient" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Smart Reader</h2>
                     {job.title && <h1 style={{ fontSize: '1.2rem', fontWeight: 500 }}>{job.title}</h1>}
-                    {job.kind === 'ai_digest' && (
+                    {(job.kind === 'ai_digest' || job.kind === 'group_ai_digest') && (
                         <p style={{ color: 'var(--success)', fontSize: '0.78rem', marginTop: '0.25rem' }}>
-                            AI Digest Version{job.source_job_id ? ` from ${job.source_job_id.slice(0, 8)}` : ''}
+                            {job.kind === 'group_ai_digest' ? 'Group AI Digest' : 'AI Digest Version'}
+                            {job.source_job_id ? ` from ${job.source_job_id.slice(0, 8)}` : ''}
                         </p>
                     )}
                 </div>
@@ -226,14 +248,23 @@ ${projectFolder}`;
                     <strong>{job.status}</strong>
                     {job.status === 'complete' && job.data_folder_name && (
                         <>
-                            {job.kind !== 'ai_digest' && (
-                                <button
-                                    onClick={() => copyAiDigestTask(job)}
-                                    className="btn"
-                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: digestTaskCopied ? 'var(--secondary)' : 'var(--success)' }}
-                                >
-                                    {digestTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
-                                </button>
+                            {!job.kind && (
+                                <>
+                                    <button
+                                        onClick={() => copyAiDigestTask(job)}
+                                        className="btn"
+                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: digestTaskCopied ? 'var(--secondary)' : 'var(--success)' }}
+                                    >
+                                        {digestTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
+                                    </button>
+                                    <button
+                                        onClick={() => copyAiDigestWithImagesTask(job)}
+                                        className="btn"
+                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: digestWithImagesTaskCopied ? 'var(--secondary)' : undefined }}
+                                    >
+                                        {digestWithImagesTaskCopied ? 'Copied Images Task' : 'Copy AI Digest with Images CLI Task'}
+                                    </button>
+                                </>
                             )}
                             <button
                                 onClick={() => copyLearningPrompt(job)}
@@ -249,15 +280,6 @@ ${projectFolder}`;
                             >
                                 {linkCopied ? 'Copied Link' : 'Copy Project Link'}
                             </button>
-                            {job.kind === 'ai_digest' && (
-                                <button
-                                    onClick={() => copyCodexImageTask(job)}
-                                    className="btn"
-                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: imageTaskCopied ? 'var(--secondary)' : undefined }}
-                                >
-                                    {imageTaskCopied ? 'Copied Image Task' : 'Copy Codex Image Task'}
-                                </button>
-                            )}
                             <a
                                 href={`${getApiBase()}/jobs/${job.id}/download`}
                                 download={`${job.data_folder_name || job.id}.zip`}
@@ -269,9 +291,11 @@ ${projectFolder}`;
                         </>
                     )}
 
-                    <a href={`/slicer/${job.id}`} className="btn" style={{ background: 'var(--secondary)' }}>
-                        Open Slicer
-                    </a>
+                    {job.kind !== 'group_ai_digest' && job.media_policy !== 'lightweight_generated_images_only' && (
+                        <a href={`/slicer/${job.id}`} className="btn" style={{ background: 'var(--secondary)' }}>
+                            Open Slicer
+                        </a>
+                    )}
                 </span>
             </header>
 
@@ -299,7 +323,7 @@ ${projectFolder}`;
                     {/* AI Archive — primary content */}
                     <div className="glass-card" style={{ borderColor: 'var(--secondary)' }}>
                         <h3 className="title-gradient" style={{ marginBottom: '1rem' }}>AI Archive</h3>
-                        <ArchivePreview jobId={job.id} folderName={job.data_folder_name || undefined} videoUrl={job.video_url || undefined} />
+                        <ArchivePreview jobId={job.id} folderName={job.data_folder_name || undefined} videoUrl={job.video_url || undefined} kind={job.kind || undefined} />
                     </div>
 
                     {/* Raw Transcript — collapsible secondary */}
@@ -335,7 +359,7 @@ ${projectFolder}`;
     );
 }
 
-function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folderName?: string, videoUrl?: string }) {
+function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, folderName?: string, videoUrl?: string, kind?: string }) {
     const router = useRouter();
     const toast = useToast();
     const videoId = videoUrl?.match(/[?&]v=([^&]+)/)?.[1];
@@ -344,6 +368,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
     const [frameMetadata, setFrameMetadata] = useState<Record<string, FrameMetadata>>({});
     const [loading, setLoading] = useState(true);
     const [imageAction, setImageAction] = useState('');
+    const usesGeneratedOnlyImages = kind === 'group_ai_digest';
 
     const loadArchive = useCallback(async () => {
         if (!folderName) return;
@@ -359,33 +384,38 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                 }));
                 setTimeline(chapters);
                 setArchiveMeta({
-                    summary_image: data.summary_image
+                    summary_image: data.summary_image,
+                    media_policy: data.media_policy
                 });
-                const nextFrameMetadata: Record<string, FrameMetadata> = await fetch(`${getApiBase()}/data/jobs/${folderName}/frames.json`, { cache: 'no-store' })
-                    .then(res => res.ok ? res.json() : {})
-                    .catch(() => ({}));
+                const nextFrameMetadata: Record<string, FrameMetadata> = {};
+                const archiveUsesGeneratedOnlyImages = usesGeneratedOnlyImages || data.media_policy === 'lightweight_generated_images_only';
+                if (!archiveUsesGeneratedOnlyImages) {
+                    Object.assign(nextFrameMetadata, await fetch(`${getApiBase()}/data/jobs/${folderName}/frames.json`, { cache: 'no-store' })
+                        .then(res => res.ok ? res.json() : {})
+                        .catch(() => ({})));
 
-                const sliceIds = Array.from(new Set(
-                    chapters.flatMap(chapter => (chapter.images || [])
-                        .map(imagePath => imagePath.match(/^slices\/([^/]+)\/frames\/.+$/)?.[1])
-                        .filter((sliceId): sliceId is string => Boolean(sliceId))
-                    )
-                ));
+                    const sliceIds = Array.from(new Set(
+                        chapters.flatMap(chapter => (chapter.images || [])
+                            .map(imagePath => imagePath.match(/^slices\/([^/]+)\/frames\/.+$/)?.[1])
+                            .filter((sliceId): sliceId is string => Boolean(sliceId))
+                        )
+                    ));
 
-                const sliceManifests = await Promise.all(sliceIds.map(async sliceId => {
-                    const manifest = await fetch(`${getApiBase()}/data/jobs/${folderName}/slices/${sliceId}/slice.json`, { cache: 'no-store' })
-                        .then(res => res.ok ? res.json() : null)
-                        .catch(() => null) as SliceManifest | null;
-                    return { sliceId, manifest };
-                }));
+                    const sliceManifests = await Promise.all(sliceIds.map(async sliceId => {
+                        const manifest = await fetch(`${getApiBase()}/data/jobs/${folderName}/slices/${sliceId}/slice.json`, { cache: 'no-store' })
+                            .then(res => res.ok ? res.json() : null)
+                            .catch(() => null) as SliceManifest | null;
+                        return { sliceId, manifest };
+                    }));
 
-                for (const { sliceId, manifest } of sliceManifests) {
-                    if (!manifest?.frames) continue;
-                    for (const frame of manifest.frames) {
-                        if (!frame.filename || typeof frame.timestamp !== 'number') continue;
-                        nextFrameMetadata[`slices/${sliceId}/frames/${frame.filename}`] = {
-                            timestamp: frame.timestamp
-                        };
+                    for (const { sliceId, manifest } of sliceManifests) {
+                        if (!manifest?.frames) continue;
+                        for (const frame of manifest.frames) {
+                            if (!frame.filename || typeof frame.timestamp !== 'number') continue;
+                            nextFrameMetadata[`slices/${sliceId}/frames/${frame.filename}`] = {
+                                timestamp: frame.timestamp
+                            };
+                        }
                     }
                 }
 
@@ -396,7 +426,7 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
         } finally {
             setLoading(false);
         }
-    }, [folderName, jobId]);
+    }, [folderName, jobId, usesGeneratedOnlyImages]);
 
     const deleteSlice = async (sliceId: string | undefined) => {
         if (!sliceId) return;
@@ -463,7 +493,8 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
         await removeArchiveImage(chapterIndex, imagePath, chapter?.timestamp_start ?? 0);
     };
 
-    const findFrameTimestamp = (imagePath: string) => {
+    const findFrameInfo = (imagePath: string, chapter?: ArchiveChapter): FrameMetadata | undefined => {
+        if (chapter?._image_context?.[imagePath]) return chapter._image_context[imagePath];
         const filename = imagePath.split('/').pop() || imagePath;
         const stem = filename.replace(/\.[^.]+$/, '');
         const candidates = [
@@ -477,20 +508,37 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
             `frames/${stem}.jpeg`,
         ];
         for (const candidate of candidates) {
-            const timestamp = frameMetadata[candidate]?.timestamp;
-            if (typeof timestamp === 'number') return timestamp;
+            const info = frameMetadata[candidate];
+            if (info) return info;
         }
         return undefined;
+    };
+
+    const formatTimestamp = (seconds?: number) => {
+        if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return 'time unknown';
+        const clamped = Math.max(0, seconds);
+        return `${Math.floor(clamped / 60)}:${String(Math.floor(clamped % 60)).padStart(2, '0')}`;
+    };
+
+    const qualityLabel = (info?: FrameMetadata) => {
+        if (typeof info?.visual_score !== 'number') return 'score n/a';
+        return `score ${Math.round(info.visual_score * 100)}`;
     };
 
     const replaceInSlicer = async (chapterIndex: number, imagePath: string, timestampStart: number) => {
         const confirmed = await toast.confirm('Open the slicer to choose a replacement? The current image will stay attached until the replacement is saved.', { confirmLabel: 'Open Slicer' });
         if (!confirmed) return;
-        const imageTimestamp = findFrameTimestamp(imagePath);
+        const imageTimestamp = findFrameInfo(imagePath, timeline[chapterIndex])?.timestamp;
         const replacementStart = typeof imageTimestamp === 'number' ? imageTimestamp - 2 : timestampStart;
         const start = Math.max(0, Math.floor(replacementStart));
         const returnTo = encodeURIComponent(`/reader/${jobId}#chapter-${chapterIndex}`);
         router.push(`/slicer/${jobId}?start=${start}&return=${returnTo}&replaceChapter=${chapterIndex}&replaceImage=${encodeURIComponent(imagePath)}`);
+    };
+
+    const openChapterSlicer = (chapterIndex: number, timestampStart: number) => {
+        const start = Math.max(0, Math.floor(timestampStart));
+        const returnTo = encodeURIComponent(`/reader/${jobId}#chapter-${chapterIndex}`);
+        router.push(`/slicer/${jobId}?start=${start}&return=${returnTo}&replaceChapter=${chapterIndex}`);
     };
 
     useEffect(() => {
@@ -505,6 +553,8 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
         }, 100);
     }, [loading, timeline.length]);
 
+    const hideSourceImageControls = usesGeneratedOnlyImages || archiveMeta.media_policy === 'lightweight_generated_images_only';
+
     if (loading) return <div className="blink">Loading Archive Preview... (Waiting for file)</div>;
     if (timeline.length === 0) return <div style={{ color: 'red' }}>Archive could not be loaded.</div>;
 
@@ -512,10 +562,12 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {archiveMeta.summary_image && (
                 <section style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
-                    <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)', marginBottom: '0.75rem' }}>Video Summary Image</h4>
+                    <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)', marginBottom: '0.75rem' }}>
+                        {usesGeneratedOnlyImages ? 'Group Summary Image' : 'Video Summary Image'}
+                    </h4>
                     <img
                         src={`${getApiBase()}/data/jobs/${folderName}/${archiveMeta.summary_image}`}
-                        alt="AI-generated video summary"
+                        alt={usesGeneratedOnlyImages ? 'AI-generated group summary' : 'AI-generated video summary'}
                         style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block' }}
                     />
                 </section>
@@ -525,13 +577,22 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)' }}>{item.concept}</h4>
-                            {item._slice_id && (
+                            {!hideSourceImageControls && (
+                                <button
+                                    onClick={() => openChapterSlicer(idx, item.timestamp_start)}
+                                    title="Open slicer at this chapter to add curated teaching images"
+                                    style={{ background: 'none', border: '1px solid var(--card-border)', borderRadius: '4px', color: '#bbb', cursor: 'pointer', padding: '1px 6px', fontSize: '0.7rem' }}
+                                >
+                                    Improve images
+                                </button>
+                            )}
+                            {!hideSourceImageControls && item._slice_id && (
                                 <button
                                     onClick={() => deleteSlice(item._slice_id)}
                                     title="Remove operator-curated visuals"
                                     style={{ background: 'none', border: '1px solid var(--secondary)', borderRadius: '4px', color: 'var(--secondary)', cursor: 'pointer', padding: '1px 6px', fontSize: '0.7rem' }}
                                 >
-                                    ✨ curated — remove
+                                    curated - remove
                                 </button>
                             )}
                         </div>
@@ -553,36 +614,64 @@ function ArchivePreview({ jobId, folderName, videoUrl }: { jobId: string, folder
                     <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '1rem' }}>{item.summary}</p>
                     <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>{item.content}</p>
 
-                    {item.images && item.images.length > 0 && (
+                    {item.images && item.images.length > 0 ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                            {item.images.map((img: string, i: number) => (
-                                <div key={`${img}-${i}`} style={{ position: 'relative' }}>
-                                    <img
-                                        src={`${getApiBase()}/data/jobs/${folderName}/${img}`}
-                                        alt={`Scene ${i}`}
-                                        style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block' }}
-                                    />
-                                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.4rem' }}>
-                                        <button
-                                            onClick={() => replaceInSlicer(idx, img, item.timestamp_start)}
-                                            disabled={Boolean(imageAction)}
-                                            title="Open slicer and replace this image after saving"
-                                            style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.75rem' }}
-                                        >
-                                            Replace
-                                        </button>
-                                        <button
-                                            onClick={() => removeImage(idx, img)}
-                                            disabled={Boolean(imageAction)}
-                                            title="Remove this image from chapter context"
-                                            style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', width: '1.75rem', height: '1.75rem', fontSize: '1rem', lineHeight: 1 }}
-                                        >
-                                            ×
-                                        </button>
+                            {item.images.map((img: string, i: number) => {
+                                const info = findFrameInfo(img, item);
+                                const isGeneratedImage = img.startsWith('generated/');
+                                return (
+                                    <div key={`${img}-${i}`} style={{ position: 'relative', minWidth: 0 }}>
+                                        <img
+                                            src={`${getApiBase()}/data/jobs/${folderName}/${img}`}
+                                            alt={`Scene ${i}`}
+                                            style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block', background: '#000' }}
+                                        />
+                                        {!hideSourceImageControls && !isGeneratedImage && (
+                                            <div style={{ position: 'absolute', left: '0.5rem', bottom: '0.5rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', maxWidth: 'calc(100% - 1rem)' }}>
+                                                <span style={{ border: '1px solid rgba(255,255,255,0.24)', borderRadius: '999px', background: 'rgba(0,0,0,0.72)', color: '#fff', padding: '0.15rem 0.45rem', fontSize: '0.7rem' }}>
+                                                    {formatTimestamp(info?.timestamp)}
+                                                </span>
+                                                <span style={{ border: '1px solid rgba(255,255,255,0.24)', borderRadius: '999px', background: 'rgba(0,0,0,0.72)', color: '#fff', padding: '0.15rem 0.45rem', fontSize: '0.7rem' }}>
+                                                    {qualityLabel(info)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!hideSourceImageControls && !isGeneratedImage && (
+                                            <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.4rem' }}>
+                                                <button
+                                                    onClick={() => replaceInSlicer(idx, img, item.timestamp_start)}
+                                                    disabled={Boolean(imageAction)}
+                                                    title="Open slicer and replace this image after saving"
+                                                    style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.75rem' }}
+                                                >
+                                                    Replace
+                                                </button>
+                                                <button
+                                                    onClick={() => removeImage(idx, img)}
+                                                    disabled={Boolean(imageAction)}
+                                                    title="Remove this image from chapter context"
+                                                    style={{ border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', background: 'rgba(0,0,0,0.72)', color: '#fff', cursor: 'pointer', width: '1.75rem', height: '1.75rem', fontSize: '1rem', lineHeight: 1 }}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
+                    ) : !hideSourceImageControls ? (
+                        <button
+                            onClick={() => openChapterSlicer(idx, item.timestamp_start)}
+                            className="btn"
+                            style={{ marginTop: '1rem', background: '#333', fontSize: '0.85rem' }}
+                        >
+                            Add images in slicer
+                        </button>
+                    ) : (
+                        <p style={{ color: '#777', fontSize: '0.85rem', marginTop: '1rem' }}>
+                            Group digest image pending.
+                        </p>
                     )}
                 </div>
             ))}

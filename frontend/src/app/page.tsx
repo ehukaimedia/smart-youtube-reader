@@ -30,10 +30,13 @@ export default function Home() {
 
     setLoading(true);
     try {
+      const payload: { video_url: string; model?: string } = { video_url: url };
+      if (selectedModel) payload.model = selectedModel;
+
       const res = await fetch(`${getApiBase()}/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video_url: url, model: selectedModel }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error('Failed to create job');

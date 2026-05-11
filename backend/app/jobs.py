@@ -5,6 +5,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Dict
+from urllib.parse import parse_qs, urlparse
 
 from .schemas import JobCreateRequest, JobResponse, JobStatus
 
@@ -25,6 +26,7 @@ class Job:
         self.source_job_id = None
         self.digest_model = None
         self.summary_image = None
+        self.media_policy = None
         self._manifest_mtime = None
 
     @property
@@ -61,6 +63,7 @@ class Job:
         self.source_job_id = data.get("source_job_id", self.source_job_id)
         self.digest_model = data.get("digest_model", self.digest_model)
         self.summary_image = data.get("summary_image", self.summary_image)
+        self.media_policy = data.get("media_policy", self.media_policy)
 
     def to_response(self) -> JobResponse:
         self.refresh_manifest_metadata()
@@ -79,11 +82,32 @@ class Job:
             kind=self.kind,
             source_job_id=self.source_job_id,
             digest_model=self.digest_model,
-            summary_image=self.summary_image
+            summary_image=self.summary_image,
+            media_policy=self.media_policy
         )
 
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
+
+def normalized_video_key(video_url: str | None) -> str:
+    if not video_url:
+        return ""
+    try:
+        parsed = urlparse(video_url)
+        host = parsed.netloc.lower().replace("www.", "")
+        if "youtu.be" in host:
+            video_id = parsed.path.strip("/").split("/")[0]
+        elif "youtube.com" in host:
+            parts = [part for part in parsed.path.split("/") if part]
+            if parts and parts[0] in {"shorts", "embed"} and len(parts) > 1:
+                video_id = parts[1]
+            else:
+                video_id = parse_qs(parsed.query).get("v", [""])[0]
+        else:
+            video_id = ""
+        return video_id or video_url.strip()
+    except Exception:
+        return video_url.strip()
 
 class JobStore:
     def __init__(self):
@@ -137,6 +161,7 @@ class JobStore:
                     job.source_job_id = data.get('source_job_id')
                     job.digest_model = data.get('digest_model')
                     job.summary_image = data.get('summary_image')
+                    job.media_policy = data.get('media_policy')
 
                     self._jobs[job_id] = job
                 except Exception as e:
@@ -148,6 +173,31 @@ class JobStore:
         self._jobs[job_id] = job
         return job
 
+    def find_reusable_job(self, payload: JobCreateRequest) -> Job | None:
+        self._load_from_disk()
+        requested_key = normalized_video_key(payload.video_url)
+        if not requested_key:
+            return None
+
+        matches = [
+            job for job in self._jobs.values()
+            if not job.kind
+            and job.status != JobStatus.failed
+            and normalized_video_key(job.payload.video_url) == requested_key
+        ]
+        if not matches:
+            return None
+
+        status_rank = {
+            JobStatus.complete: 0,
+            JobStatus.processing: 1,
+            JobStatus.pending: 2,
+        }
+        return sorted(
+            matches,
+            key=lambda job: (status_rank.get(job.status, 9), -job.created_at)
+        )[0]
+
     def register_completed_job(
         self,
         job_id: str,
@@ -155,11 +205,12 @@ class JobStore:
         data_dir: Path,
         title: str,
         created_at: float | None = None,
-        video_ext: str = "mp4",
+        video_ext: str | None = "mp4",
         kind: str | None = None,
         source_job_id: str | None = None,
         digest_model: str | None = None,
         summary_image: str | None = None,
+        media_policy: str | None = None,
     ) -> Job:
         payload = JobCreateRequest(video_url=video_url)
         job = Job(job_id, payload)
@@ -173,6 +224,7 @@ class JobStore:
         job.source_job_id = source_job_id
         job.digest_model = digest_model
         job.summary_image = summary_image
+        job.media_policy = media_policy
         self._jobs[job_id] = job
         return job
 
@@ -185,10 +237,25 @@ class JobStore:
         
     def list_jobs(self) -> list[Job]:
         self._load_from_disk()
-        # Sort by created_at (newest first)
-        # created_at is default time.time() for new jobs.
-        # Restored jobs set created_at to now? Or we should store created_at in manifest.
-        return sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)
+        deduped: dict[tuple[str, str], Job] = {}
+        status_rank = {
+            JobStatus.complete: 0,
+            JobStatus.processing: 1,
+            JobStatus.pending: 2,
+            JobStatus.failed: 3,
+        }
+        for job in self._jobs.values():
+            key = (job.kind, job.id) if job.kind else ("source", normalized_video_key(job.payload.video_url) or job.id)
+            existing = deduped.get(key)
+            if existing is None:
+                deduped[key] = job
+                continue
+            current_rank = (status_rank.get(job.status, 9), -job.created_at)
+            existing_rank = (status_rank.get(existing.status, 9), -existing.created_at)
+            if current_rank < existing_rank:
+                deduped[key] = job
+
+        return sorted(deduped.values(), key=lambda j: j.created_at, reverse=True)
         
     def delete_job(self, job_id: str):
         if job_id in self._jobs:

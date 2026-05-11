@@ -131,6 +131,10 @@ def _append_unique_slice_id(slice_ids: list[str], slice_id: str | None) -> None:
 
 @app.post("/jobs", response_model=JobResponse, status_code=201)
 async def create_job(payload: JobCreateRequest, background_tasks: BackgroundTasks):
+    existing = job_store.find_reusable_job(payload)
+    if existing:
+        return existing.to_response()
+
     job = job_store.create_job(payload)
     background_tasks.add_task(run_pipeline, job.id, payload, job_store)
     return job.to_response()
@@ -305,25 +309,18 @@ async def update_archive_image(job_id: str, request: ArchiveImageUpdateRequest):
 @app.get("/models")
 async def list_models():
     models = []
+    supported_models = [
+        "smart-reader:latest",
+    ]
 
-    # Only expose smart-reader — the tuned Modelfile for archive generation
+    # Only expose the Gemma4-based Smart Reader Modelfile.
     try:
         import ollama
         result = ollama.list()
         available = {m.model for m in result.models if m.model}
-        if "smart-reader:latest" in available:
-            models.append("smart-reader:latest")
+        models = [model for model in supported_models if model in available]
     except Exception:
         pass
-
-    # NVIDIA NIM models (curated) — shown when API key is configured
-    import os
-    if os.environ.get('NVIDIA_API_KEY'):
-        models.extend([
-            "moonshotai/kimi-k2-instruct",            # free, reasoning + coding + agentic
-            "z-ai/glm-4.7",                           # free, multilingual, tool use
-            "deepseek-ai/deepseek-v3.2",              # free, 685B reasoning, long context
-        ])
 
     return {"models": models}
 

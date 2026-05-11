@@ -13,7 +13,7 @@ class JobCreateRequest(BaseModel):
     interval_sec: int = 15
     min_width: int = 1280
     max_width: int = 1920
-    model: str = "gemini-3-flash-preview"
+    model: str = "smart-reader:latest"
 
 class JobResponse(BaseModel):
     id: str
@@ -31,6 +31,7 @@ class JobResponse(BaseModel):
     source_job_id: Optional[str] = None
     digest_model: Optional[str] = None
     summary_image: Optional[str] = None
+    media_policy: Optional[str] = None
 
 class SliceRequest(BaseModel):
     start: float

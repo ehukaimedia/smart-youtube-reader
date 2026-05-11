@@ -282,6 +282,21 @@ def font(size: int, bold: bool = False) -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
+def fit_font(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    start_size: int,
+    min_size: int,
+    max_width: int,
+    bold: bool = False,
+) -> ImageFont.ImageFont:
+    for size in range(start_size, min_size - 1, -2):
+        candidate = font(size, bold)
+        if draw.textbbox((0, 0), text, font=candidate)[2] <= max_width:
+            return candidate
+    return font(min_size, bold)
+
+
 def wrap_text(draw: ImageDraw.ImageDraw, text: str, text_font: ImageFont.ImageFont, max_width: int) -> list[str]:
     words = text.split()
     lines: list[str] = []
@@ -348,7 +363,6 @@ def render_thumbnail(
     }
     accents = [colors["blue"], colors["yellow"], colors["red"], colors["green"], colors["yellow"]]
 
-    title_font = font(s(52), True)
     subtitle_font = font(s(25))
     heading_font = font(s(25), True)
     body_font = font(s(20))
@@ -361,6 +375,7 @@ def render_thumbnail(
         draw.line((0, y, width, y), fill=(11, 15, 20), width=1)
 
     margin = s(54)
+    title_font = fit_font(draw, title, s(52), s(34), width - margin * 2 - s(220), True)
     draw.text((margin, s(42)), title, fill=colors["white"], font=title_font)
     draw_wrapped(draw, subtitle, (margin, s(108)), subtitle_font, colors["muted"], width - margin * 2, 2)
 

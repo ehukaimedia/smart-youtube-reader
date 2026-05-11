@@ -6,18 +6,25 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 
 ## Expected Behavior
 
-- Reader exposes a `Copy AI Digest CLI Task` action for completed source projects.
-- The action copies a CLI-driven workflow that any external agent can run.
+- Reader exposes `Copy AI Digest CLI Task` and `Copy AI Digest with Images CLI Task` actions for completed source projects.
+- Each action copies a CLI-driven workflow that any external agent can run.
 - The backend does not offer local digest model choices or deterministic digest generation.
 - Summary images are created outside the backend by Codex after inspecting the current project's real archive text and frame images.
 - Prompt-only summary image generation is not acceptable because it can miss visual context from charts, slides, diagrams, and screenshots.
-- AI digest projects provide a `Copy Codex Image Task` action that includes the local CLI command for generating the image from the current archive and frame assets.
+- The reader does not expose a separate image-only CLI task.
+- `Copy AI Digest with Images CLI Task` requires one novel generated teaching image per digest chapter, with at most 6 images total.
+- If an agent decides the digest truly needs more than 6 images, it must keep the best 6-image digest and explain the needed count for the operator.
 - The summary thumbnail CLI writes `generated/summary.png` and updates `archive.json` and `manifest.json` with `summary_image`.
 - When a digest has a generated summary image, dashboard project cards use that image as the project thumbnail instead of the YouTube thumbnail.
 - The digest CLI creates a new completed project directory under `data/jobs/`.
 - The original project is not modified.
 - The derived project receives a new no-fluff title based on the lesson content, not the source YouTube headline.
-- The digest agent preserves image references from kept source chapters. Human users handle image removal and replacement.
+- The plain digest agent preserves image references from kept source chapters. Human users handle image removal and replacement.
+- The digest-with-images agent references only safe generated image paths under `generated/`; source frames remain evidence, not output chapter images.
+- Digest-with-images projects use `media_policy: lightweight_generated_images_only`.
+- Digest-with-images projects do not copy original source frames, source slices, source frame metadata, copied source video, stale generated images, or the original transcript into the derived project.
+- Digest-with-images projects write `transcript.json` from the improved digest chapter text only.
+- ZIP downloads for digest-with-images projects contain only the derived archive metadata, digest transcript, manifest, and referenced generated teaching images.
 - The derived `manifest.json` and `archive.json` store lineage fields:
   - `kind: ai_digest`
   - `source_job_id`

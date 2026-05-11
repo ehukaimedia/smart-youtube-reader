@@ -1,207 +1,259 @@
 #!/usr/bin/env python3
 """
-Benchmark smart-reader:latest vs gemma4:latest on archive generation quality.
+Benchmark the Smart YouTube Reader archive model and image selector.
 
 Usage:
-    python benchmark_model.py                          # uses bundled sample transcript
-    python benchmark_model.py <job_data_folder_name>   # uses a real job's transcript
-    python benchmark_model.py --runs 3                 # number of runs per model (default 1)
-
-Scores each run on:
-  - valid_json:       output parses as JSON list
-  - chapter_count:    number of chapters produced
-  - timestamp_type:   all timestamps are numbers (not strings)
-  - verbatim_content: content fields are long (>100 chars), suggesting verbatim not paraphrased
-  - no_markdown:      no ``` code fences in output
+    python3 backend/benchmark_model.py
+    python3 backend/benchmark_model.py data/jobs/<project-folder>
+    python3 backend/benchmark_model.py data/jobs/<project-folder> --runs 2
 """
 
-import json
-import time
-import sys
-import os
+from __future__ import annotations
+
 import argparse
+import json
+import re
+import signal
+import statistics
+import sys
+import time
 from pathlib import Path
 
 import ollama
 
-SYSTEM_PROMPT = (
-    "You are an expert AI Data Archivist. Your goal is to convert the following video transcript segment "
-    "into a structured dataset for machine learning.\n"
-    "Action: Break the content into logical 'Concepts' or 'Chapters'.\n"
-    "Output Format: JSON list of objects, each with:\n"
-    " - 'title': Short concept title\n"
-    " - 'summary': One sentence summary\n"
-    " - 'content': The full text content for this section\n"
-    " - 'start_time': approximate start time in seconds (relative to video start)\n"
-    " - 'end_time': approximate end time in seconds\n"
-    "IMPORTANT: Focus ONLY on the provided text. Do not hallucinate content outside this segment.\n"
-    "CRITICAL: Output ONLY raw JSON. Do not wrap the JSON in markdown formatting or code blocks."
+ROOT = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+REPO_ROOT = ROOT.parent
+
+from app.frames import FrameManager
+from app.intelligence import (
+    _choose_representative_frames,
+    _extract_json_list,
+    _format_transcript_chunk,
 )
 
-SAMPLE_TRANSCRIPT = """
-The YouTube algorithm isn't what you think. Most creators chase the wrong numbers.
-The system they're trying to beat stopped working that way years ago.
-Here's what's actually happening under the surface, and why your best video might fail
-while your weirdest one explodes. Everyone is still optimizing for a machine that doesn't exist.
-Ask any creator what makes a video succeed and you'll hear the same two answers:
-click-through rate and watch time. Get people to click, keep them watching, and repeat.
-This idea is everywhere. It sounds right. A decade ago it mostly did.
-But the system running YouTube in 2026 is not a spreadsheet of CTR and retention.
-It's a recommendation engine closer in spirit to ChatGPT than a ranking formula.
-The old mental model said high CTR means pushed to more people.
-Long watch time means boosted. More views means more reach. The algorithm promotes videos.
-What's actually happening is very different. A viewer gets matched to the content they'll value.
-Satisfaction is predicted, not measured. After views are an output, never an input.
-The algorithm matches, it never pushes.
-Every single video has a semantic ID. Google's research teams have published extensively
-on semantic IDs, which are compact numeric fingerprints that represent what a piece of
-content is about at multiple levels of detail. Your video gets reduced to a list of numbers.
-That list doesn't describe keywords. It describes meaning. The topic, the tone, the pacing,
-the emotional arc, the kind of viewer who tends to finish it.
-Two videos with completely different titles can have nearly identical semantic fingerprints.
-This is why the algorithm can recommend a video to someone who has never watched your channel.
-It doesn't need your channel. It needs a fingerprint that matches what the viewer is hungry for.
-A video doesn't blow up because it's great. A video blows up because at a specific moment,
-the platform has a shortage of exactly what it offers and your fingerprint is the cleanest match.
-There are four triggers: demand spikes, timing windows, external traffic, and session resonance.
-Session resonance is my favourite: if your video keeps viewers on YouTube longer than
-the video they would have watched instead, the system quietly promotes it further.
-"""
+MODEL = "smart-reader:latest"
+REQUIRED_KEYS = {"title", "summary", "content", "start_time", "end_time"}
+FLUFF_RE = re.compile(
+    r"\b(insane|secret|ultimate|never|always|guaranteed|massive|crazy|best|shocking|profits?|millionaire)\b",
+    re.I,
+)
+
+SYSTEM_PROMPT = (
+    "You are a Smart YouTube Reader archive planner. Convert timestamped transcript evidence into "
+    "compact AI-learning chapters.\n"
+    "Return ONLY a raw JSON array. No markdown, no prose.\n"
+    "Each object must contain exactly: title, summary, content, start_time, end_time.\n"
+    "Use numeric seconds for timestamps. Derive them from the bracketed transcript ranges.\n"
+    "Create 3-5 chapters for a 5-minute segment when the segment contains enough substance. Merge tiny transitions into nearby chapters.\n"
+    "Do not create standalone chapters for intros, sponsor chatter, calls to action, jokes, or repetition.\n"
+    "Preserve durable concepts, definitions, procedures, examples, caveats, and references to visible charts, slides, or tools.\n"
+    "The content field must use transcript wording from the provided segment, ordered chronologically. "
+    "Keep the teaching evidence dense; target 400-900 characters per chapter when possible. "
+    "Do not invent facts or add outside knowledge.\n"
+    "Keep titles no-fluff: specific lesson names, no hype, no YouTube-style phrasing."
+)
+
+SAMPLE_TRANSCRIPT = [
+    {"start": 0.0, "duration": 12.0, "text": "The YouTube algorithm is not a spreadsheet of CTR and retention anymore."},
+    {"start": 12.0, "duration": 16.0, "text": "The platform predicts viewer satisfaction and matches content to viewers instead of simply pushing videos."},
+    {"start": 28.0, "duration": 20.0, "text": "Every video has a semantic fingerprint that captures topic, tone, pacing, emotional arc, and likely viewer behavior."},
+    {"start": 48.0, "duration": 20.0, "text": "Two videos with different titles can have similar semantic IDs, which is why channels are less important than matching the viewer's current demand."},
+    {"start": 68.0, "duration": 22.0, "text": "Videos expand when demand spikes, timing windows, external traffic, and session resonance make the fingerprint useful."},
+    {"start": 90.0, "duration": 18.0, "text": "Session resonance means the video keeps a viewer on YouTube longer than the next best recommendation would have."},
+]
 
 
-def load_transcript_from_job(folder_name: str) -> str:
-    candidates = [
-        Path(f"data/jobs/{folder_name}/transcript.json"),
-        Path(f"../data/jobs/{folder_name}/transcript.json"),
-    ]
-    for p in candidates:
-        if p.exists():
-            items = json.loads(p.read_text())
-            # Take first 5 minutes
-            chunk = [t for t in items if t.get("start", 0) < 300]
-            return " ".join(t["text"] for t in chunk if "text" in t)
-    raise FileNotFoundError(f"transcript.json not found for job {folder_name}")
+class Timeout(Exception):
+    pass
 
 
-def score(raw: str) -> dict:
+def _timeout_handler(signum, frame):
+    raise Timeout("timed out")
+
+
+def load_transcript(path: str | None) -> tuple[list[dict], Path | None]:
+    if not path:
+        return SAMPLE_TRANSCRIPT, None
+
+    job_dir = Path(path)
+    if not job_dir.exists():
+        job_dir = REPO_ROOT / "data" / "jobs" / path
+    transcript_path = job_dir / "transcript.json"
+    if not transcript_path.exists():
+        raise FileNotFoundError(f"transcript.json not found: {transcript_path}")
+    return json.loads(transcript_path.read_text()), job_dir
+
+
+def source_words(text: str) -> set[str]:
+    return set(re.findall(r"[a-zA-Z]{4,}", text.lower()))
+
+
+def score_archive_response(raw: str, transcript_text: str, window_start: float, window_end: float) -> dict:
     result = {
         "valid_json": False,
-        "chapter_count": 0,
-        "timestamp_type_ok": False,
-        "verbatim_content": False,
+        "chapters": 0,
+        "keys_ok": False,
+        "timestamps_ok": False,
+        "count_ok": False,
         "no_markdown": "```" not in raw,
-        "raw_length": len(raw),
+        "no_fluff_titles": False,
+        "content_grounded": False,
+        "avg_content_chars": 0,
+        "coverage_chars": 0,
+        "quality": 0,
+        "titles": [],
+        "error": "",
     }
-    # Strip markdown fences if present
-    cleaned = raw
-    if "```json" in cleaned:
-        cleaned = cleaned.split("```json")[1].split("```")[0].strip()
-    elif "```" in cleaned:
-        cleaned = cleaned.split("```")[1].split("```")[0].strip()
-
-    start = cleaned.find("[")
-    end = cleaned.rfind("]") + 1
-    if start == -1 or end == 0:
-        start = cleaned.find("{")
-        end = cleaned.rfind("}") + 1
-        json_str = "[" + cleaned[start:end] + "]" if start != -1 else cleaned
-    else:
-        json_str = cleaned[start:end]
-
     try:
-        chapters = json.loads(json_str)
-        result["valid_json"] = isinstance(chapters, list)
-        result["chapter_count"] = len(chapters) if isinstance(chapters, list) else 0
+        chapters = _extract_json_list(raw)
+    except Exception as exc:
+        result["error"] = str(exc)
+        return result
 
-        if isinstance(chapters, list) and chapters:
-            ts_ok = all(
-                isinstance(c.get("start_time"), (int, float)) and
-                isinstance(c.get("end_time"), (int, float))
-                for c in chapters
-            )
-            result["timestamp_type_ok"] = ts_ok
-            avg_content_len = sum(len(c.get("content", "")) for c in chapters) / len(chapters)
-            result["verbatim_content"] = avg_content_len > 150
-    except Exception:
-        pass
+    words = source_words(transcript_text)
+    result["valid_json"] = True
+    result["chapters"] = len(chapters)
+    result["count_ok"] = 2 <= len(chapters) <= 5
+    result["keys_ok"] = all(isinstance(chapter, dict) and REQUIRED_KEYS <= set(chapter.keys()) for chapter in chapters)
 
+    timestamp_checks = []
+    grounded_scores = []
+    coverage = 0
+    titles = []
+    for chapter in chapters:
+        if not isinstance(chapter, dict):
+            continue
+        title = str(chapter.get("title", ""))
+        titles.append(title)
+        start = chapter.get("start_time")
+        end = chapter.get("end_time")
+        timestamp_checks.append(
+            isinstance(start, (int, float))
+            and isinstance(end, (int, float))
+            and window_start <= start < end <= window_end + 20
+        )
+        content = str(chapter.get("content", ""))
+        coverage += len(content)
+        content_words = re.findall(r"[a-zA-Z]{4,}", content.lower())
+        if content_words:
+            grounded_scores.append(sum(1 for word in content_words if word in words) / len(content_words))
+
+    result["titles"] = titles
+    result["timestamps_ok"] = bool(timestamp_checks) and all(timestamp_checks)
+    result["no_fluff_titles"] = bool(titles) and all(not FLUFF_RE.search(title) for title in titles)
+    result["avg_content_chars"] = round(coverage / max(len(chapters), 1))
+    result["coverage_chars"] = coverage
+    min_content_chars = min(250, max(120, len(transcript_text) // max(len(chapters), 1) // 2))
+    result["content_grounded"] = (
+        bool(grounded_scores)
+        and statistics.mean(grounded_scores) >= 0.84
+        and result["avg_content_chars"] >= min_content_chars
+    )
+
+    gates = [
+        "valid_json",
+        "keys_ok",
+        "timestamps_ok",
+        "count_ok",
+        "no_markdown",
+        "no_fluff_titles",
+        "content_grounded",
+    ]
+    result["quality"] = sum(1 for gate in gates if result[gate])
     return result
 
 
-def run_model(model: str, transcript: str, use_system: bool = True) -> tuple[str, float]:
-    messages = []
-    if use_system:
-        messages.append({"role": "system", "content": SYSTEM_PROMPT})
-    messages.append({"role": "user", "content": f"Transcript Segment (0-300s): {transcript}"})
+def benchmark_text(transcript: list[dict], runs: int, timeout: int) -> list[dict]:
+    chunk = [item for item in transcript if 0 <= float(item.get("start", 0)) < 300]
+    if not chunk:
+        chunk = transcript[:60]
+    chunk_text = _format_transcript_chunk(chunk)
+    user_prompt = f"Transcript segment 0.0-300.0s:\n{chunk_text}"
 
-    t0 = time.time()
-    resp = ollama.chat(model=model, messages=messages)
-    elapsed = time.time() - t0
-    return resp["message"]["content"], elapsed
+    results = []
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    for run in range(1, runs + 1):
+        start = time.time()
+        signal.alarm(timeout)
+        try:
+            response = ollama.chat(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            signal.alarm(0)
+            raw = response["message"]["content"]
+            results.append({
+                "run": run,
+                "seconds": round(time.time() - start, 1),
+                "raw_chars": len(raw),
+                **score_archive_response(raw, chunk_text, 0.0, 300.0),
+            })
+        except Exception as exc:
+            signal.alarm(0)
+            results.append({"run": run, "seconds": round(time.time() - start, 1), "error": str(exc), "quality": 0})
+    return results
 
 
-def print_scores(label: str, scores_list: list[dict], times: list[float]):
-    print(f"\n{'─'*50}")
-    print(f"  {label}")
-    print(f"{'─'*50}")
-    for i, (s, t) in enumerate(zip(scores_list, times)):
-        print(f"  Run {i+1}: valid_json={s['valid_json']}  chapters={s['chapter_count']}  "
-              f"ts_ok={s['timestamp_type_ok']}  verbatim={s['verbatim_content']}  "
-              f"no_md={s['no_markdown']}  time={t:.1f}s")
+def benchmark_images(job_dir: Path | None) -> list[dict]:
+    if not job_dir:
+        return []
+    archive_path = job_dir / "archive.json"
+    frames_path = job_dir / "frames.json"
+    if not archive_path.exists() or not frames_path.exists():
+        return []
 
-    if scores_list:
-        avg_chapters = sum(s["chapter_count"] for s in scores_list) / len(scores_list)
-        valid_rate = sum(s["valid_json"] for s in scores_list) / len(scores_list)
-        ts_rate = sum(s["timestamp_type_ok"] for s in scores_list) / len(scores_list)
-        avg_time = sum(times) / len(times)
-        print(f"\n  Averages: valid={valid_rate:.0%}  chapters={avg_chapters:.1f}  "
-              f"ts_ok={ts_rate:.0%}  time={avg_time:.1f}s")
+    frame_manager = FrameManager(job_dir)
+    frame_manager.scan_and_hash(interval_sec=15)
+    all_frames = frame_manager.get_context_frames(0, float("inf"))
+    archive = json.loads(archive_path.read_text())
+    rows = []
+    used: set[str] = set()
+    for index, chapter in enumerate((archive.get("archive") or [])[:8]):
+        start = float(chapter.get("timestamp_start", 0))
+        end = float(chapter.get("timestamp_end", start + 60))
+        candidates = frame_manager.get_context_frames(max(0, start - 20), end + 20)
+        selected = _choose_representative_frames(candidates, all_frames, start, end, used)
+        selected_meta = [frame for frame in candidates if frame.get("filename") in selected]
+        avg_score = 0
+        if selected_meta:
+            avg_score = sum(float(frame.get("visual_score", 0)) for frame in selected_meta) / len(selected_meta)
+        rows.append({
+            "chapter": index + 1,
+            "selected": selected,
+            "candidate_count": len(candidates),
+            "avg_visual_score": round(avg_score, 3),
+        })
+    return rows
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Benchmark smart-reader vs gemma4")
-    parser.add_argument("job_folder", nargs="?", help="Job data folder name")
-    parser.add_argument("--runs", type=int, default=1, help="Runs per model (default 1)")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("job", nargs="?", help="Optional data/jobs project folder or folder name")
+    parser.add_argument("--runs", type=int, default=1)
+    parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args()
 
-    if args.job_folder:
-        print(f"Loading transcript from job: {args.job_folder}")
-        transcript = load_transcript_from_job(args.job_folder)
-    else:
-        print("Using built-in sample transcript (15-minute YouTube algorithm video excerpt)")
-        transcript = SAMPLE_TRANSCRIPT.strip()
+    transcript, job_dir = load_transcript(args.job)
+    print(f"Model: {MODEL}")
+    print(f"Transcript items: {len(transcript)}")
+    if job_dir:
+        print(f"Project: {job_dir}")
 
-    print(f"Transcript length: {len(transcript)} chars")
-    print(f"Runs per model: {args.runs}\n")
+    print("\nText archive benchmark")
+    text_results = benchmark_text(transcript, args.runs, args.timeout)
+    for result in text_results:
+        print(json.dumps(result, indent=2))
 
-    models = [
-        ("smart-reader:latest", True),
-        ("gemma4:latest",       False),
-    ]
-
-    for model, use_system in models:
-        scores_list, times = [], []
-        for run in range(args.runs):
-            print(f"  [{model}] run {run+1}/{args.runs}...", end=" ", flush=True)
-            try:
-                raw, elapsed = run_model(model, transcript, use_system)
-                s = score(raw)
-                scores_list.append(s)
-                times.append(elapsed)
-                print(f"done ({elapsed:.1f}s)")
-            except Exception as e:
-                print(f"ERROR: {e}")
-
-        print_scores(model, scores_list, times)
-
-    print(f"\n{'═'*50}")
-    print("  Legend:")
-    print("    valid_json    — output parsed as JSON list")
-    print("    chapters      — number of chapters produced (target: 3-5)")
-    print("    ts_ok         — all timestamps are numbers, not strings")
-    print("    verbatim      — avg content length >150 chars (not paraphrased)")
-    print("    no_md         — no ``` fences in raw output")
-    print(f"{'═'*50}\n")
+    image_results = benchmark_images(job_dir)
+    if image_results:
+        print("\nImage selection benchmark")
+        for result in image_results:
+            print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
