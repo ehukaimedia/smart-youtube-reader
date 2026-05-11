@@ -108,6 +108,7 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         "digest_created_at": created_at,
         "archive": digest_chapters,
         "changes_summary": changes_summary,
+        "transcript_policy": "digest_transcript_only",
     }
     generated_images = _collect_digest_generated_images(digest_chapters)
     operator_image_note = str(draft.get("operator_image_note") or "").strip()
@@ -128,6 +129,7 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         "digest_created_at": created_at,
         "archive_chapters": len(digest_chapters),
         "changes_summary": changes_summary,
+        "transcript_policy": "digest_transcript_only",
         "video_ext": source_manifest.get("video_ext", "mp4"),
     }
     if generated_images:
@@ -135,7 +137,6 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         manifest["generated_images"] = generated_images
         manifest["video_ext"] = None
         manifest["media_policy"] = "lightweight_generated_images_only"
-        manifest["transcript_policy"] = "digest_transcript_only"
         manifest["image_policy"] = (
             "AI digest chapter images use one unique generated teaching image per chapter, "
             "with a maximum of 6 images. Original source frames are used as evidence only "
@@ -143,7 +144,6 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         )
         archive_data["generated_images"] = generated_images
         archive_data["media_policy"] = manifest["media_policy"]
-        archive_data["transcript_policy"] = manifest["transcript_policy"]
         archive_data["image_policy"] = manifest["image_policy"]
     if operator_image_note:
         manifest["operator_image_note"] = operator_image_note

@@ -157,11 +157,12 @@ export default function DashboardPage() {
             return;
         }
 
-        const projectFolders = selectedJobs.map(job => `/Volumes/Extreme SSD/AI-Applications/smart-youtube-reader/data/jobs/${job.data_folder_name}`);
+        const projectFolders = selectedJobs.map(job => `data/jobs/${job.data_folder_name}`);
         const quotedProjects = projectFolders.map(path => `"${path}"`).join(' ');
         const prompt = `Create a Smart YouTube Reader GROUP AI digest using the local CLI.
 
 Do not use an in-app model option. You are the group digest agent.
+Run commands from the smart-youtube-reader repo root.
 
 Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel AI teaching images from that new transcript.
 

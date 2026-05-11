@@ -24,6 +24,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 - Digest-with-images projects use `media_policy: lightweight_generated_images_only`.
 - Digest-with-images projects do not copy original source frames, source slices, source frame metadata, copied source video, stale generated images, or the original transcript into the derived project.
 - Digest-with-images projects write `transcript.json` from the improved digest chapter text only.
+- Plain AI digest projects also write `transcript.json` from the improved digest chapter text only; the source project remains the place to inspect the original transcript.
 - ZIP downloads for digest-with-images projects contain only the derived archive metadata, digest transcript, manifest, and referenced generated teaching images.
 - The derived `manifest.json` and `archive.json` store lineage fields:
   - `kind: ai_digest`
@@ -31,6 +32,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
   - `source_folder`
   - `digest_model: external-agent-cli`
   - `digest_agent_status`
+  - `transcript_policy: digest_transcript_only`
   - `changes_summary`
   - `summary_image` when Codex attaches a summary image
 - Dashboard cards identify derived projects with an `AI Digest` badge.

@@ -553,7 +553,8 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
         }, 100);
     }, [loading, timeline.length]);
 
-    const hideSourceImageControls = usesGeneratedOnlyImages || archiveMeta.media_policy === 'lightweight_generated_images_only';
+    const usesLightweightGeneratedImages = archiveMeta.media_policy === 'lightweight_generated_images_only';
+    const hideSourceImageControls = usesGeneratedOnlyImages || usesLightweightGeneratedImages;
 
     if (loading) return <div className="blink">Loading Archive Preview... (Waiting for file)</div>;
     if (timeline.length === 0) return <div style={{ color: 'red' }}>Archive could not be loaded.</div>;
@@ -563,11 +564,19 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
             {archiveMeta.summary_image && (
                 <section style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '2rem' }}>
                     <h4 style={{ fontSize: '1.2rem', color: 'var(--foreground)', marginBottom: '0.75rem' }}>
-                        {usesGeneratedOnlyImages ? 'Group Summary Image' : 'Video Summary Image'}
+                        {usesGeneratedOnlyImages
+                            ? 'Group Summary Image'
+                            : usesLightweightGeneratedImages
+                                ? 'AI Digest Summary Image'
+                                : 'Video Summary Image'}
                     </h4>
                     <img
                         src={`${getApiBase()}/data/jobs/${folderName}/${archiveMeta.summary_image}`}
-                        alt={usesGeneratedOnlyImages ? 'AI-generated group summary' : 'AI-generated video summary'}
+                        alt={usesGeneratedOnlyImages
+                            ? 'AI-generated group summary'
+                            : usesLightweightGeneratedImages
+                                ? 'AI-generated digest teaching summary'
+                                : 'AI-generated video summary'}
                         style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block' }}
                     />
                 </section>
