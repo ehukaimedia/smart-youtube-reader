@@ -28,9 +28,10 @@ REPO_ROOT = ROOT.parent
 
 from app.frames import FrameManager
 from app.intelligence import (
+    CHUNK_DURATION,
     _choose_representative_frames,
     _extract_json_list,
-    _format_transcript_chunk,
+    _transcript_prompt_chunks,
 )
 
 MODEL = "smart-reader:latest"
@@ -165,38 +166,74 @@ def score_archive_response(raw: str, transcript_text: str, window_start: float, 
     return result
 
 
-def benchmark_text(transcript: list[dict], runs: int, timeout: int) -> list[dict]:
-    chunk = [item for item in transcript if 0 <= float(item.get("start", 0)) < 300]
-    if not chunk:
-        chunk = transcript[:60]
-    chunk_text = _format_transcript_chunk(chunk)
-    user_prompt = f"Transcript segment 0.0-300.0s:\n{chunk_text}"
+def transcript_chunks(transcript: list[dict], chunk_duration: int = CHUNK_DURATION) -> list[dict]:
+    chunks = _transcript_prompt_chunks(transcript, chunk_duration=chunk_duration)
+    for index, chunk in enumerate(chunks, start=1):
+        chunk["index"] = index
+    return chunks
+
+
+def benchmark_text(transcript: list[dict], runs: int, timeout: int, full: bool = True) -> list[dict]:
+    chunks = transcript_chunks(transcript)
+    if not chunks:
+        chunks = [{"index": 1, "start": 0.0, "end": 300.0, "items": transcript[:60]}]
+    if not full:
+        chunks = chunks[:1]
 
     results = []
     signal.signal(signal.SIGALRM, _timeout_handler)
     for run in range(1, runs + 1):
-        start = time.time()
-        signal.alarm(timeout)
-        try:
-            response = ollama.chat(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-            signal.alarm(0)
-            raw = response["message"]["content"]
-            results.append({
-                "run": run,
-                "seconds": round(time.time() - start, 1),
-                "raw_chars": len(raw),
-                **score_archive_response(raw, chunk_text, 0.0, 300.0),
-            })
-        except Exception as exc:
-            signal.alarm(0)
-            results.append({"run": run, "seconds": round(time.time() - start, 1), "error": str(exc), "quality": 0})
+        for chunk in chunks:
+            chunk_text = chunk["text"]
+            user_prompt = f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk_text}"
+            start = time.time()
+            signal.alarm(timeout)
+            try:
+                response = ollama.chat(
+                    model=MODEL,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                )
+                signal.alarm(0)
+                raw = response["message"]["content"]
+                results.append({
+                    "run": run,
+                    "chunk": chunk["index"],
+                    "window": [round(chunk["start"], 1), round(chunk["end"], 1)],
+                    "input_items": len(chunk["items"]),
+                    "input_chars": len(chunk_text),
+                    "seconds": round(time.time() - start, 1),
+                    "raw_chars": len(raw),
+                    **score_archive_response(raw, chunk_text, chunk["start"], chunk["end"]),
+                })
+            except Exception as exc:
+                signal.alarm(0)
+                results.append({
+                    "run": run,
+                    "chunk": chunk["index"],
+                    "window": [round(chunk["start"], 1), round(chunk["end"], 1)],
+                    "seconds": round(time.time() - start, 1),
+                    "error": str(exc),
+                    "quality": 0,
+                })
     return results
+
+
+def summarize_text_results(results: list[dict]) -> dict:
+    if not results:
+        return {"chunks": 0, "passed": 0, "pass_rate": 0.0}
+    passed = [result for result in results if result.get("quality") == 7]
+    qualities = [int(result.get("quality", 0)) for result in results]
+    return {
+        "chunks": len(results),
+        "passed": len(passed),
+        "pass_rate": round(len(passed) / len(results), 3),
+        "min_quality": min(qualities),
+        "avg_quality": round(statistics.mean(qualities), 2),
+        "total_seconds": round(sum(float(result.get("seconds", 0)) for result in results), 1),
+    }
 
 
 def benchmark_images(job_dir: Path | None) -> list[dict]:
@@ -236,6 +273,11 @@ def main():
     parser.add_argument("job", nargs="?", help="Optional data/jobs project folder or folder name")
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument(
+        "--first-chunk-only",
+        action="store_true",
+        help="Benchmark only the first transcript chunk. By default, every transcript chunk is tested.",
+    )
     args = parser.parse_args()
 
     transcript, job_dir = load_transcript(args.job)
@@ -245,9 +287,11 @@ def main():
         print(f"Project: {job_dir}")
 
     print("\nText archive benchmark")
-    text_results = benchmark_text(transcript, args.runs, args.timeout)
+    text_results = benchmark_text(transcript, args.runs, args.timeout, full=not args.first_chunk_only)
     for result in text_results:
         print(json.dumps(result, indent=2))
+    print("Text benchmark summary")
+    print(json.dumps(summarize_text_results(text_results), indent=2))
 
     image_results = benchmark_images(job_dir)
     if image_results:

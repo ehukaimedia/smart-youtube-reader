@@ -9,6 +9,7 @@ import re
 logger = logging.getLogger(__name__)
 MAX_PROMPT_CHARS = 14000
 MAX_IMAGES_PER_CHAPTER = 2
+CHUNK_DURATION = 300
 
 def _to_float(value, default: float) -> float:
     try:
@@ -27,32 +28,153 @@ def _chat(model: str, messages: list) -> str:
 def _clean_transcript_text(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
-def _format_transcript_chunk(chunk_items: list, max_chars: int = MAX_PROMPT_CHARS) -> str:
+def _transcript_line(item: dict) -> str:
+    start = _to_float(item.get("start"), 0.0)
+    duration = _to_float(item.get("duration"), 0.0)
+    end = start + duration
+    text = _clean_transcript_text(item.get("text", ""))
+    return f"[{start:.1f}-{end:.1f}] {text}" if text else ""
+
+def _format_transcript_chunk(chunk_items: list, max_chars: int | None = MAX_PROMPT_CHARS) -> str:
     """
     Give the model compact timestamped evidence instead of one undifferentiated blob.
-    This improves boundary selection while keeping the prompt bounded.
+    This function never drops middle transcript content; callers that need a
+    bounded prompt must split first with _transcript_prompt_chunks().
     """
-    lines = []
-    for item in chunk_items:
-        start = _to_float(item.get("start"), 0.0)
-        duration = _to_float(item.get("duration"), 0.0)
-        end = start + duration
-        text = _clean_transcript_text(item.get("text", ""))
-        if text:
-            lines.append(f"[{start:.1f}-{end:.1f}] {text}")
-
+    lines = [line for item in chunk_items if (line := _transcript_line(item))]
     rendered = "\n".join(lines)
-    if len(rendered) <= max_chars:
-        return rendered
+    return rendered
 
-    # Preserve the beginning and end of long windows so chapter boundaries stay grounded.
-    head_budget = max_chars // 2
-    tail_budget = max_chars - head_budget - 120
-    return (
-        rendered[:head_budget].rstrip()
-        + "\n[...middle transcript omitted for context budget...]\n"
-        + rendered[-tail_budget:].lstrip()
+
+def _transcript_prompt_chunks(
+    transcript: list,
+    chunk_duration: int = CHUNK_DURATION,
+    max_chars: int = MAX_PROMPT_CHARS,
+) -> list[dict]:
+    """
+    Split transcript into complete prompt chunks without truncating transcript rows.
+    A long time window is split into smaller adjacent chunks instead of omitting
+    its middle text.
+    """
+    if not transcript:
+        return []
+
+    ordered = [
+        {**item, "_source_index": index}
+        for index, item in enumerate(sorted(transcript, key=lambda item: _to_float(item.get("start"), 0.0)))
+    ]
+    max_start = max(_to_float(item.get("start"), 0.0) for item in ordered)
+    video_duration = max(
+        _to_float(item.get("start"), 0.0) + _to_float(item.get("duration"), 0.0)
+        for item in ordered
     )
+    prompt_chunks: list[dict] = []
+    current_time = 0.0
+
+    while current_time <= max_start:
+        chunk_end = min(current_time + chunk_duration, video_duration)
+        is_final_window = chunk_end >= video_duration
+        window_items = [
+            item for item in ordered
+            if (
+                current_time <= _to_float(item.get("start"), 0.0) < chunk_end
+                or (is_final_window and _to_float(item.get("start"), 0.0) == chunk_end)
+            )
+        ]
+        current_group: list[dict] = []
+        current_chars = 0
+
+        for item in window_items:
+            for prompt_item in _split_prompt_item(item, max_chars):
+                line_len = len(_transcript_line(prompt_item)) + 1
+                if current_group and current_chars + line_len > max_chars:
+                    prompt_chunks.append(_prompt_chunk_payload(current_group))
+                    current_group = []
+                    current_chars = 0
+                current_group.append(prompt_item)
+                current_chars += line_len
+
+        if current_group:
+            prompt_chunks.append(_prompt_chunk_payload(current_group))
+
+        current_time += chunk_duration
+        if current_time >= video_duration:
+            break
+
+    emitted = {
+        item.get("_source_index")
+        for chunk in prompt_chunks
+        for item in chunk["items"]
+        if item.get("_source_index") is not None
+    }
+    if len(emitted) != len(ordered):
+        missing = sorted(set(range(len(ordered))) - emitted)
+        raise RuntimeError(
+            f"Transcript prompt chunking lost {len(ordered) - len(emitted)} source row(s): {missing[:10]}"
+        )
+
+    return prompt_chunks
+
+
+def _split_prompt_item(item: dict, max_chars: int) -> list[dict]:
+    line = _transcript_line(item)
+    if len(line) <= max_chars:
+        return [item]
+
+    start = _to_float(item.get("start"), 0.0)
+    duration = _to_float(item.get("duration"), 0.0)
+    prefix = f"[{start:.1f}-{start + duration:.1f}] "
+    text = _clean_transcript_text(item.get("text", ""))
+    budget = max(max_chars - len(prefix), 80)
+    parts = _split_text_by_budget(text, budget)
+    logger.warning(
+        "Transcript row at %.1fs exceeded prompt budget and was split into %s pieces.",
+        start,
+        len(parts),
+    )
+    return [{**item, "text": part} for part in parts]
+
+
+def _split_text_by_budget(text: str, budget: int) -> list[str]:
+    words = text.split()
+    parts: list[str] = []
+    current: list[str] = []
+    current_len = 0
+
+    for word in words:
+        if len(word) > budget:
+            if current:
+                parts.append(" ".join(current))
+                current = []
+                current_len = 0
+            parts.extend(word[index:index + budget] for index in range(0, len(word), budget))
+            continue
+
+        next_len = current_len + len(word) + (1 if current else 0)
+        if current and next_len > budget:
+            parts.append(" ".join(current))
+            current = [word]
+            current_len = len(word)
+        else:
+            current.append(word)
+            current_len = next_len
+
+    if current:
+        parts.append(" ".join(current))
+    return parts or [text[:budget]]
+
+
+def _prompt_chunk_payload(items: list[dict]) -> dict:
+    start = min(_to_float(item.get("start"), 0.0) for item in items)
+    end = max(_to_float(item.get("start"), 0.0) + _to_float(item.get("duration"), 0.0) for item in items)
+    text = _format_transcript_chunk(items, max_chars=None)
+    return {
+        "start": start,
+        "end": end,
+        "items": items,
+        "text": text,
+        "chars": len(text),
+    }
 
 def _extract_json_list(content: str) -> list:
     cleaned = content.strip()
@@ -364,7 +486,13 @@ def check_ollama_model(model_name: str = "smart-reader:latest") -> bool:
         logger.error(f"Failed to connect to Ollama: {e}")
         return False
 
-def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str = "smart-reader:latest") -> dict:
+def create_ai_archive(
+    job_id: str,
+    transcript: list,
+    frame_manager,
+    model: str = "smart-reader:latest",
+    progress_callback=None,
+) -> dict:
     """
     Creates a perfect AI-readable archive.
     1. Semantic Chunking: Groups transcript into concepts.
@@ -372,32 +500,42 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
     """
     logger.info("Creating AI Archive...")
     
-    # 1. Chunking Logic (Process in 5-minute segments to avoid context limits)
-    CHUNK_DURATION = 300  # 5 minutes in seconds
-    
     # Sort transcript just in case
     transcript.sort(key=lambda x: x.get('start', 0))
-    
-    video_duration = transcript[-1]['start'] + transcript[-1]['duration'] if transcript else 0
     all_chapters = []
-    
-    current_time = 0
-    while current_time < video_duration:
-        chunk_end = current_time + CHUNK_DURATION
-        
-        # Filter transcript for this window
-        chunk_items = [
-            t for t in transcript 
-            if t['start'] >= current_time and t['start'] < chunk_end
-        ]
-        
-        if not chunk_items:
-            current_time += CHUNK_DURATION
-            continue
-            
-        chunk_text = _format_transcript_chunk(chunk_items)
-        
-        logger.info(f"Processing chunk: {current_time}s to {chunk_end}s (Length: {len(chunk_text)} chars)")
+
+    prompt_chunks = _transcript_prompt_chunks(transcript)
+    chunk_source_indexes = [
+        item.get("_source_index")
+        for chunk in prompt_chunks
+        for item in chunk["items"]
+        if item.get("_source_index") is not None
+    ]
+    transcript_integrity = {
+        "source_items": len(transcript),
+        "chunk_items": len(set(chunk_source_indexes)),
+        "prompt_items": len(chunk_source_indexes),
+        "prompt_chunks": len(prompt_chunks),
+        "chunks_succeeded": 0,
+        "chunks_failed": 0,
+        "chunk_errors": [],
+        "source_start": _to_float(transcript[0].get("start"), 0.0) if transcript else 0.0,
+        "source_end": (
+            _to_float(transcript[-1].get("start"), 0.0)
+            + _to_float(transcript[-1].get("duration"), 0.0)
+            if transcript else 0.0
+        ),
+    }
+
+    for chunk_index, chunk in enumerate(prompt_chunks, start=1):
+        chunk_text = chunk["text"]
+        if progress_callback:
+            progress_callback(chunk_index, len(prompt_chunks))
+
+        logger.info(
+            f"Processing chunk: {chunk['start']}s to {chunk['end']}s "
+            f"(Items: {len(chunk['items'])}, Length: {len(chunk_text)} chars)"
+        )
         
         try:
             # Prompt for semantic chunking of this segment
@@ -418,23 +556,50 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
             
             content = _chat(model, [
                 {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': f"Transcript segment {current_time:.1f}-{chunk_end:.1f}s:\n{chunk_text}"}
+                {'role': 'user', 'content': f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk_text}"}
             ]).strip()
 
             try:
                 chunk_chapters = _extract_json_list(content)
                 all_chapters.extend(chunk_chapters)
+                transcript_integrity["chunks_succeeded"] += 1
                 
             except Exception as e:
-                logger.error(f"Failed to parse LLM JSON for chunk {current_time}: {e}. Content: {content[:100]}...")
+                logger.error(f"Failed to parse LLM JSON for chunk {chunk['start']}: {e}. Content: {content[:100]}...")
+                transcript_integrity["chunks_failed"] += 1
+                transcript_integrity["chunk_errors"].append({
+                    "chunk": chunk_index,
+                    "start": chunk["start"],
+                    "end": chunk["end"],
+                    "error": str(e),
+                })
                 
         except Exception as e:
-            logger.error(f"LLM inference failed for chunk {current_time}: {e}")
-            
-        current_time += CHUNK_DURATION
+            logger.error(f"LLM inference failed for chunk {chunk['start']}: {e}")
+            transcript_integrity["chunks_failed"] += 1
+            transcript_integrity["chunk_errors"].append({
+                "chunk": chunk_index,
+                "start": chunk["start"],
+                "end": chunk["end"],
+                "error": str(e),
+            })
+
+    if transcript_integrity["chunk_items"] != transcript_integrity["source_items"]:
+        raise RuntimeError(
+            "Transcript integrity check failed: "
+            f"{transcript_integrity['chunk_items']} of {transcript_integrity['source_items']} source rows reached prompts"
+        )
+    if transcript_integrity["chunks_failed"]:
+        raise RuntimeError(
+            "Archive generation failed for "
+            f"{transcript_integrity['chunks_failed']} of {transcript_integrity['prompt_chunks']} transcript chunk(s): "
+            f"{transcript_integrity['chunk_errors'][:3]}"
+        )
 
     # Use the accumulated chapters
     chapters = all_chapters
+    if not chapters and transcript:
+        raise RuntimeError("Archive generation returned no chapters")
 
     # 2. Select Images for each Chapter
     archive_data = []
@@ -471,4 +636,4 @@ def create_ai_archive(job_id: str, transcript: list, frame_manager, model: str =
             "_image_context": _image_context_for_frames(context_pool),
         })
         
-    return {"job_id": job_id, "archive": archive_data}
+    return {"job_id": job_id, "archive": archive_data, "transcript_integrity": transcript_integrity}

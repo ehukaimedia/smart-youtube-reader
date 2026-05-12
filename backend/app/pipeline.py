@@ -174,16 +174,29 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         try:
              from .intelligence import create_ai_archive
              # Pass frame_manager instead of frames_dir
-             archive_result = create_ai_archive(job_id, transcript, frame_manager, model=payload.model)
+             archive_result = create_ai_archive(
+                 job_id,
+                 transcript,
+                 frame_manager,
+                 model=payload.model,
+                 progress_callback=lambda index, total: setattr(
+                     job,
+                     "current_step",
+                     f"Generating archive chunk {index}/{total}...",
+                 ),
+             )
 
              if archive_result.get('archive'):
                  archive_stats = len(archive_result['archive'])
                  print(f"Generated AI Archive with {archive_stats} chapters.")
+             else:
+                 raise RuntimeError("Archive generation returned no chapters")
              # archive.json is written after rename below, once the final folder name is known
 
         except Exception as e:
             traceback.print_exc()
             print(f"Archive generation failed: {e}")
+            raise
 
         # 6. Rename Directory to readable slug (must happen before writing archive.json)
         try:
