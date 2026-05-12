@@ -109,12 +109,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             aria-label={toast.confirm ? 'Confirmation' : 'Notification'}
                             style={{
                                 pointerEvents: 'auto',
-                                background: 'rgba(8,8,8,0.96)',
+                                background: 'var(--surface)',
                                 border: `1px solid ${styles.border}`,
-                                borderLeft: `4px solid ${styles.accent}`,
                                 borderRadius: '8px',
                                 color: 'var(--foreground)',
-                                boxShadow: '0 18px 45px rgba(0,0,0,0.45)',
                                 padding: '0.85rem 0.95rem',
                             }}
                         >
@@ -124,14 +122,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                     <button
                                         type="button"
                                         onClick={() => handleConfirm(toast, false)}
-                                        style={{ border: '1px solid var(--card-border)', borderRadius: '6px', background: 'transparent', color: '#bbb', padding: '0.45rem 0.7rem', cursor: 'pointer' }}
+                                        style={{ border: '1px solid var(--card-border)', borderRadius: '6px', background: 'transparent', color: 'var(--muted)', padding: '0.45rem 0.7rem', cursor: 'pointer' }}
                                     >
                                         {toast.confirm.cancelLabel}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleConfirm(toast, true)}
-                                        style={{ border: 'none', borderRadius: '6px', background: 'var(--primary)', color: '#fff', padding: '0.45rem 0.8rem', cursor: 'pointer', fontWeight: 600 }}
+                                        style={{ border: 'none', borderRadius: '6px', background: 'var(--primary)', color: 'var(--button-primary-text)', padding: '0.45rem 0.8rem', cursor: 'pointer', fontWeight: 600 }}
                                     >
                                         {toast.confirm.confirmLabel}
                                     </button>
@@ -141,7 +139,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                     type="button"
                                     aria-label="Dismiss notification"
                                     onClick={() => removeToast(toast.id)}
-                                    style={{ marginTop: '0.6rem', border: 'none', background: 'transparent', color: '#888', cursor: 'pointer', padding: 0, fontSize: '0.8rem' }}
+                                    style={{ marginTop: '0.6rem', border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem' }}
                                 >
                                     Dismiss
                                 </button>

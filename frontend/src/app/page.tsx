@@ -53,11 +53,11 @@ export default function Home() {
 
   return (
     <main className="container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: '600px', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem' }} className="title-gradient">
+      <div className="surface-panel" style={{ width: '100%', maxWidth: '600px', textAlign: 'center' }}>
+        <h1 className="page-title" style={{ marginBottom: '1rem' }}>
           Smart Reader
         </h1>
-        <p style={{ color: '#888', marginBottom: '2rem' }}>
+        <p className="muted" style={{ marginBottom: '2rem' }}>
           De-duplicated, intelligent YouTube summaries powered by local AI.
         </p>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getApiBase, getShareOrigin } from '@/lib/api';
+import { copyText } from '@/lib/clipboard';
 import { useToast } from '../components/ToastProvider';
 
 type Job = {
@@ -45,6 +46,9 @@ export default function DashboardPage() {
     const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
     const [groupTaskCopied, setGroupTaskCopied] = useState(false);
     const [groupTitle, setGroupTitle] = useState('Combined Learning Digest');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'complete' | 'processing' | 'failed'>('all');
+    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'title'>('newest');
     const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(() => {
         if (typeof window === 'undefined') return [];
         const stored = window.localStorage.getItem('smart-reader-group-selection');
@@ -104,41 +108,7 @@ export default function DashboardPage() {
             setTimeout(() => setCopiedJobId(null), 2000);
         };
 
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(onCopied);
-            return;
-        }
-
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        onCopied();
-    };
-
-    const copyText = (text: string, onCopied: () => void) => {
-        const fallbackCopy = () => {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            onCopied();
-        };
-
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(onCopied).catch(fallbackCopy);
-            return;
-        }
-
-        fallbackCopy();
+        copyText(url, onCopied);
     };
 
     const toggleGroupSelection = (job: Job) => {
@@ -151,6 +121,21 @@ export default function DashboardPage() {
     };
 
     const selectedJobs = jobs.filter(job => selectedGroupIds.includes(job.id) && job.status === 'complete' && job.data_folder_name);
+    const visibleJobs = jobs
+        .filter(job => {
+            const query = searchTerm.trim().toLowerCase();
+            const searchable = `${job.title || ''} ${job.video_url || ''} ${job.kind || ''} ${job.digest_model || ''}`.toLowerCase();
+            const matchesQuery = !query || searchable.includes(query);
+            const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+            return matchesQuery && matchesStatus;
+        })
+        .sort((a, b) => {
+            if (sortOrder === 'oldest') return a.created_at - b.created_at;
+            if (sortOrder === 'title') return (a.title || a.video_url).localeCompare(b.title || b.video_url);
+            return b.created_at - a.created_at;
+        });
+    const completeCount = jobs.filter(job => job.status === 'complete').length;
+    const aiDigestCount = jobs.filter(job => job.kind === 'ai_digest' || job.kind === 'group_ai_digest').length;
     const copyGroupAiDigestTask = () => {
         if (selectedJobs.length < 2) {
             toast.error('Select at least two completed projects for a group digest.');
@@ -190,62 +175,104 @@ ${projectFolders.join('\n')}`;
     };
 
     return (
-        <div className="container" style={{ padding: '2rem' }}>
-            <header style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="container dashboard-page">
+            <header className="page-header">
                 <div>
-                    <h1 className="title-gradient" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Your Projects</h1>
-                    <p style={{ color: '#888' }}>Manage and view your analyzed videos</p>
+                    <h1 className="page-title">Learning library</h1>
+                    <p className="muted">Search, group, share, and open projects without printing long URLs on every card.</p>
                 </div>
-                <Link href="/" className="btn btn-primary">
-                    + New Project
+                <Link href="/" className="btn btn-primary btn-compact">
+                    New Project
                 </Link>
             </header>
 
             {loading ? (
-                <div>Loading projects...</div>
+                <div className="surface-panel">Loading projects...</div>
             ) : (
                 <>
-                <section className="glass-card" style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto auto', gap: '0.75rem', alignItems: 'center' }}>
-                    <input
-                        value={groupTitle}
-                        onChange={(event) => setGroupTitle(event.target.value)}
-                        placeholder="Group digest title"
-                        style={{
-                            width: '100%',
-                            padding: '0.75rem 0.9rem',
-                            borderRadius: '6px',
-                            border: '1px solid var(--card-border)',
-                            background: 'rgba(255,255,255,0.04)',
-                            color: 'var(--foreground)'
-                        }}
-                    />
-                    <button
-                        onClick={copyGroupAiDigestTask}
-                        disabled={selectedJobs.length < 2}
-                        className="btn"
-                        style={{ background: groupTaskCopied ? 'var(--secondary)' : 'var(--success)', opacity: selectedJobs.length < 2 ? 0.5 : 1 }}
-                    >
-                        {groupTaskCopied ? 'Copied Group Task' : `Copy Group AI Digest CLI Task (${selectedJobs.length})`}
-                    </button>
-                    <button
-                        onClick={() => setSelectedGroupIds([])}
-                        className="btn"
-                        style={{ background: 'rgba(255,255,255,0.08)' }}
-                    >
-                        Clear Group
-                    </button>
+                <section className="stats-grid" aria-label="Library stats">
+                    <div className="stat-tile">
+                        <strong>{jobs.length}</strong>
+                        <span>Projects</span>
+                    </div>
+                    <div className="stat-tile">
+                        <strong>{aiDigestCount}</strong>
+                        <span>AI digests</span>
+                    </div>
+                    <div className="stat-tile">
+                        <strong>{selectedJobs.length}</strong>
+                        <span>Selected</span>
+                    </div>
+                    <div className="stat-tile">
+                        <strong>{completeCount}</strong>
+                        <span>Complete</span>
+                    </div>
                 </section>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem' }}>
+                <section className="library-toolbar" aria-label="Project filters">
+                    <input
+                        type="search"
+                        className="input"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Search projects"
+                    />
+                    <div className="filter-pills" aria-label="Status filter">
+                        {(['all', 'complete', 'processing', 'failed'] as const).map(status => (
+                            <button
+                                key={status}
+                                type="button"
+                                className={`pill-button ${statusFilter === status ? 'active' : ''}`}
+                                onClick={() => setStatusFilter(status)}
+                            >
+                                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                    <select className="input sort-select" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="title">Title A-Z</option>
+                    </select>
+                </section>
+
+                {selectedJobs.length > 0 && (
+                    <section className="group-bar">
+                        <input
+                            value={groupTitle}
+                            onChange={(event) => setGroupTitle(event.target.value)}
+                            placeholder="Group digest title"
+                            className="input"
+                            aria-label="Group digest title"
+                        />
+                        <strong>{selectedJobs.length} selected for group digest</strong>
+                        <div className="action-row">
+                            <button
+                                onClick={copyGroupAiDigestTask}
+                                disabled={selectedJobs.length < 2}
+                                className="btn btn-success btn-compact"
+                            >
+                                {groupTaskCopied ? 'Copied Group Task' : 'Copy Group AI Digest Task'}
+                            </button>
+                            <button
+                                onClick={() => setSelectedGroupIds([])}
+                                className="btn btn-secondary btn-compact"
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    </section>
+                )}
+
+                <div className="project-grid">
                     {jobs.length === 0 && (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', border: '1px dashed var(--card-border)', borderRadius: '12px' }}>
-                            <p style={{ marginBottom: '1rem', color: '#888' }}>No projects yet.</p>
+                        <div className="empty-state">
+                            <p>No projects yet.</p>
                             <Link href="/" className="btn">Start your first project</Link>
                         </div>
                     )}
 
-                    {jobs.map(job => {
-                        const projectShareUrl = `${shareOrigin || window.location.origin}/reader/${job.id}`;
+                    {visibleJobs.map(job => {
                         const thumbnailUrl = job.summary_image && job.data_folder_name
                             ? `${getApiBase()}/data/jobs/${job.data_folder_name}/${job.summary_image}`
                             : getYouTubeThumbnailUrl(job.video_url);
@@ -260,110 +287,91 @@ ${projectFolders.join('\n')}`;
                                     : null;
 
                         return (
-                        <div key={job.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'transform 0.2s' }}>
+                        <article key={job.id} className={`project-card ${isSelectedForGroup ? 'selected' : ''}`}>
                             <div
+                                className="project-thumb"
                                 style={{
-                                    position: 'relative',
-                                    aspectRatio: '16 / 9',
-                                    borderRadius: '8px',
-                                    overflow: 'hidden',
-                                    border: '1px solid var(--card-border)',
                                     background: thumbnailUrl
                                         ? `linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.18)), url(${thumbnailUrl}) center / cover`
-                                        : 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(139,92,246,0.16))'
+                                        : undefined
                                 }}
                             >
                                 {!thumbnailUrl && (
-                                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: '0.85rem' }}>
+                                    <div className="thumb-empty">
                                         No thumbnail
                                     </div>
                                 )}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                    <span className={`status-badge status-${job.status}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }}>
+                            <div className="project-body">
+                                <div className="badge-row">
+                                    <span className={`status-badge status-${job.status}`}>
                                         {job.status}
                                     </span>
                                     {kindLabel && (
-                                        <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: 'rgba(16,185,129,0.16)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.35)' }}>
+                                        <span className="status-badge badge-success">
                                             {kindLabel}
                                         </span>
                                     )}
+                                    {isSelectedForGroup && (
+                                        <span className="status-badge badge-success">
+                                            Grouped
+                                        </span>
+                                    )}
                                 </div>
-                                <button
-                                    onClick={(e) => handleDelete(job.id, e)}
-                                    style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.2rem' }}
-                                    title="Delete Project"
-                                >
-                                    &times;
-                                </button>
+
+                                <h2 className="project-title">
+                                    {job.title || job.video_url}
+                                </h2>
+
+                                <p className="project-meta">
+                                    {new Date(job.created_at * 1000).toLocaleDateString()}
+                                    {job.kind === 'ai_digest' && job.digest_model ? ` · ${job.digest_model.replace(/^.*:/, '')}` : ''}
+                                </p>
                             </div>
 
-                            <h3 style={{ fontSize: '1.2rem', fontWeight: 500, lineHeight: 1.4, flex: 1 }}>
-                                {job.title || job.video_url}
-                            </h3>
-
-                            <p style={{ fontSize: '0.8rem', color: '#666' }}>
-                                {new Date(job.created_at * 1000).toLocaleDateString()}
-                                {job.kind === 'ai_digest' && job.digest_model ? ` • ${job.digest_model.replace(/^.*:/, '')}` : ''}
-                            </p>
-
-                            <Link href={`/reader/${job.id}`} className="btn" style={{ textAlign: 'center' }}>
-                                Open Project
-                            </Link>
-
-                            {canGroup && (
-                                <button
-                                    onClick={() => toggleGroupSelection(job)}
-                                    className="btn"
-                                    style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem', background: isSelectedForGroup ? 'var(--success)' : 'rgba(255,255,255,0.08)' }}
-                                >
-                                    {isSelectedForGroup ? 'Added to Group' : 'Add to Group'}
-                                </button>
-                            )}
-
-                            <a
-                                href={projectShareUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    color: 'var(--primary)',
-                                    fontSize: '0.8rem',
-                                    lineHeight: 1.4,
-                                    overflowWrap: 'anywhere',
-                                    textDecoration: 'none',
-                                    border: '1px solid var(--card-border)',
-                                    borderRadius: '6px',
-                                    padding: '0.6rem 0.75rem',
-                                    background: 'rgba(255,255,255,0.04)'
-                                }}
-                            >
-                                Tailscale Link: {projectShareUrl}
-                            </a>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: job.status === 'complete' ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
-                                <button
-                                    onClick={() => copyProjectLink(job.id)}
-                                    className="btn"
-                                    style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
-                                >
-                                    {copiedJobId === job.id ? 'Copied Link' : 'Copy Tailscale Link'}
-                                </button>
-
-                                {job.status === 'complete' && (
-                                    <a
-                                        href={`${getApiBase()}/jobs/${job.id}/download`}
-                                        download={`${job.data_folder_name || job.id}.zip`}
-                                        className="btn"
-                                        style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.5rem 0.75rem', textDecoration: 'none' }}
-                                    >
-                                        Download ZIP
-                                    </a>
-                                )}
+                            <div className="project-actions">
+                                <Link href={`/reader/${job.id}`} className="btn btn-primary btn-compact">
+                                    Open Project
+                                </Link>
+                                <a href={job.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
+                                    Open YouTube
+                                </a>
+                                <details className="overflow-menu">
+                                    <summary aria-label="Project actions">⋯</summary>
+                                    <div className="overflow-content">
+                                        <button onClick={() => copyProjectLink(job.id)}>
+                                            {copiedJobId === job.id ? 'Copied Link' : 'Copy Project Link'}
+                                        </button>
+                                        {job.status === 'complete' && (
+                                            <a
+                                                href={`${getApiBase()}/jobs/${job.id}/download`}
+                                                download={`${job.data_folder_name || job.id}.zip`}
+                                            >
+                                                Download ZIP
+                                            </a>
+                                        )}
+                                        {canGroup && (
+                                            <button onClick={() => toggleGroupSelection(job)}>
+                                                {isSelectedForGroup ? 'Remove from Group' : 'Add to Group'}
+                                            </button>
+                                        )}
+                                        <button className="danger-item" onClick={(e) => handleDelete(job.id, e)}>
+                                            Delete Project
+                                        </button>
+                                    </div>
+                                </details>
                             </div>
-                        </div>
+                        </article>
                     )})}
+                    {jobs.length > 0 && visibleJobs.length === 0 && (
+                        <div className="empty-state">
+                            <p>No projects match the current filters.</p>
+                            <button className="btn btn-secondary" onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}>
+                                Clear filters
+                            </button>
+                        </div>
+                    )}
                 </div>
                 </>
             )}

@@ -221,6 +221,19 @@ export default function SlicerPage() {
 
     const [viewingFrame, setViewingFrame] = useState<string | null>(null);
 
+    useEffect(() => {
+        if (!viewingFrame) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setViewingFrame(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [viewingFrame]);
+
     // Helpers to preview video
     const previewTimeout = useRef<NodeJS.Timeout | null>(null);
     const videoPreview = () => {
@@ -289,35 +302,48 @@ export default function SlicerPage() {
 
     if (loadError) return <div className="container">{loadError}</div>;
     if (!job) return <div className="container">Loading...</div>;
+    const stepItems = [
+        { id: 'input', label: '1. Set range' },
+        { id: 'review', label: '2. Review frames' },
+        { id: 'done', label: '3. Done' }
+    ] as const;
 
     return (
-        <div className="container">
-            <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="container slicer-page">
+            <header className="page-header">
                 <div>
-                    <h1 className="title-gradient">Video Slicer</h1>
-                    <p style={{ color: '#888' }}>{job.title}</p>
+                    <h1 className="page-title">Choose teaching frames</h1>
+                    <p className="muted">{job.title}</p>
                     {isReplacingImage && (
-                        <p style={{ color: 'var(--secondary)', fontSize: '0.86rem', marginTop: '0.35rem' }}>
+                        <p className="muted" style={{ marginTop: '0.35rem' }}>
                             Replacing one image in chapter {(targetChapterIndex ?? 0) + 1}. The original remains until you save selected frames.
                         </p>
                     )}
                 </div>
-                <a href={returnTo || `/reader/${job.id}`} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>
-                    &larr; Back to Project
+                <a href={returnTo || `/reader/${job.id}`} className="btn btn-secondary btn-compact">
+                    Back to Project
                 </a>
             </header>
 
+            <nav className="step-strip" aria-label="Slicer progress">
+                {stepItems.map(item => (
+                    <span key={item.id} className={`step-chip ${step === item.id ? 'active' : ''}`}>
+                        {item.label}
+                    </span>
+                ))}
+            </nav>
+
             {/* STEP 1: INPUT */}
             {step === 'input' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-                    <div className="glass-card">
-                        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000', borderRadius: '8px', overflow: 'hidden' }}>
+                <div className="slicer-grid">
+                    <div className="surface-panel">
+                        <div className="video-shell">
                             {videoSrc && (
                                 <video
                                     ref={videoRef}
                                     src={videoSrc}
                                     controls
-                                    style={{ width: '100%', height: '100%' }}
+                                    className="slicer-video"
                                     onLoadedMetadata={onLoadedMetadata}
                                     onTimeUpdate={handleTimeUpdate}
                                     onPause={() => setIsPreviewing(false)}
@@ -347,10 +373,10 @@ export default function SlicerPage() {
                                         setEnd(start + val);
                                     }} />
                                 </label>
-                                <button className="btn" onClick={videoPreview} style={{ background: '#444', height: 'fit-content', alignSelf: 'end' }}>Preview Play</button>
+                                <button className="btn btn-secondary" onClick={videoPreview} style={{ height: 'fit-content', alignSelf: 'end' }}>Preview Play</button>
                             </div>
                             <div style={{ marginTop: '0.5rem' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: '#aaa' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--muted)' }}>
                                     <input type="checkbox" checked={syncToPlayhead} onChange={e => setSyncToPlayhead(e.target.checked)} />
                                     Sync Selection to Playhead while Scrubbing
                                 </label>
@@ -358,9 +384,9 @@ export default function SlicerPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div className="glass-card">
-                            <h3>Format</h3>
+                    <div className="format-column">
+                        <div className="surface-panel">
+                            <h2 className="section-title">Format</h2>
                             <div style={{ display: 'flex', gap: '1rem', margin: '1rem 0' }}>
                                 <label><input type="radio" checked={format === 'sequence'} onChange={() => setFormat('sequence')} /> Image Sequence</label>
                                 <label><input type="radio" checked={format === 'mp4'} onChange={() => setFormat('mp4')} /> MP4 Video</label>
@@ -372,7 +398,7 @@ export default function SlicerPage() {
                                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                                         {[10, 24, 60].map(val => (
                                             <button key={val} className="btn"
-                                                style={{ flex: 1, padding: '0.5rem', background: fps === val ? 'var(--primary)' : '#444' }}
+                                                style={{ flex: 1, padding: '0.5rem', background: fps === val ? 'var(--primary)' : 'var(--surface-raised)' }}
                                                 onClick={() => setFps(val)}>{val}</button>
                                         ))}
                                     </div>
@@ -381,16 +407,18 @@ export default function SlicerPage() {
 
                             {isReplacingImage && replaceImagePath && job.data_folder_name && (
                                 <div style={{ marginTop: '1rem', borderTop: '1px solid var(--card-border)', paddingTop: '1rem' }}>
-                                    <div style={{ fontSize: '0.78rem', color: '#aaa', marginBottom: '0.5rem' }}>Current image being replaced</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.5rem' }}>Current image being replaced</div>
                                     <img
                                         src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${replaceImagePath}`}
                                         alt="Current image being replaced"
+                                        loading="lazy"
+                                        decoding="async"
                                         style={{ width: '100%', borderRadius: '6px', border: '1px solid var(--card-border)', display: 'block' }}
                                     />
                                 </div>
                             )}
 
-                            <button className="btn" style={{ width: '100%', marginTop: '2rem' }} onClick={handlePreview} disabled={processing}>
+                            <button className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }} onClick={handlePreview} disabled={processing}>
                                 {processing ? 'Processing...' : (format === 'sequence' ? 'Generate Preview' : 'Export MP4')}
                             </button>
                         </div>
@@ -400,12 +428,12 @@ export default function SlicerPage() {
 
             {/* STEP 2: REVIEW (FILMSTRIP) */}
             {step === 'review' && (
-                <div className="glass-card">
+                <div className="surface-panel">
                     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <h3>{previewFrames.length - excludedFrames.size} of {previewFrames.length} frames selected — click to toggle</h3>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn" style={{ background: '#444' }} onClick={selectAll}>Select All</button>
-                            <button className="btn" style={{ background: '#444' }} onClick={deselectAll}>Clear All</button>
+                            <button className="btn btn-secondary" onClick={selectAll}>Select All</button>
+                            <button className="btn btn-secondary" onClick={deselectAll}>Clear All</button>
                         </div>
                     </header>
 
@@ -432,7 +460,7 @@ export default function SlicerPage() {
                                         position: 'relative',
                                         cursor: 'pointer',
                                         opacity: isExcluded ? 0.5 : 1,
-                                        border: isExcluded ? '2px solid #555' : '2px solid var(--primary)',
+                                        border: isExcluded ? '2px solid var(--border-strong)' : '2px solid var(--primary)',
                                         borderRadius: '4px',
                                         overflow: 'hidden',
                                         width: `${thumbSize}px`
@@ -442,6 +470,8 @@ export default function SlicerPage() {
                                         onClick={() => toggleFrame(frame)}
                                         src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${frame}`}
                                         alt={`Preview frame ${frame}`}
+                                        loading="lazy"
+                                        decoding="async"
                                         style={{ width: '100%', height: 'auto', display: 'block', filter: isExcluded ? 'grayscale(100%)' : 'none' }}
                                     />
 
@@ -451,7 +481,7 @@ export default function SlicerPage() {
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                         background: 'rgba(0,0,0,0.8)', padding: '4px 8px'
                                     }}>
-                                        <span style={{ fontSize: '10px', color: '#fff' }}>{frame}</span>
+                                        <span style={{ fontSize: '10px', color: 'var(--foreground)' }}>{frame}</span>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setViewingFrame(frame); }}
                                             className="btn"
@@ -466,11 +496,11 @@ export default function SlicerPage() {
                     </div>
 
                     <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button className="btn" style={{ background: '#444' }} onClick={() => setStep('input')}>Back</button>
-                        <button className="btn" style={{ background: 'var(--secondary)' }} onClick={handleSaveToProject} disabled={processing}>
+                        <button className="btn btn-secondary" onClick={() => setStep('input')}>Back</button>
+                        <button className="btn btn-success" onClick={handleSaveToProject} disabled={processing}>
                             {isReplacingImage ? 'Save Replacement & Return' : returnTo ? 'Add to Project & Return' : 'Add to Project'}
                         </button>
-                        <button className="btn" onClick={handleFinalize} disabled={processing}>
+                        <button className="btn btn-primary" onClick={handleFinalize} disabled={processing}>
                             {processing ? 'Processing...' : 'Download ZIP'}
                         </button>
                     </div>
@@ -479,19 +509,23 @@ export default function SlicerPage() {
 
             {/* STEP 3: DONE */}
             {step === 'done' && (
-                <div className="glass-card" style={{ textAlign: 'center', padding: '4rem' }}>
-                    <h2 style={{ color: 'var(--success)', marginBottom: '1rem' }}>Expert Ready!</h2>
-                    <a href={downloadUrl} className="btn" style={{ fontSize: '1.2rem', padding: '1rem 2rem' }}>
+                <div className="surface-panel done-panel">
+                    <h2 style={{ color: 'var(--success)', marginBottom: '1rem' }}>Export Ready!</h2>
+                    <a href={downloadUrl} className="btn btn-primary" style={{ fontSize: '1.2rem', padding: '1rem 2rem' }}>
                         Download {format === 'sequence' ? 'ZIP' : 'MP4'}
                     </a>
                     <br /><br />
-                    <button className="btn" style={{ background: '#444' }} onClick={() => setStep('input')}>Create Another Slice</button>
+                    <button className="btn btn-secondary" onClick={() => setStep('input')}>Create Another Slice</button>
                 </div>
             )}
 
             {/* LIGHTBOX MODAL */}
             {viewingFrame && (
-                <div style={{
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Preview frame"
+                    style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                     background: 'rgba(0,0,0,0.95)', zIndex: 1000,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
@@ -499,6 +533,7 @@ export default function SlicerPage() {
 
                     {/* Navigation Buttons */}
                     <button
+                        aria-label="Previous frame"
                         className="btn"
                         style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.5)' }}
                         onClick={(e) => {
@@ -511,6 +546,7 @@ export default function SlicerPage() {
                         ‹
                     </button>
                     <button
+                        aria-label="Next frame"
                         className="btn"
                         style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.5)' }}
                         onClick={(e) => {
@@ -526,16 +562,17 @@ export default function SlicerPage() {
                     <img
                         src={`${getApiBase()}/data/jobs/${job.data_folder_name}/${previewBaseUrl}/${viewingFrame}`}
                         alt={`Selected preview frame ${viewingFrame}`}
+                        decoding="async"
                         style={{ maxWidth: '80%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '4px' }}
                         onClick={(e) => e.stopPropagation()}
                     />
 
                     <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', zIndex: 1001 }} onClick={(e) => e.stopPropagation()}>
-                        <span style={{ color: 'white', alignSelf: 'center' }}>{viewingFrame} ({previewFrames.indexOf(viewingFrame) + 1}/{previewFrames.length})</span>
+                        <span style={{ color: 'var(--foreground)', alignSelf: 'center' }}>{viewingFrame} ({previewFrames.indexOf(viewingFrame) + 1}/{previewFrames.length})</span>
                         <button className="btn" onClick={() => toggleFrame(viewingFrame)}>
                             {excludedFrames.has(viewingFrame) ? 'Include Frame' : 'Exclude Frame'}
                         </button>
-                        <button className="btn" style={{ background: '#444' }} onClick={() => setViewingFrame(null)}>Close</button>
+                        <button className="btn btn-secondary" onClick={() => setViewingFrame(null)}>Close</button>
                     </div>
                 </div>
             )}
