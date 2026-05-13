@@ -113,57 +113,72 @@ def ensure_server(model: str, timeout: int = 600) -> None:
         raise ValueError(f"Unsupported MLX model '{model}'. Supported models: {supported}")
 
     started_by_this_call = False
+    started_at = time.time()
 
-    with _server_ready:
-        while (
-            _server_proc is not None
-            and _server_proc.poll() is None
-            and _current_model is not None
-            and not _is_healthy_for_model_locked(_current_model)
-        ):
-            _server_ready.wait(timeout=1.5)
+    while True:
+        with _server_ready:
+            if _is_healthy_for_model_locked(model):
+                return
 
-        if _is_healthy_for_model_locked(model):
-            return
-
-        _stop_server_locked()
-
-        if not mlx_available():
-            raise RuntimeError(
-                "mlx-vlm is not installed in the backend Python environment. "
-                "Run `pip install -r backend/requirements.txt` inside the backend venv."
+            proc = _server_proc
+            current_model = _current_model
+            running_requested_model = (
+                proc is not None
+                and proc.poll() is None
+                and current_model == model
             )
+            # The short cache may expire while video preprocessing runs. When the
+            # requested server is already running, probe outside the lock below so
+            # callers do not wait forever on stale cache state.
+            if not running_requested_model:
+                _stop_server_locked()
 
-        MLX_MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        env = os.environ.copy()
-        env.setdefault("HF_HOME", str(MLX_MODELS_DIR))
-        env.setdefault("TRANSFORMERS_CACHE", env["HF_HOME"])
-        env.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-        cmd = [
-            sys.executable,
-            "-m",
-            "mlx_vlm.server",
-            "--model",
-            model,
-            "--host",
-            MLX_HOST,
-            "--port",
-            str(MLX_PORT),
-        ]
-        logger.info("Starting MLX server: %s", " ".join(cmd))
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=env,
-        )
-        _start_log_thread(proc.stdout, "stdout")
-        _start_log_thread(proc.stderr, "stderr")
+                if not mlx_available():
+                    raise RuntimeError(
+                        "mlx-vlm is not installed in the backend Python environment. "
+                        "Run `pip install -r backend/requirements.txt` inside the backend venv."
+                    )
 
-        _server_proc = proc
-        _current_model = model
-        started_by_this_call = True
+                MLX_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+                env = os.environ.copy()
+                env.setdefault("HF_HOME", str(MLX_MODELS_DIR))
+                env.setdefault("TRANSFORMERS_CACHE", env["HF_HOME"])
+                env.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+                cmd = [
+                    sys.executable,
+                    "-m",
+                    "mlx_vlm.server",
+                    "--model",
+                    model,
+                    "--host",
+                    MLX_HOST,
+                    "--port",
+                    str(MLX_PORT),
+                ]
+                logger.info("Starting MLX server: %s", " ".join(cmd))
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                )
+                _start_log_thread(proc.stdout, "stdout")
+                _start_log_thread(proc.stderr, "stderr")
+
+                _server_proc = proc
+                _current_model = model
+                started_by_this_call = True
+                break
+
+        if _is_healthy_for_model(model):
+            return
+        if time.time() - started_at >= timeout:
+            raise RuntimeError(
+                f"MLX server did not become healthy within {timeout}s. Recent log: {_recent_log()}"
+            )
+        with _server_ready:
+            _server_ready.wait(timeout=1.5)
 
     if started_by_this_call:
         try:
