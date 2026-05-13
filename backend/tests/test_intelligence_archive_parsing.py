@@ -53,6 +53,59 @@ class ArchiveParsingTests(unittest.TestCase):
         self.assertTrue(meta["fallback"])
         self.assertEqual(meta["attempts"], 3)
 
+    def test_normalize_generated_chapters_repairs_overlapping_ranges(self):
+        chapters = [
+            {
+                "title": "First",
+                "summary": "Summary one",
+                "content": "Evidence one",
+                "start_time": 10,
+                "end_time": 40,
+            },
+            {
+                "title": "Second",
+                "summary": "Summary two",
+                "content": "Evidence two",
+                "start_time": 34,
+                "end_time": 60,
+            },
+        ]
+
+        normalized, repairs = intelligence._normalize_generated_chapters(chapters, 0, 90)
+
+        self.assertEqual(len(normalized), 2)
+        self.assertEqual(normalized[0]["start_time"], 10)
+        self.assertEqual(normalized[0]["end_time"], 34)
+        self.assertEqual(normalized[1]["start_time"], 34)
+        self.assertEqual(normalized[1]["end_time"], 60)
+        self.assertTrue(any(repair["action"] == "trimmed_previous_overlap" for repair in repairs))
+
+    def test_normalize_generated_chapters_clamps_and_drops_invalid_chapters(self):
+        chapters = [
+            {
+                "title": "Outside",
+                "summary": "Summary",
+                "content": "Evidence",
+                "start_time": -5,
+                "end_time": 130,
+            },
+            {
+                "title": "",
+                "summary": "Missing title",
+                "content": "Evidence",
+                "start_time": 10,
+                "end_time": 20,
+            },
+        ]
+
+        normalized, repairs = intelligence._normalize_generated_chapters(chapters, 0, 120)
+
+        self.assertEqual(len(normalized), 1)
+        self.assertEqual(normalized[0]["start_time"], 0)
+        self.assertEqual(normalized[0]["end_time"], 120)
+        self.assertTrue(any(repair["action"] == "clamped_to_transcript_bounds" for repair in repairs))
+        self.assertTrue(any(repair["action"] == "dropped_empty_required_field" for repair in repairs))
+
 
 if __name__ == "__main__":
     unittest.main()

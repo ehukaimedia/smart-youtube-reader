@@ -13,6 +13,7 @@ MAX_IMAGES_PER_CHAPTER = 2
 CHUNK_DURATION = 300
 ARCHIVE_RESPONSE_FORMAT = "xml"
 ARCHIVE_XML_ATTEMPTS = 2
+MIN_CHAPTER_DURATION = 3.0
 
 def _to_float(value, default: float) -> float:
     try:
@@ -260,6 +261,8 @@ def _archive_system_prompt(response_format: str = ARCHIVE_RESPONSE_FORMAT) -> st
         "You are a Smart YouTube Reader archive planner. Convert timestamped transcript evidence into "
         "compact AI-learning chapters.\n"
         "Use numeric seconds for timestamps. Derive them from the bracketed transcript ranges.\n"
+        "Chapter start_time and end_time must stay inside the provided transcript segment, be sorted ascending, "
+        "and never overlap. Leave gaps when transcript material is low-value.\n"
         "Create 3-5 chapters for a 5-minute segment when the segment contains enough substance. Merge tiny transitions into nearby chapters.\n"
         "Do not create standalone chapters for intros, sponsor chatter, calls to action, jokes, or repetition.\n"
         "Preserve durable concepts, definitions, procedures, examples, caveats, and references to visible charts, slides, or tools.\n"
@@ -343,6 +346,108 @@ def _generate_archive_chunk(model: str, chunk: dict) -> tuple[list[dict], dict]:
         )
         attempts.append({"format": "json", "attempt": 1, "error": error})
         raise ValueError(f"Archive chunk parse failed after retries: {attempts}") from exc
+
+
+def _normalize_generated_chapters(
+    chapters: list[dict],
+    boundary_start: float,
+    boundary_end: float,
+) -> tuple[list[dict], list[dict]]:
+    """
+    Repair model timeline drift before frame selection.
+    The LLM chooses semantic boundaries, but the backend owns validity: chapters
+    must be complete, bounded to their transcript evidence, sorted, and non-overlapping.
+    """
+    if boundary_end <= boundary_start:
+        boundary_end = boundary_start + MIN_CHAPTER_DURATION
+
+    normalized: list[dict] = []
+    repairs: list[dict] = []
+
+    for index, chapter in enumerate(chapters):
+        title = _clean_transcript_text(str(chapter.get("title") or chapter.get("concept") or ""))
+        summary = _clean_transcript_text(str(chapter.get("summary") or ""))
+        content = _clean_transcript_text(str(chapter.get("content") or ""))
+        if not title or not summary or not content:
+            repairs.append({"chapter": index, "action": "dropped_empty_required_field"})
+            continue
+
+        raw_start = _to_float(chapter.get("start_time", chapter.get("timestamp_start")), boundary_start)
+        raw_end = _to_float(chapter.get("end_time", chapter.get("timestamp_end")), raw_start + MIN_CHAPTER_DURATION)
+        start = raw_start
+        end = raw_end
+
+        if end < start:
+            start, end = end, start
+            repairs.append({"chapter": index, "action": "swapped_inverted_range"})
+
+        clamped_start = min(max(start, boundary_start), boundary_end)
+        clamped_end = min(max(end, boundary_start), boundary_end)
+        if clamped_start != start or clamped_end != end:
+            repairs.append({
+                "chapter": index,
+                "action": "clamped_to_transcript_bounds",
+                "from": [start, end],
+                "to": [clamped_start, clamped_end],
+            })
+        start, end = clamped_start, clamped_end
+
+        if end <= start:
+            end = min(boundary_end, start + MIN_CHAPTER_DURATION)
+            if end <= start:
+                repairs.append({"chapter": index, "action": "dropped_zero_duration"})
+                continue
+            repairs.append({"chapter": index, "action": "expanded_zero_duration", "to": [start, end]})
+
+        normalized.append({
+            "title": title,
+            "summary": summary,
+            "content": content,
+            "start_time": start,
+            "end_time": end,
+            "_source_chapter_index": index,
+        })
+
+    normalized.sort(key=lambda item: (item["start_time"], item["end_time"]))
+    repaired: list[dict] = []
+    for chapter in normalized:
+        start = chapter["start_time"]
+        end = chapter["end_time"]
+        if repaired:
+            prev = repaired[-1]
+            prev_start = prev["start_time"]
+            prev_end = prev["end_time"]
+            if start < prev_end:
+                if start > prev_start + MIN_CHAPTER_DURATION:
+                    repairs.append({
+                        "chapter": chapter["_source_chapter_index"],
+                        "action": "trimmed_previous_overlap",
+                        "previous_from": [prev_start, prev_end],
+                        "previous_to": [prev_start, start],
+                    })
+                    prev["end_time"] = start
+                else:
+                    repairs.append({
+                        "chapter": chapter["_source_chapter_index"],
+                        "action": "shifted_start_after_previous",
+                        "from": [start, end],
+                        "to": [prev_end, end],
+                    })
+                    start = prev_end
+
+        if end <= start:
+            repairs.append({
+                "chapter": chapter["_source_chapter_index"],
+                "action": "dropped_after_overlap_repair",
+            })
+            continue
+
+        chapter["start_time"] = start
+        chapter["end_time"] = end
+        chapter.pop("_source_chapter_index", None)
+        repaired.append(chapter)
+
+    return repaired, repairs
 
 def _hash_distance(a: str | None, b: str | None) -> int | None:
     if not a or not b:
@@ -587,6 +692,18 @@ def create_ai_archive(
         try:
             # Prompt for semantic chunking of this segment.
             chunk_chapters, generation_meta = _generate_archive_chunk(model, chunk)
+            chunk_chapters, timeline_repairs = _normalize_generated_chapters(
+                chunk_chapters,
+                chunk["start"],
+                chunk["end"],
+            )
+            if timeline_repairs:
+                transcript_integrity.setdefault("timeline_repairs", []).append({
+                    "chunk": chunk_index,
+                    "start": chunk["start"],
+                    "end": chunk["end"],
+                    "repairs": timeline_repairs,
+                })
             all_chapters.extend(chunk_chapters)
             transcript_integrity["chunks_succeeded"] += 1
             if generation_meta.get("fallback"):
@@ -620,7 +737,18 @@ def create_ai_archive(
         )
 
     # Use the accumulated chapters
-    chapters = all_chapters
+    chapters, timeline_repairs = _normalize_generated_chapters(
+        all_chapters,
+        transcript_integrity["source_start"],
+        transcript_integrity["source_end"],
+    )
+    if timeline_repairs:
+        transcript_integrity.setdefault("timeline_repairs", []).append({
+            "scope": "global",
+            "repairs": timeline_repairs,
+        })
+    transcript_integrity["raw_chapters"] = len(all_chapters)
+    transcript_integrity["normalized_chapters"] = len(chapters)
     if not chapters and transcript:
         raise RuntimeError("Archive generation returned no chapters")
 
