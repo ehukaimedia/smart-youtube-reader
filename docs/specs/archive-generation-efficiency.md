@@ -11,7 +11,8 @@ The first archive pass should produce useful AI-readable chapters and representa
 - API-backed NVIDIA/NIM models are not shown in `/models` and are not routed by `backend/app/intelligence.py`.
 - The model receives compact timestamped transcript evidence so it can choose chapter boundaries from explicit seconds rather than guessing from a plain text blob.
 - The prompt tells the model to create no-fluff learning chapters, merge low-value transitions, preserve durable concepts, and return XML only.
-- After parsing model output, the backend repairs chapter timelines deterministically: required text fields must be present, ranges are clamped to transcript evidence, chapters are sorted, and overlaps are removed before image selection.
+- After parsing model output, the backend repairs chapter timelines deterministically: required text fields must be present, ranges are clamped to transcript evidence, chapters are sorted, and overlaps are removed before image selection. Chapter ranges are also expanded when their content quotes transcript rows outside the model-provided time range.
+- If normalization drops malformed chapters, the chunk is not counted as failed unless no archive chapters survive overall; the raw-to-normalized chapter delta and repair actions are recorded in `transcript_integrity`. Substantial contentful transcript gaps left by the model are filled with conservative transcript-backed fallback chapters before image selection.
 - Initial chapter images are selected from `frames.json` metadata using timestamp proximity, visual signal, duplicate avoidance, and fallback nearest-frame behavior.
 - `FrameManager` records cheap local visual quality metadata while it already has each frame open for pHash indexing.
 - Archive chapters may include `_image_context` metadata for selected frames so the reader can show timestamp and quality signals without another backend call.

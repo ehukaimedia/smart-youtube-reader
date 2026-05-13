@@ -177,8 +177,7 @@ def ensure_server(model: str, timeout: int = 600) -> None:
             raise RuntimeError(
                 f"MLX server did not become healthy within {timeout}s. Recent log: {_recent_log()}"
             )
-        with _server_ready:
-            _server_ready.wait(timeout=1.5)
+        time.sleep(1.5)
 
     if started_by_this_call:
         try:

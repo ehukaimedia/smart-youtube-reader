@@ -106,6 +106,119 @@ class ArchiveParsingTests(unittest.TestCase):
         self.assertTrue(any(repair["action"] == "clamped_to_transcript_bounds" for repair in repairs))
         self.assertTrue(any(repair["action"] == "dropped_empty_required_field" for repair in repairs))
 
+    def test_normalize_generated_chapters_shifts_tight_overlap_start(self):
+        chapters = [
+            {
+                "title": "First",
+                "summary": "Summary one",
+                "content": "Evidence one",
+                "start_time": 10,
+                "end_time": 40,
+            },
+            {
+                "title": "Second",
+                "summary": "Summary two",
+                "content": "Evidence two",
+                "start_time": 12,
+                "end_time": 45,
+            },
+        ]
+
+        normalized, repairs = intelligence._normalize_generated_chapters(chapters, 0, 90)
+
+        self.assertEqual(len(normalized), 2)
+        self.assertEqual(normalized[1]["start_time"], 40)
+        self.assertEqual(normalized[1]["end_time"], 45)
+        self.assertTrue(any(repair["action"] == "shifted_start_after_previous" for repair in repairs))
+
+    def test_normalize_generated_chapters_drops_after_overlap_repair(self):
+        chapters = [
+            {
+                "title": "First",
+                "summary": "Summary one",
+                "content": "Evidence one",
+                "start_time": 10,
+                "end_time": 40,
+            },
+            {
+                "title": "Second",
+                "summary": "Summary two",
+                "content": "Evidence two",
+                "start_time": 12,
+                "end_time": 20,
+            },
+        ]
+
+        normalized, repairs = intelligence._normalize_generated_chapters(chapters, 0, 90)
+
+        self.assertEqual(len(normalized), 1)
+        self.assertTrue(any(repair["action"] == "dropped_after_overlap_repair" for repair in repairs))
+
+    def test_expand_chapters_to_transcript_evidence_extends_quoted_rows(self):
+        chapters = [
+            {
+                "title": "Harness finding",
+                "summary": "Harness changed the benchmark outcome.",
+                "content": "LangChain confirmed that modifying harness infrastructure ranked five.",
+                "start_time": 0,
+                "end_time": 10,
+            }
+        ]
+        transcript = [
+            {"text": "Intro sentence", "start": 0, "duration": 4},
+            {
+                "text": "LangChain confirmed it by modifying only harness infrastructure to rank five",
+                "start": 42,
+                "duration": 6,
+            },
+        ]
+
+        expanded, repairs = intelligence._expand_chapters_to_transcript_evidence(chapters, transcript, 0, 60)
+
+        self.assertEqual(expanded[0]["start_time"], 0)
+        self.assertEqual(expanded[0]["end_time"], 48)
+        self.assertTrue(any(repair["action"] == "expanded_to_cover_transcript_evidence" for repair in repairs))
+
+    def test_add_transcript_gap_chapters_covers_contentful_gap(self):
+        chapters = [
+            {
+                "title": "Before gap",
+                "summary": "Before",
+                "content": "Before content",
+                "start_time": 0,
+                "end_time": 20,
+            },
+            {
+                "title": "After gap",
+                "summary": "After",
+                "content": "After content",
+                "start_time": 80,
+                "end_time": 100,
+            },
+        ]
+        transcript = [
+            {
+                "text": (
+                    "Rank two with Opus rank one with Haiku smaller model outranking larger models "
+                    "through harness optimization alone meta harness scores terminal bench optimized "
+                    "system field hand engineered entries transfer improved five other models reusable "
+                    "asset harness accuracy points state art fewer tokens finding changes calculus "
+                    "portable structure improves other models representation orchestration memory "
+                    "retrieval topology reusable engineering result"
+                ),
+                "start": 30,
+                "duration": 40,
+            }
+        ]
+
+        expanded, repairs = intelligence._add_transcript_gap_chapters(chapters, transcript, 0, 100)
+
+        self.assertEqual(len(expanded), 3)
+        self.assertEqual(expanded[1]["start_time"], 20)
+        self.assertEqual(expanded[1]["end_time"], 80)
+        self.assertEqual(expanded[1]["_fallback"], "transcript_gap")
+        self.assertTrue(any(repair["action"] == "added_transcript_gap_chapter" for repair in repairs))
+
 
 if __name__ == "__main__":
     unittest.main()
