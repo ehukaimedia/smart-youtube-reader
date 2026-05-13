@@ -14,8 +14,10 @@ CHUNK_DURATION = 300
 ARCHIVE_RESPONSE_FORMAT = "xml"
 ARCHIVE_XML_ATTEMPTS = 2
 MIN_CHAPTER_DURATION = 3.0
-MIN_GAP_CHAPTER_DURATION = 25.0
+MIN_GAP_CHAPTER_DURATION = 12.0
 MIN_GAP_MEANINGFUL_WORDS = 30
+_CAPTION_NOISE_RE = re.compile(r"(?:>>\s*)?\[(?:music|applause|laughter|noise|sound|silence|inaudible)[^\]]*\](?:\s*>>)?", re.IGNORECASE)
+_SENTENCE_END_RE = re.compile(r"[.!?]")
 EVIDENCE_STOPWORDS = {
     "about", "after", "again", "alone", "also", "another", "because", "before",
     "being", "between", "could", "every", "from", "have", "into", "itself",
@@ -39,7 +41,22 @@ def _chat(model: str, messages: list) -> str:
     return mlx_chat(model=model, messages=messages)
 
 def _clean_transcript_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
+    stripped = _CAPTION_NOISE_RE.sub(" ", text or "")
+    return re.sub(r"\s+", " ", stripped).strip()
+
+
+def _trim_to_sentence_boundary(text: str, min_keep_ratio: float = 0.5) -> str:
+    if not text or text[-1] in ".!?":
+        return text
+    match = None
+    for m in _SENTENCE_END_RE.finditer(text):
+        match = m
+    if match is None:
+        return text
+    cut = match.end()
+    if cut < len(text) * min_keep_ratio:
+        return text
+    return text[:cut].rstrip()
 
 
 def _evidence_tokens(text: str) -> list[str]:
@@ -206,7 +223,7 @@ def _add_transcript_gap_chapters(
                 fallback = {
                     "title": _fallback_chapter_title(gap_text),
                     "summary": _fallback_gap_summary(gap_text),
-                    "content": _clip_text(gap_text),
+                    "content": _trim_to_sentence_boundary(_clip_text(gap_text)),
                     "start_time": gap_start,
                     "end_time": gap_end,
                     "_fallback": "transcript_gap",
