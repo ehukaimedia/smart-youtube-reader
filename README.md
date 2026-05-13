@@ -17,7 +17,7 @@
 
 - **Semantic chapters** — AI reads the transcript and groups it into logical sections with titles and summaries
 - **Visual matching** — Each chapter is paired with high-signal frames from the video using local frame metadata
-- **Local model** — Archive generation uses `smart-reader:latest`, built from the Gemma4-based Modelfile
+- **Local model** — Archive generation uses Gemma 4 models through MLX-VLM, defaulting to `mlx-community/gemma-4-e4b-it-4bit`
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
 - **Video Slicer** — Cut precise clips from any job and export them with full metadata
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
@@ -52,10 +52,9 @@ Then open `http://localhost:3001`.
 
 ## Prerequisites
 
-- [Ollama](https://ollama.com/) installed and running (`ollama serve`)
-- `smart-reader:latest` built from `backend/modelfiles/smart-reader.Modelfile`
 - [FFmpeg](https://ffmpeg.org/) — `brew install ffmpeg`
 - Node.js 18+ and Python 3.10+
+- Apple Silicon macOS with `mlx-vlm` installed through `backend/requirements.txt`
 
 ## Tech Stack
 
@@ -63,7 +62,7 @@ Then open `http://localhost:3001`.
 |---|---|
 | Frontend | Next.js (React) — `http://localhost:3001` |
 | Backend | FastAPI (Python) — `http://localhost:8001` |
-| Local AI | Ollama (`smart-reader:latest`) |
+| Local AI | MLX-VLM Gemma 4 (`mlx-community/gemma-4-e4b-it-4bit` default) |
 | Video | yt-dlp + FFmpeg |
 | Storage | Local filesystem (no database) |
 

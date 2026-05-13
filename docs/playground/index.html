@@ -286,7 +286,7 @@ const NODES = [
   { id:'data-dir',     label:'Job Directory',   sub:'data/jobs/{slug}_{uuid}/',        x:565, y:550,  w:145, h:52, layer:'data' },
   { id:'youtube',      label:'YouTube',         sub:'yt-dlp + TranscriptAPI',          x: 40, y:675,  w:155, h:52, layer:'external' },
   { id:'ffmpeg',       label:'FFmpeg',          sub:'Frame extraction + encoding',     x:230, y:675,  w:145, h:52, layer:'external' },
-  { id:'ollama',       label:'Ollama Local',     sub:'Gemma4 smart-reader model',       x:420, y:675,  w:155, h:52, layer:'external' },
+  { id:'mlx',          label:'MLX Local',        sub:'Gemma 4 model server',            x:420, y:675,  w:155, h:52, layer:'external' },
 ];
 
 const CONN_TYPES = {
@@ -329,7 +329,7 @@ const CONNECTIONS = [
   { from:'slicing',     to:'data-dir',     type:'data-flow',  label:'previews/slices' },
   { from:'pipeline',    to:'youtube',      type:'tool-call',  label:'download + transcript' },
   { from:'pipeline',    to:'ffmpeg',       type:'tool-call',  label:'extract frames' },
-  { from:'intelligence',to:'ollama',       type:'tool-call',  label:'local chat' },
+  { from:'intelligence',to:'mlx',          type:'tool-call',  label:'local chat' },
   { from:'slicing',     to:'ffmpeg',       type:'tool-call',  label:'encode video' },
 ];
 
@@ -733,7 +733,7 @@ function updatePrompt() {
     'System overview:',
     '• yt-dlp downloads the YouTube video and extracts its transcript (VTT fallback)',
     '• FFmpeg captures frames at fixed intervals; imagehash records pHash plus local visual-quality signals',
-    '• The Gemma4-based smart-reader Ollama model generates semantic chapters from timestamped transcript evidence',
+    '• The MLX-hosted Gemma 4 model generates semantic chapters from timestamped transcript evidence',
     '• Chapters are paired with representative frames by metadata ranking and written to archive.json with image context',
     '• The Reader page polls GET /jobs/{id} every 2 seconds until processing completes',
     '• AI digest versions are created by an external-agent CLI draft, not a backend digest model',

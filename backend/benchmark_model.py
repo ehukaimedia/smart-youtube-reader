@@ -19,8 +19,6 @@ import sys
 import time
 from pathlib import Path
 
-import ollama
-
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -29,31 +27,18 @@ REPO_ROOT = ROOT.parent
 from app.frames import FrameManager
 from app.intelligence import (
     CHUNK_DURATION,
+    _archive_system_prompt,
     _choose_representative_frames,
-    _extract_json_list,
+    _extract_archive_chapters,
     _transcript_prompt_chunks,
 )
+from app.mlx_runtime import DEFAULT_MODEL, chat as mlx_chat
 
-MODEL = "smart-reader:latest"
+MODEL = DEFAULT_MODEL
 REQUIRED_KEYS = {"title", "summary", "content", "start_time", "end_time"}
 FLUFF_RE = re.compile(
     r"\b(insane|secret|ultimate|never|always|guaranteed|massive|crazy|best|shocking|profits?|millionaire)\b",
     re.I,
-)
-
-SYSTEM_PROMPT = (
-    "You are a Smart YouTube Reader archive planner. Convert timestamped transcript evidence into "
-    "compact AI-learning chapters.\n"
-    "Return ONLY a raw JSON array. No markdown, no prose.\n"
-    "Each object must contain exactly: title, summary, content, start_time, end_time.\n"
-    "Use numeric seconds for timestamps. Derive them from the bracketed transcript ranges.\n"
-    "Create 3-5 chapters for a 5-minute segment when the segment contains enough substance. Merge tiny transitions into nearby chapters.\n"
-    "Do not create standalone chapters for intros, sponsor chatter, calls to action, jokes, or repetition.\n"
-    "Preserve durable concepts, definitions, procedures, examples, caveats, and references to visible charts, slides, or tools.\n"
-    "The content field must use transcript wording from the provided segment, ordered chronologically. "
-    "Keep the teaching evidence dense; target 400-900 characters per chapter when possible. "
-    "Do not invent facts or add outside knowledge.\n"
-    "Keep titles no-fluff: specific lesson names, no hype, no YouTube-style phrasing."
 )
 
 SAMPLE_TRANSCRIPT = [
@@ -91,9 +76,10 @@ def source_words(text: str) -> set[str]:
     return set(re.findall(r"[a-zA-Z]{4,}", text.lower()))
 
 
-def score_archive_response(raw: str, transcript_text: str, window_start: float, window_end: float) -> dict:
+def score_archive_response(raw: str, transcript_text: str, window_start: float, window_end: float, response_format: str) -> dict:
     result = {
-        "valid_json": False,
+        "format": response_format,
+        "valid_format": False,
         "chapters": 0,
         "keys_ok": False,
         "timestamps_ok": False,
@@ -108,13 +94,13 @@ def score_archive_response(raw: str, transcript_text: str, window_start: float, 
         "error": "",
     }
     try:
-        chapters = _extract_json_list(raw)
+        chapters = _extract_archive_chapters(raw, response_format)
     except Exception as exc:
         result["error"] = str(exc)
         return result
 
     words = source_words(transcript_text)
-    result["valid_json"] = True
+    result["valid_format"] = True
     result["chapters"] = len(chapters)
     result["count_ok"] = 2 <= len(chapters) <= 5
     result["keys_ok"] = all(isinstance(chapter, dict) and REQUIRED_KEYS <= set(chapter.keys()) for chapter in chapters)
@@ -154,7 +140,7 @@ def score_archive_response(raw: str, transcript_text: str, window_start: float, 
     )
 
     gates = [
-        "valid_json",
+        "valid_format",
         "keys_ok",
         "timestamps_ok",
         "count_ok",
@@ -173,7 +159,14 @@ def transcript_chunks(transcript: list[dict], chunk_duration: int = CHUNK_DURATI
     return chunks
 
 
-def benchmark_text(transcript: list[dict], runs: int, timeout: int, full: bool = True) -> list[dict]:
+def benchmark_text(
+    transcript: list[dict],
+    runs: int,
+    timeout: int,
+    full: bool = True,
+    formats: list[str] | None = None,
+    max_tokens: int = 2048,
+) -> list[dict]:
     chunks = transcript_chunks(transcript)
     if not chunks:
         chunks = [{"index": 1, "start": 0.0, "end": 300.0, "items": transcript[:60]}]
@@ -181,43 +174,47 @@ def benchmark_text(transcript: list[dict], runs: int, timeout: int, full: bool =
         chunks = chunks[:1]
 
     results = []
+    formats = formats or ["xml", "json"]
     signal.signal(signal.SIGALRM, _timeout_handler)
     for run in range(1, runs + 1):
         for chunk in chunks:
-            chunk_text = chunk["text"]
-            user_prompt = f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk_text}"
-            start = time.time()
-            signal.alarm(timeout)
-            try:
-                response = ollama.chat(
-                    model=MODEL,
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                )
-                signal.alarm(0)
-                raw = response["message"]["content"]
-                results.append({
-                    "run": run,
-                    "chunk": chunk["index"],
-                    "window": [round(chunk["start"], 1), round(chunk["end"], 1)],
-                    "input_items": len(chunk["items"]),
-                    "input_chars": len(chunk_text),
-                    "seconds": round(time.time() - start, 1),
-                    "raw_chars": len(raw),
-                    **score_archive_response(raw, chunk_text, chunk["start"], chunk["end"]),
-                })
-            except Exception as exc:
-                signal.alarm(0)
-                results.append({
-                    "run": run,
-                    "chunk": chunk["index"],
-                    "window": [round(chunk["start"], 1), round(chunk["end"], 1)],
-                    "seconds": round(time.time() - start, 1),
-                    "error": str(exc),
-                    "quality": 0,
-                })
+            for response_format in formats:
+                chunk_text = chunk["text"]
+                user_prompt = f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk_text}"
+                start = time.time()
+                signal.alarm(timeout)
+                try:
+                    raw = mlx_chat(
+                        model=MODEL,
+                        messages=[
+                            {"role": "system", "content": _archive_system_prompt(response_format)},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        temperature=0.1,
+                        max_tokens=max_tokens,
+                    )
+                    signal.alarm(0)
+                    results.append({
+                        "run": run,
+                        "chunk": chunk["index"],
+                        "window": [round(chunk["start"], 1), round(chunk["end"], 1)],
+                        "input_items": len(chunk["items"]),
+                        "input_chars": len(chunk_text),
+                        "seconds": round(time.time() - start, 1),
+                        "raw_chars": len(raw),
+                        **score_archive_response(raw, chunk_text, chunk["start"], chunk["end"], response_format),
+                    })
+                except Exception as exc:
+                    signal.alarm(0)
+                    results.append({
+                        "run": run,
+                        "chunk": chunk["index"],
+                        "format": response_format,
+                        "window": [round(chunk["start"], 1), round(chunk["end"], 1)],
+                        "seconds": round(time.time() - start, 1),
+                        "error": str(exc),
+                        "quality": 0,
+                    })
     return results
 
 
@@ -234,6 +231,14 @@ def summarize_text_results(results: list[dict]) -> dict:
         "avg_quality": round(statistics.mean(qualities), 2),
         "total_seconds": round(sum(float(result.get("seconds", 0)) for result in results), 1),
     }
+
+
+def summarize_by_format(results: list[dict]) -> dict:
+    summary = {}
+    for response_format in sorted({str(result.get("format", "unknown")) for result in results}):
+        rows = [result for result in results if result.get("format") == response_format]
+        summary[response_format] = summarize_text_results(rows)
+    return summary
 
 
 def benchmark_images(job_dir: Path | None) -> list[dict]:
@@ -273,6 +278,14 @@ def main():
     parser.add_argument("job", nargs="?", help="Optional data/jobs project folder or folder name")
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--max-tokens", type=int, default=2048)
+    parser.add_argument(
+        "--formats",
+        nargs="+",
+        choices=["xml", "json"],
+        default=["xml", "json"],
+        help="Response formats to benchmark. Default compares XML and JSON.",
+    )
     parser.add_argument(
         "--first-chunk-only",
         action="store_true",
@@ -287,11 +300,20 @@ def main():
         print(f"Project: {job_dir}")
 
     print("\nText archive benchmark")
-    text_results = benchmark_text(transcript, args.runs, args.timeout, full=not args.first_chunk_only)
+    text_results = benchmark_text(
+        transcript,
+        args.runs,
+        args.timeout,
+        full=not args.first_chunk_only,
+        formats=args.formats,
+        max_tokens=args.max_tokens,
+    )
     for result in text_results:
         print(json.dumps(result, indent=2))
     print("Text benchmark summary")
     print(json.dumps(summarize_text_results(text_results), indent=2))
+    print("Text benchmark summary by format")
+    print(json.dumps(summarize_by_format(text_results), indent=2))
 
     image_results = benchmark_images(job_dir)
     if image_results:

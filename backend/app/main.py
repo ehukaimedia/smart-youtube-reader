@@ -17,6 +17,7 @@ from .jobs import JobStore
 from .schemas import JobCreateRequest, JobResponse, SliceRequest, PreviewRequest, FinalizeRequest, SaveSliceRequest, ArchiveImageUpdateRequest
 from .pipeline import run_pipeline
 from .slicing import create_slice, generate_preview, finalize_sequence
+from .mlx_runtime import AVAILABLE_MODELS, DEFAULT_MODEL, list_loaded_models
 
 # Adjust path to point to project_root/data/jobs
 # main.py is in backend/app/main.py
@@ -308,21 +309,16 @@ async def update_archive_image(job_id: str, request: ArchiveImageUpdateRequest):
 
 @app.get("/models")
 async def list_models():
-    models = []
-    supported_models = [
-        "smart-reader:latest",
-    ]
-
-    # Only expose the Gemma4-based Smart Reader Modelfile.
-    try:
-        import ollama
-        result = ollama.list()
-        available = {m.model for m in result.models if m.model}
-        models = [model for model in supported_models if model in available]
-    except Exception:
-        pass
-
-    return {"models": models}
+    loaded = set(list_loaded_models())
+    models = [model["name"] for model in AVAILABLE_MODELS]
+    return {
+        "models": models,
+        "default_model": DEFAULT_MODEL,
+        "model_details": [
+            {**model, "loaded": model["name"] in loaded}
+            for model in AVAILABLE_MODELS
+        ],
+    }
 
 @app.get("/health")
 def health_check():

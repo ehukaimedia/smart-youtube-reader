@@ -40,12 +40,10 @@ else
     echo "Warning: No .venv found in backend. Using system python."
 fi
 
-# Register smart-reader model with Ollama (idempotent)
-if command -v ollama &> /dev/null; then
-    echo "--> Registering smart-reader model with Ollama..."
-    ollama create smart-reader -f modelfiles/smart-reader.Modelfile
-else
-    echo "Warning: ollama not found. Archive generation may fail."
+# Verify MLX runtime is available before the first archive request starts the local server.
+if ! python -c "import mlx_vlm" &> /dev/null; then
+    echo "Warning: mlx-vlm not found in the backend environment. Run: pip install -r requirements.txt"
+    echo "Archive generation will fail until mlx-vlm is installed."
 fi
 
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8001 &

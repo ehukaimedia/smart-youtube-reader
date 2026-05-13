@@ -1,15 +1,18 @@
 import imagehash
 from PIL import Image
 from pathlib import Path
-import ollama
 import logging
 import json
 import re
+from html import unescape
+from .mlx_runtime import DEFAULT_MODEL, chat as mlx_chat, list_loaded_models
 
 logger = logging.getLogger(__name__)
 MAX_PROMPT_CHARS = 14000
 MAX_IMAGES_PER_CHAPTER = 2
 CHUNK_DURATION = 300
+ARCHIVE_RESPONSE_FORMAT = "xml"
+ARCHIVE_XML_ATTEMPTS = 2
 
 def _to_float(value, default: float) -> float:
     try:
@@ -19,11 +22,10 @@ def _to_float(value, default: float) -> float:
 
 def _chat(model: str, messages: list) -> str:
     """
-    Local Ollama chat call.
+    Local MLX chat call.
     Returns the response content string.
     """
-    resp = ollama.chat(model=model, messages=messages)
-    return resp['message']['content']
+    return mlx_chat(model=model, messages=messages)
 
 def _clean_transcript_text(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
@@ -196,6 +198,151 @@ def _extract_json_list(content: str) -> list:
 
     parsed = json.loads(cleaned)
     return parsed if isinstance(parsed, list) else [parsed]
+
+
+def _strip_cdata(value: str) -> str:
+    cleaned = value.strip()
+    if cleaned.startswith("<![CDATA[") and cleaned.endswith("]]>"):
+        cleaned = cleaned[9:-3].strip()
+    return unescape(cleaned)
+
+
+def _extract_xml_chapters(content: str) -> list[dict]:
+    cleaned = content.strip()
+    if "```xml" in cleaned:
+        cleaned = cleaned.split("```xml", 1)[1].split("```", 1)[0].strip()
+    elif "```" in cleaned:
+        cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+
+    archive_match = re.search(r"<archive\b[^>]*>(.*?)</archive\s*>", cleaned, re.I | re.S)
+    body = archive_match.group(1) if archive_match else cleaned
+    chapter_blocks = re.findall(r"<chapter\b[^>]*>(.*?)</chapter\s*>", body, re.I | re.S)
+    if not chapter_blocks:
+        raise ValueError("No XML chapter elements found")
+
+    chapters = []
+    errors = []
+    for block in chapter_blocks:
+        try:
+            chapter = {}
+            for key in ("title", "summary", "content", "start_time", "end_time"):
+                match = re.search(rf"<{key}\b[^>]*>(.*?)</{key}\s*>", block, re.I | re.S)
+                if not match:
+                    raise ValueError(f"Missing XML field: {key}")
+                value = _strip_cdata(match.group(1))
+                if key in {"start_time", "end_time"}:
+                    try:
+                        chapter[key] = float(value)
+                    except ValueError as exc:
+                        raise ValueError(f"Invalid numeric XML field {key}: {value}") from exc
+                else:
+                    chapter[key] = value
+            chapters.append(chapter)
+        except ValueError as exc:
+            errors.append(str(exc))
+            logger.warning("Skipping malformed XML chapter: %s", exc)
+    if not chapters:
+        details = f": {errors[:3]}" if errors else ""
+        raise ValueError(f"No valid XML chapter elements found{details}")
+    return chapters
+
+
+def _extract_archive_chapters(content: str, response_format: str = ARCHIVE_RESPONSE_FORMAT) -> list[dict]:
+    if response_format == "xml":
+        return _extract_xml_chapters(content)
+    if response_format == "json":
+        return _extract_json_list(content)
+    raise ValueError(f"Unsupported archive response format: {response_format}")
+
+
+def _archive_system_prompt(response_format: str = ARCHIVE_RESPONSE_FORMAT) -> str:
+    base = (
+        "You are a Smart YouTube Reader archive planner. Convert timestamped transcript evidence into "
+        "compact AI-learning chapters.\n"
+        "Use numeric seconds for timestamps. Derive them from the bracketed transcript ranges.\n"
+        "Create 3-5 chapters for a 5-minute segment when the segment contains enough substance. Merge tiny transitions into nearby chapters.\n"
+        "Do not create standalone chapters for intros, sponsor chatter, calls to action, jokes, or repetition.\n"
+        "Preserve durable concepts, definitions, procedures, examples, caveats, and references to visible charts, slides, or tools.\n"
+        "The content field must use transcript wording from the provided segment, ordered chronologically. "
+        "Keep the teaching evidence dense; target 400-900 characters per chapter when possible. "
+        "Do not invent facts or add outside knowledge.\n"
+        "Keep titles no-fluff: specific lesson names, no hype, no YouTube-style phrasing.\n"
+    )
+    if response_format == "xml":
+        return (
+            base
+            + "Return ONLY XML. No markdown, no prose.\n"
+            + "Use exactly this structure:\n"
+            + "<archive>\n"
+            + "  <chapter>\n"
+            + "    <title>Specific lesson name</title>\n"
+            + "    <summary>One compact summary sentence.</summary>\n"
+            + "    <content>Grounded transcript evidence in chronological order.</content>\n"
+            + "    <start_time>0.0</start_time>\n"
+            + "    <end_time>60.0</end_time>\n"
+            + "  </chapter>\n"
+            + "</archive>"
+        )
+    return (
+        base
+        + "Return ONLY a raw JSON array. No markdown, no prose.\n"
+        + "Each object must contain exactly: title, summary, content, start_time, end_time."
+    )
+
+
+def _archive_user_prompt(chunk: dict, previous_error: str | None = None) -> str:
+    prompt = f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk['text']}"
+    if previous_error:
+        prompt += (
+            "\n\nYour previous response could not be parsed: "
+            f"{previous_error}. Return the requested structure again with every chapter containing "
+            "title, summary, content, start_time, and end_time."
+        )
+    return prompt
+
+
+def _generate_archive_chunk(model: str, chunk: dict) -> tuple[list[dict], dict]:
+    attempts = []
+
+    for attempt in range(1, ARCHIVE_XML_ATTEMPTS + 1):
+        raw = _chat(model, [
+            {'role': 'system', 'content': _archive_system_prompt("xml")},
+            {'role': 'user', 'content': _archive_user_prompt(
+                chunk,
+                attempts[-1]["error"] if attempts else None,
+            )},
+        ]).strip()
+        try:
+            chapters = _extract_archive_chapters(raw, "xml")
+            return chapters, {"format": "xml", "attempts": attempt, "fallback": False}
+        except Exception as exc:
+            error = str(exc)
+            logger.error(
+                "Failed to parse LLM XML for chunk %.1f on attempt %s: %s. Content: %s...",
+                chunk["start"],
+                attempt,
+                error,
+                raw[:100],
+            )
+            attempts.append({"format": "xml", "attempt": attempt, "error": error})
+
+    raw = _chat(model, [
+        {'role': 'system', 'content': _archive_system_prompt("json")},
+        {'role': 'user', 'content': _archive_user_prompt(chunk, attempts[-1]["error"] if attempts else None)},
+    ]).strip()
+    try:
+        chapters = _extract_archive_chapters(raw, "json")
+        return chapters, {"format": "json", "attempts": len(attempts) + 1, "fallback": True}
+    except Exception as exc:
+        error = str(exc)
+        logger.error(
+            "Failed to parse LLM JSON fallback for chunk %.1f: %s. Content: %s...",
+            chunk["start"],
+            error,
+            raw[:100],
+        )
+        attempts.append({"format": "json", "attempt": 1, "error": error})
+        raise ValueError(f"Archive chunk parse failed after retries: {attempts}") from exc
 
 def _hash_distance(a: str | None, b: str | None) -> int | None:
     if not a or not b:
@@ -379,118 +526,18 @@ def deduplicate_frames(frames_dir: Path, threshold: int = 5) -> int:
             
     return removed_count
 
-def align_frames_with_model(transcript: list, frames_dir: Path, model: str = "smart-reader:latest") -> dict:
-    """
-     aligns images to transcript segments.
-     Returns a dict: { transcript_index: image_filename }
-    """
-    logger.info("Starting intelligent alignment...")
-    
-    # Get all available frames (sorted)
-    frame_files = sorted(list(frames_dir.glob("*.png")))
-    if not frame_files:
-        return {}
-        
-    # Build a timestamp-to-frame map for quick lookup
-    # filenames are 0001.png etc, effectively 1-based index of 15s intervals
-    # OR we can assume filename implies time if we named them differently.
-    # Current pipeline names them %04d.png based on sequence. 
-    # Logic: frame N = N * interval_sec (approx). 
-    # Better: use the file modification time or just assume the interval from the request.
-    # Limitation: We don't have the interval here easily unless we pass it or check metadata.
-    # Let's assume we pass a rough map or just use the frames we have.
-    
-    # Simplified approach: 
-    # 1. Divide transcript into chunks (e.g. every 10 lines or by gap).
-    # 2. For each chunk, find the frame that falls in its time range.
-    # 3. Query Ollama: "Does this image illustrate the following text: '{text}'? Answer YES or NO."
-    # 4. If YES, keep it.
-    
-    alignment = {}
-    
-    # Group transcript into chunks for context
-    chunks = []
-    current_chunk = []
-    chunk_start_idx = 0
-    
-    for i, item in enumerate(transcript):
-        current_chunk.append(item)
-        # Break chunk on simple heuristics (e.g. full stop or length)
-        text = item['text']
-        if text.strip().endswith(('.', '?', '!')) or len(current_chunk) > 5:
-            start_time = current_chunk[0]['start']
-            end_time = current_chunk[-1]['start'] + current_chunk[-1]['duration']
-            chunks.append({
-                'text': " ".join([t['text'] for t in current_chunk]),
-                'start': start_time,
-                'end': end_time,
-                'start_index': chunk_start_idx
-            })
-            current_chunk = []
-            chunk_start_idx = i + 1
-            
-    # Process chunks of text with relevant frames
-    # We'll assume frames are at 15s intervals. 0001.png = 0s? No, ffmpeg starts at 0.
-    # 0001.png is likely the first frame.
-    # We need to know the interval. For now, let's just find *any* frame in the window.
-    
-    # Hack: Inspect one frame to see if we can get metadata? 
-    # Or just assume 15s for now as it's the default.
-    INTERVAL = 15 
-    
-    for chunk in chunks:
-        # Find frames in this time window
-        candidates = []
-        for i, f in enumerate(frame_files):
-            # timestamp approx
-            t = (i + 1) * INTERVAL # 1-based index from ffmpeg loop usually?
-            # Actually ffmpeg '%04d.png' generates 0001, 0002...
-            # If we started at 0, 0001 is 0s? 
-            # Let's assume frame i (0-based list) corresponds to time i * INTERVAL.
-            time_approx = i * INTERVAL
-            
-            if chunk['start'] - INTERVAL <= time_approx <= chunk['end'] + INTERVAL:
-                candidates.append(f)
-                
-        if not candidates:
-            continue
-            
-        # Pick the middle candidate to test
-        best_frame = candidates[len(candidates)//2]
-        
-        try:
-            answer = _chat(model, [
-                {
-                    'role': 'user',
-                    'content': f"Does this image verify or illustrate the text: \"{chunk['text']}\"? Answer only YES or NO.",
-                    'images': [str(best_frame)]
-                }
-            ]).strip().upper()
-            logger.info(f"Checking frame {best_frame.name} against text '{chunk['text'][:20]}...': {answer}")
-            
-            if "YES" in answer:
-                # Add to alignment at the end of the chunk
-                alignment[chunk['start_index']] = best_frame.name
-                
-        except Exception as e:
-            logger.error(f"LLM inference failed: {e}")
-            
-    return alignment
-
-def check_ollama_model(model_name: str = "smart-reader:latest") -> bool:
+def check_mlx_model(model_name: str = DEFAULT_MODEL) -> bool:
     try:
-        result = ollama.list()
-        model_names = [m.model for m in result.models if m.model]
-        return model_name in model_names or f"{model_name}:latest" in model_names
+        return model_name in list_loaded_models()
     except Exception as e:
-        logger.error(f"Failed to connect to Ollama: {e}")
+        logger.error(f"Failed to connect to MLX: {e}")
         return False
 
 def create_ai_archive(
     job_id: str,
     transcript: list,
     frame_manager,
-    model: str = "smart-reader:latest",
+    model: str = DEFAULT_MODEL,
     progress_callback=None,
 ) -> dict:
     """
@@ -538,40 +585,16 @@ def create_ai_archive(
         )
         
         try:
-            # Prompt for semantic chunking of this segment
-            system_prompt = (
-                "You are a Smart YouTube Reader archive planner. Convert timestamped transcript evidence into "
-                "compact AI-learning chapters.\n"
-                "Return ONLY a raw JSON array. No markdown, no prose.\n"
-                "Each object must contain exactly: title, summary, content, start_time, end_time.\n"
-                "Use numeric seconds for timestamps. Derive them from the bracketed transcript ranges.\n"
-                "Create 3-5 chapters for a 5-minute segment when the segment contains enough substance. Merge tiny transitions into nearby chapters.\n"
-                "Do not create standalone chapters for intros, sponsor chatter, calls to action, jokes, or repetition.\n"
-                "Preserve durable concepts, definitions, procedures, examples, caveats, and references to visible charts, slides, or tools.\n"
-                "The content field must use transcript wording from the provided segment, ordered chronologically. "
-                "Keep the teaching evidence dense; target 400-900 characters per chapter when possible. "
-                "Do not invent facts or add outside knowledge.\n"
-                "Keep titles no-fluff: specific lesson names, no hype, no YouTube-style phrasing."
-            )
-            
-            content = _chat(model, [
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk_text}"}
-            ]).strip()
-
-            try:
-                chunk_chapters = _extract_json_list(content)
-                all_chapters.extend(chunk_chapters)
-                transcript_integrity["chunks_succeeded"] += 1
-                
-            except Exception as e:
-                logger.error(f"Failed to parse LLM JSON for chunk {chunk['start']}: {e}. Content: {content[:100]}...")
-                transcript_integrity["chunks_failed"] += 1
-                transcript_integrity["chunk_errors"].append({
+            # Prompt for semantic chunking of this segment.
+            chunk_chapters, generation_meta = _generate_archive_chunk(model, chunk)
+            all_chapters.extend(chunk_chapters)
+            transcript_integrity["chunks_succeeded"] += 1
+            if generation_meta.get("fallback"):
+                transcript_integrity.setdefault("chunk_fallbacks", []).append({
                     "chunk": chunk_index,
                     "start": chunk["start"],
                     "end": chunk["end"],
-                    "error": str(e),
+                    **generation_meta,
                 })
                 
         except Exception as e:
