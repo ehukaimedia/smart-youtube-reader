@@ -9,6 +9,7 @@ export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [models, setModels] = useState<string[]>([]);
+  const [modelLabels, setModelLabels] = useState<Record<string, string>>({});
   const [selectedModel, setSelectedModel] = useState('');
   const router = useRouter();
   const toast = useToast();
@@ -18,8 +19,13 @@ export default function Home() {
       .then(r => r.json())
       .then(data => {
         const list: string[] = data.models ?? [];
+        const labels: Record<string, string> = {};
+        (data.model_details ?? []).forEach((model: { name: string; label?: string; size?: string; recommended?: boolean }) => {
+          labels[model.name] = `${model.label ?? model.name}${model.size ? ` (${model.size})` : ''}${model.recommended ? ' - recommended' : ''}`;
+        });
         setModels(list);
-        if (list.length > 0) setSelectedModel(list[0]);
+        setModelLabels(labels);
+        if (list.length > 0) setSelectedModel(data.default_model ?? list[0]);
       })
       .catch(() => {});
   }, []);
@@ -84,7 +90,7 @@ export default function Home() {
               style={{ cursor: 'pointer' }}
             >
               {models.map(m => (
-                <option key={m} value={m}>{m}</option>
+                <option key={m} value={m}>{modelLabels[m] ?? m}</option>
               ))}
             </select>
           )}

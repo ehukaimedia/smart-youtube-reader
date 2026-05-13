@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from enum import Enum
+from .mlx_runtime import DEFAULT_MODEL
 
 class JobStatus(str, Enum):
     pending = "pending"
@@ -13,7 +14,7 @@ class JobCreateRequest(BaseModel):
     interval_sec: int = 15
     min_width: int = 1280
     max_width: int = 1920
-    model: str = "smart-reader:latest"
+    model: str = DEFAULT_MODEL
 
 class JobResponse(BaseModel):
     id: str
