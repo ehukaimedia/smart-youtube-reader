@@ -586,10 +586,8 @@ def _extract_digest_preservation_items(text: str, max_items: int = 8) -> list[st
     kept = []
     seen = set()
     for _, phrase in sorted(candidates, key=lambda item: item[0], reverse=True):
-        key = re.sub(r"[^a-z0-9]+", " ", phrase.lower()).strip()
-        if not key or key in seen:
-            continue
-        if any(key in existing or existing in key for existing in seen):
+        key = _specific_key(phrase)
+        if _is_redundant_specific(key, seen):
             continue
         seen.add(key)
         kept.append(_truncate(phrase, 220))
@@ -630,18 +628,46 @@ def _select_critical_specifics(source_payload: list[dict[str, Any]], limit: int 
 
 
 def _append_unique_specific(selected: list[str], seen: set[str], item: str) -> None:
-    key = re.sub(r"[^a-z0-9]+", " ", item.lower()).strip()
-    if not key or key in seen:
-        return
-    if any(key in existing or existing in key for existing in seen):
+    key = _specific_key(item)
+    if _is_redundant_specific(key, seen):
         return
     seen.add(key)
     selected.append(item)
 
 
+def _specific_key(item: str) -> str:
+    return re.sub(r"[^a-z0-9.%+→-]+", " ", item.lower()).strip()
+
+
+def _is_redundant_specific(key: str, seen: set[str]) -> bool:
+    if not key or key in seen:
+        return True
+    key_signals = _specific_signals(key)
+    for existing in seen:
+        if key in existing or existing in key:
+            if key_signals != _specific_signals(existing):
+                continue
+            return True
+    return False
+
+
+def _specific_signals(value: str) -> set[str]:
+    signals = set(re.findall(r"\b\d+(?:[,.]\d+)*(?:\.\d+)?%?\b|[+−-]\d+(?:\.\d+)?|→", value))
+    signals.update(
+        word
+        for word in re.findall(
+            r"\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+            r"fourteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|"
+            r"thousand|million|billion)\b",
+            value,
+        )
+    )
+    return signals
+
+
 def _candidate_preservation_phrases(text: str) -> list[str]:
     cleaned = re.sub(r"\[music\]|>>", " ", text, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\bAgents,\s*MD\b", "AGENTS.md", cleaned, flags=re.IGNORECASE)
+    cleaned = _normalize_spelled_file_extensions(cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if not cleaned:
         return []
@@ -662,6 +688,26 @@ def _candidate_preservation_phrases(text: str) -> list[str]:
     return phrases
 
 
+def _normalize_spelled_file_extensions(text: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        stem = match.group(1)
+        extension = match.group(2).lower()
+        if stem.isupper():
+            normalized_stem = stem
+        elif stem.lower().endswith("s"):
+            normalized_stem = stem.upper()
+        else:
+            normalized_stem = stem
+        return f"{normalized_stem}.{extension}"
+
+    return re.sub(
+        r"\b([A-Za-z][A-Za-z0-9_-]{2,}),\s*(MD|JSON|YAML|YML|TOML|TXT|PY|TS|JS)\b",
+        replace,
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
 def _preservation_score(phrase: str) -> int:
     lowered = phrase.lower()
     score = 0
@@ -678,8 +724,10 @@ def _preservation_score(phrase: str) -> int:
         score += 3
     if re.search(r"\b[A-Z]{2,}[A-Za-z0-9.-]*\b|\b[A-Za-z]+(?:Bench|World|Spec|Symphony|Harness|Code|MD)\b", phrase):
         score += 3
-    if re.search(r"\b(Terminal Bench|SWE-Bench|OS World|AGENTS\.md|DSPy|NLAH|OS Symphony)\b", phrase):
-        score += 5
+    if re.search(r"\b[A-Z][a-z]+[A-Z][A-Za-z0-9]*\b|\b[A-Za-z]+(?:-[A-Z][A-Za-z0-9]+)+\b", phrase):
+        score += 3
+    if len(re.findall(r"\b[A-Z][A-Za-z0-9]*(?:[-.][A-Za-z0-9]+)*\b", phrase)) >= 3:
+        score += 2
     if re.search(r"\b(found|identified|achieved|jumped|dropped|collapsed|removed|rewrote|stopped|transferred|eliminating|preventing)\b", lowered):
         score += 3
     if re.search(r"\b(dataset|benchmark|repositories|vulnerability|tokens|calls|minutes|compute|tools|games)\b", lowered):
