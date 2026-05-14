@@ -12,6 +12,8 @@ Users need to combine several Smart YouTube Reader projects into one higher-leve
 - The external agent reads every selected source `archive.json` and inspects the attached frame images before writing the combined draft.
 - The group digest draft creates a new transcript, not a concatenation of source transcripts.
 - The new transcript must be intuitive and teach durable facts, theory, and testable hypotheses.
+- The group prompt uses the same specificity-preservation policy as single-video digests: numeric claims, proper nouns, dataset/benchmark names, named teams/companies, and concrete examples that materially support the lesson must survive synthesis.
+- Each source chapter in the group task includes `preservation_items`; agents use these as a merge checklist when many source chapters collapse into one cross-video chapter.
 - Each chapter must include:
   - `facts`: compact source-grounded facts
   - `theory`: why the facts fit together into a reusable model

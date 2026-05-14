@@ -29,6 +29,8 @@ class DigestPromptTests(unittest.TestCase):
         self.assertIn("Preserve every numeric claim", prompt)
         self.assertIn("proper noun", prompt)
         self.assertIn("concrete example", prompt)
+        self.assertIn("preservation_items", prompt)
+        self.assertIn("merge checklist", prompt)
 
     def test_prompt_states_compression_target(self):
         prompt = build_digest_user_prompt(SOURCE)
@@ -45,6 +47,25 @@ class DigestPromptTests(unittest.TestCase):
         prompt = build_digest_user_prompt(SOURCE)
         self.assertIn("Use source_indices to preserve the original images", prompt)
         self.assertNotIn("generated/chapter-01-concept.png", prompt)
+
+    def test_prompt_uses_transcript_slice_for_preservation_items(self):
+        prompt = build_digest_user_prompt(
+            SOURCE,
+            source_transcript=[
+                {
+                    "text": "Meta harness scores 76.4% on Terminal Bench 2.",
+                    "start": 35,
+                    "duration": 4,
+                },
+                {
+                    "text": "Outside the chapter window should be ignored.",
+                    "start": 400,
+                    "duration": 4,
+                },
+            ],
+        )
+        self.assertIn("76.4% on Terminal Bench 2", prompt)
+        self.assertNotIn("Outside the chapter window", prompt)
 
 
 if __name__ == "__main__":
