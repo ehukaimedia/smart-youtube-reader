@@ -1,5 +1,7 @@
 # Frontend Slicer and Ollama Digest Audit
 
+> **Superseded — 2026-05-27.** This review covers frontend issues tied to the Ollama-based digest path. That path has been replaced: archive generation now uses MLX-VLM (see `docs/specs/mlx-gemma4-archive-runtime.md`) and digest creation is handled by an external-agent CLI with no local Ollama model (see README §AI Digest Workflow). The following artifacts referenced here no longer exist: `tools/benchmark_digest_model.py`, `docs/specs/ollama-ai-digest.md`. The "key required" label and benchmark findings below applied to the Ollama path and are not actionable against the current codebase.
+
 Date: 2026-05-09
 Agent: reviewer-agent
 Role: Reviewer B

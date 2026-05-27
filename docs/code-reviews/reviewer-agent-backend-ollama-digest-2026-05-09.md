@@ -1,5 +1,7 @@
 # Reviewer A Backend Ollama Digest Audit - 2026-05-09
 
+> **Superseded — 2026-05-27.** This review covers the Ollama-based digest implementation. That path has been replaced: archive generation now uses MLX-VLM (see `docs/specs/mlx-gemma4-archive-runtime.md`) and digest creation is handled by an external-agent CLI (see README §AI Digest Workflow). The following artifacts referenced in these findings no longer exist: `backend/modelfiles/smart-youtube-digest.Modelfile`, `tools/benchmark_digest_model.py`, `docs/specs/ollama-ai-digest.md`, `_call_ollama_agent()`, `_ollama_model_available()`. The required actions below applied to the Ollama path and are not actionable against the current codebase.
+
 ## Findings
 
 ### [P1] Installed Ollama digest model is reported unavailable
