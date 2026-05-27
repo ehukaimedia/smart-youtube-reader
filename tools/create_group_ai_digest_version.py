@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 from backend.app.digest import (  # noqa: E402
     _clean_title,
     _compact_content,
+    _extract_digest_preservation_items,
     _extract_json_object,
     _read_json,
     _write_json,
@@ -104,6 +105,8 @@ Teaching contract:
 - Do not concatenate or lightly paraphrase the source transcripts.
 - Synthesize a new mental model that teaches durable facts, theory, and testable hypotheses.
 - Each chapter must help an AI agent understand what is true, why it works, when it might fail, and what evidence would confirm or reject it.
+- Preserve every numeric claim, proper noun, dataset/benchmark name, named team/company, and concrete example that materially supports the combined lesson.
+- Each source chapter includes preservation_items. Use them as a merge checklist, especially when many chapters collapse into one group chapter.
 - Prefer plain causal language over trading-video narration. Avoid "the speaker says" framing.
 
 Critical image rule:
@@ -196,6 +199,13 @@ def build_source_payload(source_dirs: list[Path]) -> str:
                 "timestamp_start": chapter.get("timestamp_start", 0),
                 "timestamp_end": chapter.get("timestamp_end"),
                 "images": images[:6],
+                "preservation_items": _extract_digest_preservation_items(
+                    " ".join([
+                        str(chapter.get("concept", "")),
+                        str(chapter.get("summary", "")),
+                        str(chapter.get("content", "")),
+                    ])
+                ),
             })
         projects.append({
             "project_index": project_index,

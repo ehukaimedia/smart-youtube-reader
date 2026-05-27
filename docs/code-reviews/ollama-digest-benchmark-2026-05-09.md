@@ -1,5 +1,7 @@
 # Ollama Digest Benchmark - 2026-05-09
 
+> **Superseded — 2026-05-27.** This benchmark covers the Ollama-based `smart-youtube-digest` model. That path has been replaced: archive generation now uses MLX-VLM (see `docs/specs/mlx-gemma4-archive-runtime.md`) and digest creation is handled by an external-agent CLI (see README §AI Digest Workflow). The following artifacts referenced here no longer exist: `backend/modelfiles/smart-youtube-digest.Modelfile`, `tools/benchmark_digest_model.py`, `docs/specs/ollama-ai-digest.md`. The findings below are historical only.
+
 ## Model
 
 - Base: `gemma4:latest`

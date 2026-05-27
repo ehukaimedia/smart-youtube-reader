@@ -205,9 +205,29 @@ def normalize_digest_draft(
     return digest_chapters, changes, title
 
 
-def build_digest_user_prompt(source_chapters: list[dict[str, Any]], include_generated_images: bool = False) -> str:
+def build_digest_user_prompt(
+    source_chapters: list[dict[str, Any]],
+    include_generated_images: bool = False,
+    source_transcript: list[dict[str, Any]] | None = None,
+) -> str:
     source_payload = []
     for index, chapter in enumerate(source_chapters):
+        preservation_end = chapter.get("timestamp_end")
+        if index + 1 < len(source_chapters):
+            current_end = _to_float(chapter.get("timestamp_end"), chapter.get("timestamp_start", 0))
+            next_start = _to_float(source_chapters[index + 1].get("timestamp_start"), current_end)
+            if current_end < next_start <= current_end + 20:
+                preservation_end = next_start
+        preservation_text = " ".join([
+            str(chapter.get("concept", "")),
+            str(chapter.get("summary", "")),
+            str(chapter.get("content", "")),
+            _transcript_text_for_chapter(
+                source_transcript,
+                chapter.get("timestamp_start", 0),
+                preservation_end,
+            ),
+        ])
         source_payload.append({
             "index": index,
             "concept": chapter.get("concept", ""),
@@ -216,7 +236,9 @@ def build_digest_user_prompt(source_chapters: list[dict[str, Any]], include_gene
             "timestamp_start": chapter.get("timestamp_start", 0),
             "timestamp_end": chapter.get("timestamp_end"),
             "image_count": len(chapter.get("images", []) or []),
+            "preservation_items": _extract_digest_preservation_items(preservation_text),
         })
+    critical_specifics = _select_critical_specifics(source_payload)
 
     if include_generated_images:
         image_instruction = (
@@ -243,9 +265,26 @@ def build_digest_user_prompt(source_chapters: list[dict[str, Any]], include_gene
     return (
         "Build the digest from these source chapters. Each output chapter must include: "
         "source_indices, concept, summary, content, timestamp_start, timestamp_end. "
-        "source_indices must be an array of integer indexes only, never text labels. "
+        "source_indices must be an array of integer indexes only, never text labels, "
+        "and never an implied range: [9,12] means chapters 9 and 12 only; use "
+        "[9,10,11,12] when the output chapter covers all four source chapters. "
         "Preserve every numeric claim, proper noun, dataset/benchmark name, and concrete "
         "example from the source content; cut filler and connective prose, not specifics. "
+        "Each source chapter includes preservation_items. Treat them as a merge checklist: "
+        "when multiple source chapters collapse into one output chapter, carry forward the "
+        "numbered metrics, benchmark names, named teams/companies, and concrete examples "
+        "from each source chapter instead of replacing them with generic themes. "
+        "For every source index you cite, include at least one of that chapter's "
+        "preservation_items in the output chapter content. If one merged chapter cannot "
+        "carry one concrete item from each cited source, split it into smaller chapters. "
+        "Company-specific examples, named research teams, benchmark scores, repository "
+        "counts, vulnerability rates, and tool-pruning examples are not optional. "
+        f"Critical specifics that must survive somewhere in the digest: "
+        f"{json.dumps(critical_specifics, ensure_ascii=False)}. "
+        "Example: do not compress 'Company A removed 80% of tools' and 'Model B stopped "
+        "needing resets' into 'teams pruned assumptions'; keep the company/model names and "
+        "the 80% claim. Preserve claim direction too: if a source says a method used more "
+        "compute, never rewrite it as less compute. "
         "Merge tightly related source chapters where it improves the lesson; aim for "
         "roughly 60-80 percent of the source chapter count unless the material is already terse. "
         f"{image_instruction} "
@@ -534,6 +573,194 @@ def _compact_content(content: str) -> str:
 
     compacted = " ".join(kept) if kept else content.strip()
     return _truncate(re.sub(r"\s+", " ", compacted), 1800)
+
+
+def _extract_digest_preservation_items(text: str, max_items: int = 8) -> list[str]:
+    candidates = []
+    for phrase in _candidate_preservation_phrases(text):
+        score = _preservation_score(phrase)
+        if score <= 0:
+            continue
+        candidates.append((score, phrase))
+
+    kept = []
+    seen = set()
+    for _, phrase in sorted(candidates, key=lambda item: item[0], reverse=True):
+        key = _specific_key(phrase)
+        if _is_redundant_specific(key, seen):
+            continue
+        seen.add(key)
+        kept.append(_truncate(phrase, 220))
+        if len(kept) >= max_items:
+            break
+    return kept
+
+
+def _select_critical_specifics(source_payload: list[dict[str, Any]], limit: int = 52) -> list[str]:
+    ranked_by_chapter: dict[int, list[tuple[int, str]]] = {}
+    for chapter in source_payload:
+        chapter_index = int(chapter.get("index") or 0)
+        for item in chapter.get("preservation_items", []) or []:
+            ranked_by_chapter.setdefault(chapter_index, []).append((_preservation_score(str(item)), str(item)))
+
+    selected = []
+    seen = set()
+    for chapter_index in sorted(ranked_by_chapter):
+        for score, item in sorted(ranked_by_chapter[chapter_index], key=lambda row: row[0], reverse=True)[:4]:
+            if score < 6:
+                continue
+            _append_unique_specific(selected, seen, item)
+
+    if len(selected) >= limit:
+        return selected[:limit]
+    ranked = [
+        (score, item)
+        for chapter_items in ranked_by_chapter.values()
+        for score, item in chapter_items
+    ]
+    for score, item in sorted(ranked, key=lambda row: row[0], reverse=True):
+        if score < 6:
+            continue
+        _append_unique_specific(selected, seen, item)
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+def _append_unique_specific(selected: list[str], seen: set[str], item: str) -> None:
+    key = _specific_key(item)
+    if _is_redundant_specific(key, seen):
+        return
+    seen.add(key)
+    selected.append(item)
+
+
+def _specific_key(item: str) -> str:
+    return re.sub(r"[^a-z0-9.%+→-]+", " ", item.lower()).strip()
+
+
+def _is_redundant_specific(key: str, seen: set[str]) -> bool:
+    if not key or key in seen:
+        return True
+    key_signals = _specific_signals(key)
+    for existing in seen:
+        if key in existing or existing in key:
+            if key_signals != _specific_signals(existing):
+                continue
+            return True
+    return False
+
+
+def _specific_signals(value: str) -> set[str]:
+    signals = set(re.findall(r"\b\d+(?:[,.]\d+)*(?:\.\d+)?%?\b|[+−-]\d+(?:\.\d+)?|→", value))
+    signals.update(
+        word
+        for word in re.findall(
+            r"\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+            r"fourteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|"
+            r"thousand|million|billion)\b",
+            value,
+        )
+    )
+    return signals
+
+
+def _candidate_preservation_phrases(text: str) -> list[str]:
+    cleaned = re.sub(r"\[music\]|>>", " ", text, flags=re.IGNORECASE)
+    cleaned = _normalize_spelled_file_extensions(cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return []
+
+    phrases = []
+    for sentence in re.split(r"(?<=[.!?])\s+", cleaned):
+        sentence = sentence.strip(" -")
+        if not sentence:
+            continue
+        words = sentence.split()
+        if len(words) <= 34:
+            phrases.append(sentence)
+            continue
+        for index in range(0, len(words), 18):
+            chunk = " ".join(words[index:index + 26]).strip(" -,;:")
+            if len(chunk.split()) >= 5:
+                phrases.append(chunk)
+    return phrases
+
+
+def _normalize_spelled_file_extensions(text: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        stem = match.group(1)
+        extension = match.group(2).lower()
+        if stem.isupper():
+            normalized_stem = stem
+        elif stem.lower().endswith("s"):
+            normalized_stem = stem.upper()
+        else:
+            normalized_stem = stem
+        return f"{normalized_stem}.{extension}"
+
+    return re.sub(
+        r"\b([A-Za-z][A-Za-z0-9_-]{2,}),\s*(MD|JSON|YAML|YML|TOML|TXT|PY|TS|JS)\b",
+        replace,
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
+def _preservation_score(phrase: str) -> int:
+    lowered = phrase.lower()
+    score = 0
+    if re.search(r"\d|%|→|\+|(?<![A-Za-z])-(?=\d)", phrase):
+        score += 5
+    if re.search(
+        r"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+        r"fourteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|"
+        r"thousand|million|billion)\b",
+        lowered,
+    ):
+        score += 3
+    if re.search(r"\b[A-Z][A-Za-z0-9]*(?:[-.][A-Za-z0-9]+)*(?:\s+[A-Z][A-Za-z0-9]*(?:[-.][A-Za-z0-9]+)*)+\b", phrase):
+        score += 3
+    if re.search(r"\b[A-Z]{2,}[A-Za-z0-9.-]*\b|\b[A-Za-z]+(?:Bench|World|Spec|Symphony|Harness|Code|MD)\b", phrase):
+        score += 3
+    if re.search(r"\b[A-Z][a-z]+[A-Z][A-Za-z0-9]*\b|\b[A-Za-z]+(?:-[A-Z][A-Za-z0-9]+)+\b", phrase):
+        score += 3
+    if len(re.findall(r"\b[A-Z][A-Za-z0-9]*(?:[-.][A-Za-z0-9]+)*\b", phrase)) >= 3:
+        score += 2
+    if re.search(r"\b(found|identified|achieved|jumped|dropped|collapsed|removed|rewrote|stopped|transferred|eliminating|preventing)\b", lowered):
+        score += 3
+    if re.search(r"\b(dataset|benchmark|repositories|vulnerability|tokens|calls|minutes|compute|tools|games)\b", lowered):
+        score += 2
+    if re.search(r"\b(vulnerability|unsafe|illegal moves|repositories|context resets|tools)\b", lowered):
+        score += 3
+    if len(phrase.split()) < 5:
+        score -= 3
+    return score
+
+
+def _transcript_text_for_chapter(
+    source_transcript: list[dict[str, Any]] | None,
+    start: Any,
+    end: Any,
+) -> str:
+    if not source_transcript:
+        return ""
+    window_start = _to_float(start, 0)
+    window_end = _to_float(end, window_start)
+    if window_end < window_start:
+        window_start, window_end = window_end, window_start
+
+    texts = []
+    for item in source_transcript:
+        item_start = _to_float(item.get("start"), 0)
+        item_end = item_start + max(0.0, _to_float(item.get("duration"), 0))
+        if item_end < window_start or item_start > window_end:
+            continue
+        text = str(item.get("text") or "").strip()
+        if text and "[music]" not in text.lower():
+            texts.append(text)
+    return " ".join(texts)
 
 
 def _is_fluff(text: str) -> bool:

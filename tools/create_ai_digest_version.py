@@ -88,6 +88,8 @@ def run() -> int:
 def build_agent_task(source_dir: Path, with_images: bool = False) -> str:
     archive = _read_json(source_dir / "archive.json")
     manifest = _read_json(source_dir / "manifest.json")
+    transcript_path = source_dir / "transcript.json"
+    source_transcript = _read_json(transcript_path) if transcript_path.exists() else None
     source_chapters = archive.get("archive", [])
     draft_path = source_dir / "generated" / "ai-digest-draft.json"
     command = f'python3 tools/create_ai_digest_version.py "{source_dir}" --draft "{draft_path}"'
@@ -160,7 +162,7 @@ Draft JSON shape:
 {draft_shape}
 
 Source chapter payload:
-{build_digest_user_prompt(source_chapters, include_generated_images=with_images)}
+{build_digest_user_prompt(source_chapters, include_generated_images=with_images, source_transcript=source_transcript)}
 """
 
 

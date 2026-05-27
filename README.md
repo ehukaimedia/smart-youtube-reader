@@ -1,8 +1,27 @@
 # Smart YouTube Reader
 
-**Smart YouTube Reader** turns any YouTube URL into a structured, AI-readable archive — transcript, de-duplicated visual frames, and semantic chapters — that you or an AI agent can search, read, and learn from.
+**Smart YouTube Reader** is an official Ehukai Media open-source project. It turns any YouTube URL into a structured, AI-readable archive — transcript, de-duplicated visual frames, and semantic chapters — that you or an AI agent can search, read, and learn from.
 
 > **Why this exists:** Videos are great for watching, but terrible for referencing. This tool makes video content as accessible and searchable as a book.
+
+---
+
+## Architecture & Design
+
+### Local-First Design
+Smart YouTube Reader is built on a **local-first** architecture.
+* **No Database**: It uses the local filesystem for all storage. Jobs, transcripts, and frames are kept under the `data/` directory.
+* **Privacy & Control**: All processing is performed on your machine.
+* **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local MLX-VLM server management.
+* **Frontend**: A Next.js (React) application provides a visual dashboard, an interactive reader with timestamp-linked transcript search, and a clip-slicer.
+
+### Local AI Model Expectations
+For semantic chaptering and visual summary generation, Smart YouTube Reader uses Apple's **MLX-VLM** framework to execute models locally.
+* **Hardware Requirement**: Running the local AI model requires **Apple Silicon macOS** (M1/M2/M3/M4 chipsets). This is because the underlying `mlx` library is optimized exclusively for Apple Silicon GPU acceleration.
+* **Default Model**: The application defaults to `mlx-community/gemma-4-e4b-it-4bit`, a highly optimized quantized visual model from the Gemma 4 family.
+* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported.
+
+---
 
 ## What it produces
 
@@ -13,14 +32,29 @@
 | `archive.json` | AI-generated chapters, each with a summary and frame images |
 | `manifest.json` | Job metadata (title, URL, chapter count) |
 
+---
+
 ## Features
 
 - **Semantic chapters** — AI reads the transcript and groups it into logical sections with titles and summaries
 - **Visual matching** — Each chapter is paired with high-signal frames from the video using local frame metadata
-- **Local model** — Archive generation uses Gemma 4 models through MLX-VLM, defaulting to `mlx-community/gemma-4-e4b-it-4bit`
+- **Local model** — Archive generation uses Gemma 4 models through MLX-VLM
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
 - **Video Slicer** — Cut precise clips from any job and export them with full metadata
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
+
+---
+
+## Prerequisites
+
+To run Smart YouTube Reader locally, you need the following:
+
+- **macOS (Apple Silicon)** — Required for local model generation.
+- **FFmpeg** — Used for frame extraction and video slicing (`brew install ffmpeg`).
+- **Python 3.10+**
+- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc))
+
+---
 
 ## Quick Start
 
@@ -28,50 +62,60 @@
 ```bash
 ./start.command
 ```
-This starts both the backend and frontend automatically.
+This automatically starts both the backend and frontend.
 
 ### Manual setup
 
-**Backend**
+**1. Backend**
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+# To run tests, also install development dependencies:
+pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
-**Frontend**
+**2. Frontend**
 ```bash
 cd frontend
 npm install
 npm run dev -- --port 3001
 ```
 
-Then open `http://localhost:3001`.
+Then open `http://localhost:3001` in your browser.
 
-## Prerequisites
+---
 
-- [FFmpeg](https://ffmpeg.org/) — `brew install ffmpeg`
-- Node.js 18+ and Python 3.10+
-- Apple Silicon macOS with `mlx-vlm` installed through `backend/requirements.txt`
+## Verification & Testing
 
-## Tech Stack
+We maintain a rigorous test and linting suite to ensure codebase health.
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js (React) — `http://localhost:3001` |
-| Backend | FastAPI (Python) — `http://localhost:8001` |
-| Local AI | MLX-VLM Gemma 4 (`mlx-community/gemma-4-e4b-it-4bit` default) |
-| Video | yt-dlp + FFmpeg |
-| Storage | Local filesystem (no database) |
+### Backend Verification
+Verify the backend using `pytest`:
+```bash
+cd backend
+source .venv/bin/activate
+python -m pytest
+```
 
-## Agent Integration
+### Frontend Verification
+Run frontend linting and build checks to ensure code quality:
+```bash
+cd frontend
+# Run linter
+npm run lint
 
-The `archive.json` produced by each job is designed to be consumed by AI agents. See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
+# Build the Next.js production bundle
+npm run build
+```
 
-## AI Digest CLI
+---
 
+## CLIs & Tooling
+
+### AI Digest CLI
 AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend.
 
 ```bash
@@ -86,8 +130,7 @@ python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "
 
 The CLI creates a separate `kind: ai_digest` project under `data/jobs/`. It preserves image references from kept source chapters; image removal and replacement stay in the human curation workflow.
 
-## Group AI Digest CLI
-
+### Group AI Digest CLI
 Group digest creation combines two or more completed projects into one new learning project. Unlike a single-video digest, a group digest does not preserve original frame paths. Source frames are evidence only. The materialized group project contains a novel transcript and exactly three newly generated teaching images. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
 
 ```bash
@@ -96,8 +139,7 @@ python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/
 
 That prints the exact task for Codex, Claude, or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge.
 
-## Summary Thumbnail CLI
-
+### Summary Thumbnail CLI
 Create a project thumbnail from the archive text and attached frame images:
 
 ```bash
@@ -118,6 +160,24 @@ The tool writes `generated/summary.png` inside the project and updates both `arc
 
 The dashboard uses that image as the project thumbnail.
 
+---
+
+## Agent Integration
+
+The `archive.json` produced by each job is designed to be consumed by AI agents. See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
+
+---
+
+## Community & Governance
+
+We welcome contributions and value our community's safety and security. Please review the following guidelines before participating:
+
+* **[Contributing Guidelines](CONTRIBUTING.md)**: Learn how to set up your environment, follow project standards, and submit pull requests.
+* **[Code of Conduct](CODE_OF_CONDUCT.md)**: Our expectations for community behavior and reporting enforcement.
+* **[Security Policy](SECURITY.md)**: Instructions on how to privately report security vulnerabilities.
+
+---
+
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

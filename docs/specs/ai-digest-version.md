@@ -20,6 +20,9 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 - The original project is not modified.
 - The derived project receives a new no-fluff title based on the lesson content, not the source YouTube headline.
 - The plain digest agent preserves image references from kept source chapters. Human users handle image removal and replacement.
+- The digest prompt includes deterministic `preservation_items` for each source chapter. These items are extracted from archive text plus the matching transcript slice so small local models see high-signal metrics, named teams, benchmarks, and concrete examples even when a source chapter is aggressively merged.
+- When the prompt asks the agent to merge chapters, it treats `preservation_items` as a checklist and preserves claim direction. For example, a source claim that a method used more compute must not be rewritten as less compute.
+- Specificity preservation dominates the soft 60-80% chapter-count target. A digest that keeps more chapters to preserve concrete claims is preferable to a more compressed digest that drops names, metrics, benchmark results, or company-specific examples.
 - The digest-with-images agent references only safe generated image paths under `generated/`; source frames remain evidence, not output chapter images.
 - Digest-with-images projects use `media_policy: lightweight_generated_images_only`.
 - Digest-with-images projects do not copy original source frames, source slices, source frame metadata, copied source video, stale generated images, or the original transcript into the derived project.
