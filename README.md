@@ -52,7 +52,7 @@ To run Smart YouTube Reader locally, you need the following:
 - **macOS (Apple Silicon)** — Required for local model generation.
 - **FFmpeg** — Used for frame extraction and video slicing (`brew install ffmpeg`).
 - **Python 3.10+**
-- **Node.js 18+**
+- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc))
 
 ---
 
