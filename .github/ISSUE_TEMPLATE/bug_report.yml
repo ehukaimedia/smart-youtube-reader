@@ -1,0 +1,50 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve Smart YouTube Reader
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+      placeholder: E.g., The transcript fails to download for videos longer than 2 hours.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Open the UI
+        2. Input URL '...'
+        3. Click 'Read'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Backend/Frontend Logs or Error Messages
+      description: Please copy and paste any relevant terminal output or browser console logs here.
+      render: shell
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: E.g. macOS 14.5 (Apple Silicon M2 Max), Python 3.11, Node 20.11, FFmpeg version
+      placeholder: macOS 14.5, Python 3.11.2, Node 20.11.0, FFmpeg 7.0
+    validations:
+      required: true
