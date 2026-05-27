@@ -62,7 +62,7 @@ Action: Added a `> **Superseded — 2026-05-27.**` blockquote to the top of each
 | `docs/specs/dashboard-youtube-thumbnails.md` | "fallback thumbnail surface" | Current UX spec for malformed or missing thumbnail URLs. |
 | `docs/specs/mlx-gemma4-archive-runtime.md` | "Do not require Ollama" | Current spec explicitly prohibiting the old pattern. Keeps the constraint legible. |
 | `docs/plans/project-zip-download-plan.md` | "temporary ZIP" | Current behavior: ZIP is created outside the project tree and deleted after response. |
-| `docs/playground/index.html` | `fallback()` in clipboard copy | Active clipboard fallback in the playground UI. |
+| `docs/playgrounds/index.html` | `fallback()` in clipboard copy | Active clipboard fallback in the playground UI. |
 | `docs/playgrounds/project-zip-download-flow.md` | "temporary ZIP" | Matches current implementation behavior. |
 | `skills/youtube-archive-playground/SKILL.md` | `onerror` img fallback recommendation | Active guidance for playground image error handling. |
 | `skills/smart-youtube-reader/SKILL.md` | "Only images available" message | Describes current system state when cookies or node aren't discoverable. |
