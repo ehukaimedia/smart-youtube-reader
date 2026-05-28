@@ -189,10 +189,7 @@ async def get_share_info(request: Request):
     frontend_port = os.environ.get("FRONTEND_PORT", "3001")
     configured_origin = os.environ.get("PUBLIC_SHARE_ORIGIN")
     scheme = request.url.scheme
-    request_host = request.url.hostname or "localhost"
-    local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
-    local_host = "localhost" if request_host in local_hosts else request_host
-    local_origin = f"{scheme}://{local_host}:{frontend_port}"
+    local_origin = f"{scheme}://localhost:{frontend_port}"
 
     if configured_origin:
         override = configured_origin.rstrip("/")

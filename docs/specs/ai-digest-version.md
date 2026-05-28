@@ -7,7 +7,9 @@ Smart YouTube Reader projects should preserve the original archive while allowin
 ## Expected Behavior
 
 - Reader exposes `Copy AI Digest CLI Task` as a visible default generated-WebP image digest action for completed source projects.
+- Dashboard source cards expose a visible `AI Digest` action that copies the same default generated-WebP digest task.
 - Reader exposes a secondary `Copy Text-Only AI Digest Task` action for completed source projects when users want to preserve source image references.
+- The repo ships a bundled `Smart YouTube Reader Demo Digest` so first-run users can open a finished generated-image digest without processing a video first.
 - Each action copies a CLI-driven workflow that any external agent can run.
 - `tools/create_ai_digest_version.py <project>` prints the default image-rich WebP task.
 - `tools/create_ai_digest_version.py <project> --text-only` prints the fallback text-only task.

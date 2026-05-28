@@ -76,6 +76,30 @@ textarea {
   background: var(--surface-raised);
 }
 
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav-share-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.nav-share-toggle .pill-button {
+  min-height: 30px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -362,36 +386,6 @@ button:focus-visible {
   color: var(--foreground);
 }
 
-.share-mode-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-raised);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-}
-
-.share-mode-label {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.share-mode-help {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-.share-mode-help code {
-  font-size: 0.85em;
-  padding: 0.05em 0.35em;
-  background: var(--surface);
-  border-radius: 4px;
-}
-
 .group-bar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto auto;
@@ -468,6 +462,10 @@ button:focus-visible {
   gap: 0.5rem;
   align-items: center;
   padding: 0 0.9rem 0.9rem;
+}
+
+.project-actions.has-digest-action {
+  grid-template-columns: minmax(0, 1fr) auto auto 36px;
 }
 
 .empty-state {

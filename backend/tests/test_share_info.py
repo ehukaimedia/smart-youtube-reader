@@ -36,6 +36,18 @@ class ShareInfoTests(unittest.TestCase):
             body["share_origin"], body["modes"]["local"]["share_origin"],
         )
 
+    def test_local_mode_stays_localhost_from_tailscale_host(self):
+        with patch.object(
+            app_main, "_tailscale_status",
+            return_value={"ip": "100.64.1.2", "status": "available"},
+        ):
+            body = self.client.get(
+                "/share-info",
+                headers={"host": "100.64.1.2:8001"},
+            ).json()
+        self.assertEqual(body["modes"]["local"]["share_origin"], "http://localhost:3001")
+        self.assertEqual(body["modes"]["tailscale"]["share_origin"], "http://100.64.1.2:3001")
+
     def test_tailscale_not_installed_marks_mode_unavailable(self):
         with patch.object(
             app_main, "_tailscale_status",

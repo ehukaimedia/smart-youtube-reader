@@ -235,6 +235,7 @@ ${projectFolder}`;
     if (error) return <div className="container text-red-500">{error}</div>;
     if (!job) return <div className="container">Loading...</div>;
     const canOpenSlicer = job.kind !== 'group_ai_digest' && job.media_policy !== 'lightweight_generated_images_only';
+    const isYouTubeUrl = Boolean(job.video_url?.match(/(?:youtube\.com|youtu\.be)/));
     const kindLabel = job.kind === 'group_ai_digest'
         ? 'Group AI Digest'
         : job.kind === 'ai_digest'
@@ -280,7 +281,7 @@ ${projectFolder}`;
                     )}
                     {job.video_url && (
                         <a href={job.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
-                            Open YouTube
+                            {isYouTubeUrl ? 'Open YouTube' : 'Open Source'}
                         </a>
                     )}
                     {canOpenSlicer && (

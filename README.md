@@ -6,6 +6,22 @@
 
 ---
 
+## Proof: Demo AI Digest
+
+The repository ships with a bundled **Smart YouTube Reader Demo Digest** so the first dashboard already contains a finished deliverable. It teaches how to use the system and shows the viral edge: structured context becomes a concise, visual, shareable learning artifact.
+
+[Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation.
+
+![Default AI digest workflow: archive evidence to Codex agent to GPT 2.0 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+
+| Capture | Reader context | Group synthesis |
+|---|---|---|
+| ![Source video becomes a local Smart Archive](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-01-capture-to-archive.webp) | ![Reader turns chapters, transcript, and evidence into AI-ready context](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-02-reader-context.webp) | ![Multiple archives merge into one new group lesson](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-04-group-digest.webp) |
+
+![Global Local and Tailscale dashboard mode for private-network sharing](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-05-tailscale-sharing.webp)
+
+---
+
 ## Architecture & Design
 
 ### Local-First Design
@@ -181,12 +197,12 @@ The dashboard uses that image as the project thumbnail.
 
 ## Sharing Projects
 
-Smart YouTube Reader is local-first, so the "Copy Project Link" button on the dashboard and reader builds a URL that points at *your* machine. The dashboard toolbar has a **Share links use: Local / Tailscale** toggle that chooses how that URL is built. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. `start.command` opens the dashboard on the Tailscale URL when a tailnet IP is available, and falls back to `localhost` otherwise. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
 
 | Mode | When to use | Link format |
 |---|---|---|
-| **Local** *(default)* | Only opening links yourself, or sharing within the same browser session. | `http://<browser host>:3001/reader/<id>` (e.g. `http://localhost:3001/reader/...`) |
-| **Tailscale** | Sharing the link with another device on your tailnet (laptop, phone, another desktop) so the recipient can open the project from their own browser. | `http://<your tailnet IP>:3001/reader/<id>` (e.g. `http://100.x.y.z:3001/reader/...`) |
+| **Local** *(default)* | Only opening the app yourself, or working from the same machine. | `http://localhost:3001/...` |
+| **Tailscale** | Opening the dashboard and project links from another device on your tailnet (laptop, phone, another desktop). | `http://<your tailnet IP>:3001/...` (e.g. `http://100.x.y.z:3001/dashboard`) |
 
 ### Enabling Tailscale mode
 
@@ -197,7 +213,7 @@ brew install --cask tailscale   # or download from https://tailscale.com/downloa
 tailscale up                    # sign in and join your tailnet
 ```
 
-When you flip the toggle to Tailscale, the dashboard inline-help reflects the current state:
+When you flip the global toggle to Tailscale, the app redirects to the Tailscale origin when available. If it is unavailable, the app keeps you on Local and reports the current state:
 
 - **Tailscale is not installed** — install the client (link or Homebrew command above), then run `tailscale up`.
 - **No tailnet IP yet** — the CLI is installed but `tailscale up` has not produced a `100.64.0.0/10` address yet; sign in and try again.
