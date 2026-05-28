@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = PROJECT_ROOT / "data" / "jobs"
-DEFAULT_OUTPUT = "generated/summary.png"
+DEFAULT_OUTPUT = "generated/summary.webp"
 
 
 def main() -> int:
@@ -102,7 +102,7 @@ def main() -> int:
         width=args.width,
         height=args.height,
     )
-    image.save(output_path)
+    save_thumbnail(image, output_path)
 
     attach_metadata(archive_path, manifest_path, str(output_rel))
 
@@ -141,6 +141,14 @@ def read_json(path: Path) -> dict[str, Any]:
 def write_json(path: Path, data: dict[str, Any]) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+
+
+def save_thumbnail(image: Image.Image, output_path: Path) -> None:
+    suffix = output_path.suffix.lower()
+    if suffix == ".webp":
+        image.save(output_path, format="WEBP", quality=82, method=6)
+        return
+    image.save(output_path)
 
 
 def collect_frame_items(project_dir: Path, chapters: list[dict[str, Any]], max_frames: int) -> list[dict[str, Any]]:
