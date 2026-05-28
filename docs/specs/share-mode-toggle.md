@@ -34,7 +34,7 @@ Selection persists in `localStorage` under `smart-reader-share-mode`. The dashbo
     }
   },
   "configured_override": false,
-  "share_origin": "..."
+  "share_origin": "http://localhost:3001"
 }
 ```
 
@@ -48,7 +48,7 @@ When Tailscale is unavailable, `modes.tailscale.share_origin` is `null` and `mod
 
 `PUBLIC_SHARE_ORIGIN` remains a hard override: when set, both modes return that origin and `configured_override` is `true`. The frontend hides the toggle in that case.
 
-The previous top-level `share_origin` field has been removed. Frontend clients must read `modes.<mode>.share_origin`.
+A legacy top-level `share_origin` field is also returned for clients that pre-date the `modes` shape. It mirrors `modes.local.share_origin` when no override is set, and mirrors the override when `PUBLIC_SHARE_ORIGIN` is set. New clients should read `modes.<mode>.share_origin`.
 
 ### Frontend
 
@@ -76,7 +76,7 @@ tailscale up
 
 ## Acceptance Criteria
 
-- `/share-info` returns the `modes` shape above; legacy `share_origin` field still works.
+- `/share-info` returns the `modes` shape above; legacy `share_origin` field is preserved and equals `modes.local.share_origin` (or the `PUBLIC_SHARE_ORIGIN` override when set).
 - Dashboard renders a Local / Tailscale pill toggle that persists across reloads.
 - Tailscale-unavailable selection surfaces a clear next-step hint linking to the install page and mentioning `tailscale up`.
 - When `PUBLIC_SHARE_ORIGIN` is set, the toggle is hidden and both modes return the override.

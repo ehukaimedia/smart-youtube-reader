@@ -31,6 +31,10 @@ class ShareInfoTests(unittest.TestCase):
         self.assertEqual(
             body["modes"]["tailscale"]["share_origin"], "http://100.64.1.2:3001",
         )
+        # Legacy field tracks Local, not Tailscale, regardless of availability.
+        self.assertEqual(
+            body["share_origin"], body["modes"]["local"]["share_origin"],
+        )
 
     def test_tailscale_not_installed_marks_mode_unavailable(self):
         with patch.object(
@@ -43,7 +47,11 @@ class ShareInfoTests(unittest.TestCase):
         self.assertEqual(body["modes"]["tailscale"]["status"], "not_installed")
         self.assertIsNone(body["modes"]["tailscale"]["share_origin"])
         self.assertIn("tailscale.com", body["modes"]["tailscale"]["install_url"])
-        self.assertNotIn("share_origin", body)
+        # Legacy share_origin tracks the new default mode (local) so old
+        # clients do not silently get a Tailscale URL.
+        self.assertEqual(
+            body["share_origin"], body["modes"]["local"]["share_origin"],
+        )
 
     def test_tailscale_not_running_distinct_from_not_installed(self):
         with patch.object(
@@ -68,6 +76,7 @@ class ShareInfoTests(unittest.TestCase):
             body["modes"]["tailscale"]["share_origin"], "https://share.example.com",
         )
         self.assertTrue(body["modes"]["tailscale"]["available"])
+        self.assertEqual(body["share_origin"], "https://share.example.com")
 
 
 class TailscaleStatusTests(unittest.TestCase):

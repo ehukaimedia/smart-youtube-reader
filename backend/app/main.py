@@ -203,6 +203,9 @@ async def get_share_info(request: Request):
                 "tailscale": {"share_origin": override, "available": True},
             },
             "configured_override": True,
+            # Legacy field for clients that pre-date the modes shape.
+            # Mirrors the override so existing consumers see the same URL.
+            "share_origin": override,
         }
 
     status = _tailscale_status()
@@ -223,6 +226,10 @@ async def get_share_info(request: Request):
             },
         },
         "configured_override": False,
+        # Legacy field for clients that pre-date the modes shape. Defaults to
+        # the Local origin so legacy consumers track the new default mode and
+        # do not silently flip a user to a Tailscale URL they did not choose.
+        "share_origin": local_origin,
     }
 
 @app.get("/jobs/{job_id}", response_model=JobResponse)
