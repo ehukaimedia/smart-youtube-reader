@@ -149,7 +149,7 @@ export default function DashboardPage() {
 Do not use an in-app model option. You are the group digest agent.
 Run commands from the smart-youtube-reader repo root.
 
-Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel AI teaching images from that new transcript.
+Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel WebP AI teaching images from that new transcript.
 
 Teaching goal:
 - Teach digestible facts, theory, and testable hypotheses.
@@ -161,8 +161,8 @@ Workflow:
    python3 tools/create_group_ai_digest_version.py ${quotedProjects} --title "${groupTitle || 'Combined Learning Digest'}"
 2. Read every archive.json and inspect the attached frame images before deciding what to keep.
 3. Merge repeated lessons across videos into a new transcript with chapter-level facts, theory, and hypotheses. Cut fluff, repetition, intros/outros, and low-value transitions.
-4. Create exactly 3 new AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
-5. Write the required JSON draft and the 3 generated images to the staging paths printed by the CLI.
+4. Create exactly 3 new WebP AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
+5. Write the required JSON draft and the 3 generated WebP images to the staging paths printed by the CLI.
 6. Materialize the group AI digest with the command printed by the CLI.
 7. Verify the dashboard shows the new project with a Group AI Digest badge and the reader opens it.
 

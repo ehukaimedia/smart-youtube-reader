@@ -113,25 +113,26 @@ What would you like to know about this video?`;
     const copyAiDigestWithImagesTask = (job: Job) => {
         const projectFolder = `data/jobs/${job.data_folder_name}`;
         const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
-        const prompt = `Create a Smart YouTube Reader AI digest version with generated teaching images for this project using the local CLI.
+        const prompt = `Create the default Smart YouTube Reader AI digest version with generated WebP teaching images for this project using the local CLI.
 
-Do not use an in-app model option. You are the digest-and-image agent.
+Do not use an in-app model option. You are the digest-and-image agent. Codex with GPT 2.0 image generation is the recommended setup.
 Run commands from the smart-youtube-reader repo root.
 
 Important:
 - Read archive.json and inspect the attached frame images before deciding what to keep.
 - Create a new digestible chapter structure, not a light paraphrase.
-- Create one novel generated teaching image per digest chapter.
+- Create one novel generated WebP teaching image per digest chapter.
 - Keep the digest to at most 6 chapters/images. If the material truly needs more than 6 images, explain the needed count in operator_image_note and still produce the best 6-image digest.
 - Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
+- Save and reference only generated/*.webp output images in the draft.
 
 Workflow:
-1. Run this command to print the exact digest-with-images task:
-   python3 tools/create_ai_digest_version.py "${projectFolder}" --with-images
+1. Run this command to print the default image-rich digest task:
+   python3 tools/create_ai_digest_version.py "${projectFolder}"
 2. Read archive.json and inspect the attached frame images as evidence.
 3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
 4. Preserve durable facts, theory, procedures, examples, caveats, failure modes, and useful visual explanations.
-5. Save the generated images under:
+5. Save the generated WebP images under:
    ${projectFolder}/generated/
 6. Write the required JSON draft to:
    ${draftPath}
@@ -152,14 +153,14 @@ ${projectFolder}`;
     const copyAiDigestTask = (job: Job) => {
         const projectFolder = `data/jobs/${job.data_folder_name}`;
         const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
-        const prompt = `Create a Smart YouTube Reader AI digest version for this project using the local CLI.
+        const prompt = `Create a text-only Smart YouTube Reader AI digest version for this project using the local CLI.
 
 Do not use an in-app model option. You are the digest agent.
 Run commands from the smart-youtube-reader repo root.
 
 Workflow:
-1. Run this command to print the exact digest task:
-   python3 tools/create_ai_digest_version.py "${projectFolder}"
+1. Run this command to print the text-only digest task:
+   python3 tools/create_ai_digest_version.py "${projectFolder}" --text-only
 2. Read archive.json and inspect the attached frame images before deciding what to keep.
 3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
 4. Preserve durable concepts, procedures, definitions, examples, caveats, and useful visual explanations.
@@ -271,11 +272,11 @@ ${projectFolder}`;
                         <div className="overflow-content">
                             {!job.kind && (
                                 <>
-                                    <button onClick={() => copyAiDigestTask(job)}>
-                                        {digestTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
-                                    </button>
                                     <button onClick={() => copyAiDigestWithImagesTask(job)}>
-                                        {digestWithImagesTaskCopied ? 'Copied Images Task' : 'Copy AI Digest with Images CLI Task'}
+                                        {digestWithImagesTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
+                                    </button>
+                                    <button onClick={() => copyAiDigestTask(job)}>
+                                        {digestTaskCopied ? 'Copied Text-Only Task' : 'Copy Text-Only AI Digest Task'}
                                     </button>
                                 </>
                             )}

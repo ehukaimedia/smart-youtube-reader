@@ -17,7 +17,7 @@ DIGEST_AGENT_TASK = (
     "Return JSON only with title, chapters, and changes_summary. "
     "Each chapter must include source_indices, concept, summary, content, "
     "timestamp_start, and timestamp_end. When the task asks for generated images, "
-    "write image files under generated/ and reference those paths from chapter images."
+    "write WebP image files under generated/ and reference those paths from chapter images."
 )
 
 FLUFF_PATTERNS = [
@@ -138,7 +138,7 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         manifest["video_ext"] = None
         manifest["media_policy"] = "lightweight_generated_images_only"
         manifest["image_policy"] = (
-            "AI digest chapter images use one unique generated teaching image per chapter, "
+            "AI digest chapter images use one unique generated WebP teaching image per chapter, "
             "with a maximum of 6 images. Original source frames are used as evidence only "
             "and are not copied into the derived digest project."
         )
@@ -242,15 +242,15 @@ def build_digest_user_prompt(
 
     if include_generated_images:
         image_instruction = (
-            "Each output chapter must also include exactly one generated image path in "
-            'images, using the shape "images":["generated/chapter-01-concept.png"]. '
+            "Each output chapter must also include exactly one generated WebP image path in "
+            'images, using the shape "images":["generated/chapter-01-concept.webp"]. '
             "Use at most 6 output chapters/images. If more images would improve the lesson, "
             "add operator_image_note at the top level."
         )
         shape = (
             '{"title":"Plain Learning Title","chapters":[{"source_indices":[0,1],"concept":"Concept",'
             '"summary":"One sentence.","content":"Teaching text.","timestamp_start":0,"timestamp_end":120,'
-            '"images":["generated/chapter-01-concept.png"]}],'
+            '"images":["generated/chapter-01-concept.webp"]}],'
             '"changes_summary":["Removed filler.","Merged repeated concepts."],'
             '"operator_image_note":"Optional note for the operator."}'
         )

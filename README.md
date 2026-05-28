@@ -43,8 +43,8 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 - **Video Slicer** — Cut precise clips from any job and export them with full metadata
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
 - **External-agent AI Digests** — Copy a CLI task for Codex, Claude, or another LLM to create a shorter learning-focused digest without modifying the source project
-- **AI Digest with Images** — Recommended setup: Codex paired with GPT 2.0 image generation creates novel teaching images after inspecting the archive text and real frame evidence
-- **Group AI Digests** — Combine multiple completed projects into a novel cross-video lesson with durable facts, theory, hypotheses, and generated teaching images
+- **AI Digest with Images** — Default digest workflow: Codex paired with GPT 2.0 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence
+- **Group AI Digests** — Combine multiple completed projects into a novel cross-video lesson with durable facts, theory, hypotheses, and generated WebP teaching images
 
 ---
 
@@ -119,18 +119,18 @@ npm run build
 ## CLIs & Tooling
 
 ### AI Digest CLI
-AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, use `Copy AI Digest CLI Task` or `Copy AI Digest with Images CLI Task` to copy the exact workflow for Codex, Claude, or another capable LLM.
+AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex, Claude, or another capable LLM. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
 
-The recommended image-rich workflow is Codex paired with GPT 2.0 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates the novel teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
+The recommended default workflow is Codex paired with GPT 2.0 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>"
 ```
 
-For an image-rich digest task, add `--with-images`:
+The command above prints the default image-rich WebP digest task. For the explicit text-only fallback, add `--text-only`:
 
 ```bash
-python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --with-images
+python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --text-only
 ```
 
 Both commands print the exact task for Codex, Claude, or another agent. The agent writes a JSON draft, then materializes the digest project:
@@ -139,7 +139,7 @@ Both commands print the exact task for Codex, Claude, or another agent. The agen
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "data/jobs/<project-folder>/generated/ai-digest-draft.json"
 ```
 
-The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Plain AI digests preserve image references from kept source chapters so humans can curate images later. AI digests with images create one novel generated teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project.
+The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Text-only AI digests preserve image references from kept source chapters so humans can curate images later. Default AI digests create one novel generated WebP teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project.
 
 Every digest task includes `preservation_items` extracted from the archive and transcript slices. Treat them as a checklist for names, metrics, benchmarks, examples, and claim direction so the digest is shorter without losing the facts that make the video useful.
 
@@ -148,7 +148,7 @@ Group digest creation combines two or more completed projects into one new learn
 
 Unlike a single-video digest, a group digest is not a playlist export and does not preserve original frame paths. The agent reads every source `archive.json`, inspects frame images as evidence, and writes a novel combined transcript rather than concatenating source transcripts. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
 
-The materialized group project contains exactly three newly generated teaching images. Codex with GPT 2.0 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
+The materialized group project contains exactly three newly generated WebP teaching images. Codex with GPT 2.0 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
 
 ```bash
 python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/jobs/<project-two>" --title "Combined Learning Digest"
@@ -169,10 +169,10 @@ You can also pass a job id:
 python3 tools/create_summary_thumbnail.py "a24af63e-96e3-4ca5-9f59-5f04707889e4"
 ```
 
-The tool writes `generated/summary.png` inside the project and updates both `archive.json` and `manifest.json` with:
+The tool writes `generated/summary.webp` inside the project and updates both `archive.json` and `manifest.json` with:
 
 ```json
-"summary_image": "generated/summary.png"
+"summary_image": "generated/summary.webp"
 ```
 
 The dashboard uses that image as the project thumbnail.
@@ -185,9 +185,9 @@ The `archive.json` produced by each job is designed to be consumed by AI agents.
 
 Digest workflows turn that archive into new agent-readable projects:
 
-- **Single-project AI Digest** — Compresses one source video into a dense learning version while preserving important names, metrics, examples, and source frame references.
-- **AI Digest with Images** — Uses an external LLM plus image generation to create novel teaching images under `generated/`; source frames are evidence, not output images.
-- **Group AI Digest** — Synthesizes multiple projects into a new lesson with its own transcript, exactly three generated teaching images, and a `Group AI Digest` badge.
+- **Single-project AI Digest** — Compresses one source video into a dense learning version while preserving important names, metrics, examples, and either default WebP teaching images or text-only source image references.
+- **AI Digest with Images** — Uses an external LLM plus image generation to create novel WebP teaching images under `generated/`; source frames are evidence, not output images.
+- **Group AI Digest** — Synthesizes multiple projects into a new lesson with its own transcript, exactly three generated WebP teaching images, and a `Group AI Digest` badge.
 
 See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Benchmark a local MLX model on the AI digest task.
+"""Benchmark a local MLX model on the text-only AI digest task.
 
-Sends the exact CLI digest prompt to the running MLX server (default Gemma 4)
-and reports latency, whether the output is valid JSON in the expected shape,
-and a per-chapter summary.
+Sends the explicit text-only CLI digest prompt to the running MLX server
+(default Gemma 4) and reports latency, whether the output is valid JSON in
+the expected shape, and a per-chapter summary. The default production digest
+workflow uses an external agent with generated WebP images.
 
 Usage:
     backend/.venv/bin/python backend/benchmarks/digest_prompt.py \
@@ -30,7 +31,7 @@ from app.mlx_runtime import chat as mlx_chat, DEFAULT_MODEL
 
 def get_prompt(project_folder: str) -> str:
     result = subprocess.run(
-        ["python3", str(REPO / "tools" / "create_ai_digest_version.py"), project_folder],
+        ["python3", str(REPO / "tools" / "create_ai_digest_version.py"), project_folder, "--text-only"],
         capture_output=True,
         text=True,
         check=True,
