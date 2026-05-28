@@ -41,11 +41,10 @@ export function writeStoredShareMode(mode: ShareMode): void {
 }
 
 function fallbackShareInfo(): ShareInfo {
-  const origin = typeof window === 'undefined' ? 'http://localhost:3001' : window.location.origin;
   return {
     default_mode: 'local',
     modes: {
-      local: { share_origin: origin, available: true },
+      local: { share_origin: 'http://localhost:3001', available: true },
       tailscale: {
         share_origin: null,
         available: false,
