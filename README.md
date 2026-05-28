@@ -179,6 +179,36 @@ The dashboard uses that image as the project thumbnail.
 
 ---
 
+## Sharing Projects
+
+Smart YouTube Reader is local-first, so the "Copy Project Link" button on the dashboard and reader builds a URL that points at *your* machine. The dashboard toolbar has a **Share links use: Local / Tailscale** toggle that chooses how that URL is built. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+
+| Mode | When to use | Link format |
+|---|---|---|
+| **Local** *(default)* | Only opening links yourself, or sharing within the same browser session. | `http://<browser host>:3001/reader/<id>` (e.g. `http://localhost:3001/reader/...`) |
+| **Tailscale** | Sharing the link with another device on your tailnet (laptop, phone, another desktop) so the recipient can open the project from their own browser. | `http://<your tailnet IP>:3001/reader/<id>` (e.g. `http://100.x.y.z:3001/reader/...`) |
+
+### Enabling Tailscale mode
+
+The app never installs or starts Tailscale silently. To use Tailscale mode you need the [Tailscale](https://tailscale.com/download/macos) client running and signed in:
+
+```bash
+brew install --cask tailscale   # or download from https://tailscale.com/download/macos
+tailscale up                    # sign in and join your tailnet
+```
+
+When you flip the toggle to Tailscale, the dashboard inline-help reflects the current state:
+
+- **Tailscale is not installed** — install the client (link or Homebrew command above), then run `tailscale up`.
+- **No tailnet IP yet** — the CLI is installed but `tailscale up` has not produced a `100.64.0.0/10` address yet; sign in and try again.
+- **Tailscale is not running** — start the Tailscale menu-bar app or run `tailscale up`.
+
+### Overriding both modes
+
+If you front the app with a reverse proxy or a custom domain, set the `PUBLIC_SHARE_ORIGIN` environment variable on the backend (e.g. `PUBLIC_SHARE_ORIGIN=https://reader.example.com`). The toggle is then hidden and every copied link uses that origin.
+
+---
+
 ## Agent Integration
 
 The `archive.json` produced by each job is designed to be consumed by AI agents. Each archive includes timestamped chapter text plus local frame references, so external LLMs can reason from both transcript and visual evidence.
