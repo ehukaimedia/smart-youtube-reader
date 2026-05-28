@@ -62,9 +62,20 @@ echo "============================================"
 echo "   (Close this window to stop the app)"
 echo "============================================"
 
-# Auto-launch browser
+# Auto-launch browser in a private session so app state starts cleanly.
 sleep 3
-open "http://localhost:3001"
+APP_URL="http://localhost:3001"
+if [ -d "/Applications/Google Chrome.app" ]; then
+    open -na "Google Chrome" --args --incognito "$APP_URL"
+elif [ -d "/Applications/Chromium.app" ]; then
+    open -na "Chromium" --args --incognito "$APP_URL"
+elif [ -d "/Applications/Brave Browser.app" ]; then
+    open -na "Brave Browser" --args --incognito "$APP_URL"
+else
+    echo "Warning: Chrome/Chromium/Brave not found. Opening the app in the default browser instead."
+    echo "For a private session, open this URL in an incognito/private window: $APP_URL"
+    open "$APP_URL"
+fi
 
 # Wait for both processes
 wait
