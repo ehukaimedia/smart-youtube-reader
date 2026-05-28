@@ -23,10 +23,16 @@ export type ShareInfo = {
 
 const SHARE_MODE_STORAGE_KEY = 'smart-reader-share-mode';
 
+function inferShareModeFromLocation(): ShareMode {
+  if (typeof window === 'undefined') return 'local';
+  const host = window.location.hostname;
+  if (host.startsWith('100.') || host.endsWith('.tailscale.net')) return 'tailscale';
+  return 'local';
+}
+
 export function readStoredShareMode(): ShareMode {
   if (typeof window === 'undefined') return 'local';
-  const stored = window.localStorage.getItem(SHARE_MODE_STORAGE_KEY);
-  return stored === 'tailscale' ? 'tailscale' : 'local';
+  return inferShareModeFromLocation();
 }
 
 export function writeStoredShareMode(mode: ShareMode): void {
