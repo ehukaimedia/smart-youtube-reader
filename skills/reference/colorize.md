@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 > **Additional context needed**: existing brand colors.
 
 Strategically introduce color to designs that are too monochromatic, gray, or lacking in visual warmth and personality.

@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 # Teach Flow
 
 Gathers design context for a project and writes two complementary files at the project root:
