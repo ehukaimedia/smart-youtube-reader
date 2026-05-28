@@ -32,7 +32,7 @@ Users need to combine several Smart YouTube Reader projects into one higher-leve
 - Each archive chapter references one of the three generated WebP images.
 - The reader and dashboard show a `Group AI Digest` badge.
 - The original projects and their AI digest versions are never modified.
-- Group digests retain normal Tailscale sharing, ZIP download, learning prompt, and dashboard behavior.
+- Group digests retain normal Local/Tailscale share, ZIP download, learning prompt, and dashboard behavior (see `docs/specs/share-mode-toggle.md`).
 
 ## CLI Behavior
 

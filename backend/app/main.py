@@ -43,25 +43,11 @@ app.mount("/data/jobs", StaticFiles(directory=DATA_ROOT), name="jobs_data")
 job_store = JobStore()
 
 
-def _get_tailscale_ip() -> str | None:
-    tailscale_network = ip_network("100.64.0.0/10")
+TAILSCALE_NETWORK = ip_network("100.64.0.0/10")
+TAILSCALE_INSTALL_URL = "https://tailscale.com/download/macos"
 
-    try:
-        result = subprocess.run(
-            ["tailscale", "ip", "-4"],
-            capture_output=True,
-            text=True,
-            timeout=2,
-            check=False,
-        )
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                candidate = line.strip()
-                if candidate and ip_address(candidate) in tailscale_network:
-                    return candidate
-    except Exception:
-        pass
 
+def _scan_ifconfig_for_tailnet_ip() -> str | None:
     try:
         result = subprocess.run(
             ["ifconfig"],
@@ -70,25 +56,79 @@ def _get_tailscale_ip() -> str | None:
             timeout=2,
             check=False,
         )
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                parts = line.strip().split()
-                if len(parts) >= 2 and parts[0] == "inet":
-                    candidate = parts[1]
-                    if ip_address(candidate) in tailscale_network:
-                        return candidate
     except Exception:
-        pass
+        return None
+    if result.returncode != 0:
+        return None
+    for line in result.stdout.splitlines():
+        parts = line.strip().split()
+        if len(parts) >= 2 and parts[0] == "inet":
+            try:
+                if ip_address(parts[1]) in TAILSCALE_NETWORK:
+                    return parts[1]
+            except ValueError:
+                continue
+    return None
 
+
+def _scan_hostname_for_tailnet_ip() -> str | None:
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
             candidate = info[4][0]
-            if ip_address(candidate) in tailscale_network:
-                return candidate
+            try:
+                if ip_address(candidate) in TAILSCALE_NETWORK:
+                    return candidate
+            except ValueError:
+                continue
     except Exception:
-        pass
-
+        return None
     return None
+
+
+def _tailscale_status() -> dict[str, str | None]:
+    """Probe Tailscale state, distinguishing not-installed / not-running / no-ip."""
+    try:
+        result = subprocess.run(
+            ["tailscale", "ip", "-4"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except FileNotFoundError:
+        # No `tailscale` binary on PATH. Fall back to scanning interfaces so
+        # users on a tailnet without the CLI still get a working share IP,
+        # but report not_installed when nothing turns up.
+        ip = _scan_ifconfig_for_tailnet_ip() or _scan_hostname_for_tailnet_ip()
+        if ip:
+            return {"ip": ip, "status": "available"}
+        return {"ip": None, "status": "not_installed"}
+    except Exception:
+        ip = _scan_ifconfig_for_tailnet_ip() or _scan_hostname_for_tailnet_ip()
+        if ip:
+            return {"ip": ip, "status": "available"}
+        return {"ip": None, "status": "not_running"}
+
+    if result.returncode != 0:
+        ip = _scan_ifconfig_for_tailnet_ip() or _scan_hostname_for_tailnet_ip()
+        if ip:
+            return {"ip": ip, "status": "available"}
+        return {"ip": None, "status": "not_running"}
+
+    for line in result.stdout.splitlines():
+        candidate = line.strip()
+        if not candidate:
+            continue
+        try:
+            if ip_address(candidate) in TAILSCALE_NETWORK:
+                return {"ip": candidate, "status": "available"}
+        except ValueError:
+            continue
+
+    ip = _scan_ifconfig_for_tailnet_ip() or _scan_hostname_for_tailnet_ip()
+    if ip:
+        return {"ip": ip, "status": "available"}
+    return {"ip": None, "status": "no_tailnet_ip"}
 
 
 def _build_job_zip(job_dir: Path, zip_path: Path) -> None:
@@ -148,15 +188,42 @@ async def list_jobs():
 async def get_share_info(request: Request):
     frontend_port = os.environ.get("FRONTEND_PORT", "3001")
     configured_origin = os.environ.get("PUBLIC_SHARE_ORIGIN")
-    if configured_origin:
-        return {"share_origin": configured_origin.rstrip("/")}
-
+    scheme = request.url.scheme
     request_host = request.url.hostname or "localhost"
     local_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
-    share_host = _get_tailscale_ip() if request_host in local_hosts else request_host
-    share_host = share_host or request_host
+    local_host = "localhost" if request_host in local_hosts else request_host
+    local_origin = f"{scheme}://{local_host}:{frontend_port}"
 
-    return {"share_origin": f"{request.url.scheme}://{share_host}:{frontend_port}"}
+    if configured_origin:
+        override = configured_origin.rstrip("/")
+        return {
+            "default_mode": "local",
+            "modes": {
+                "local": {"share_origin": override, "available": True},
+                "tailscale": {"share_origin": override, "available": True},
+            },
+            "configured_override": True,
+        }
+
+    status = _tailscale_status()
+    tailscale_available = status["status"] == "available" and bool(status["ip"])
+    tailscale_origin = (
+        f"{scheme}://{status['ip']}:{frontend_port}" if tailscale_available else None
+    )
+
+    return {
+        "default_mode": "local",
+        "modes": {
+            "local": {"share_origin": local_origin, "available": True},
+            "tailscale": {
+                "share_origin": tailscale_origin,
+                "available": tailscale_available,
+                "status": status["status"],
+                "install_url": TAILSCALE_INSTALL_URL,
+            },
+        },
+        "configured_override": False,
+    }
 
 @app.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: str):

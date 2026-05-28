@@ -2,7 +2,7 @@
 
 ## Context
 
-Smart YouTube Reader projects should preserve the original archive while allowing users to create a separate AI-optimized version for agent learning. The default digest version should reduce wasted context from filler transcript sections and create lightweight generated WebP teaching images, then behave like any other project for reader, dashboard, Tailscale sharing, and ZIP download. A text-only fallback remains available when users intentionally want source image references for human curation.
+Smart YouTube Reader projects should preserve the original archive while allowing users to create a separate AI-optimized version for agent learning. The default digest version should reduce wasted context from filler transcript sections and create lightweight generated WebP teaching images, then behave like any other project for reader, dashboard, Local/Tailscale sharing (see `docs/specs/share-mode-toggle.md`), and ZIP download. A text-only fallback remains available when users intentionally want source image references for human curation.
 
 ## Expected Behavior
 
@@ -42,7 +42,7 @@ Smart YouTube Reader projects should preserve the original archive while allowin
   - `changes_summary`
   - `summary_image` when Codex attaches a summary image
 - Dashboard cards identify derived projects with an `AI Digest` badge.
-- Derived projects use the same reader, download, learning prompt, and Tailscale link behavior as regular projects.
+- Derived projects use the same reader, download, learning prompt, and Local/Tailscale share behavior as regular projects.
 
 ## CLI Behavior
 
