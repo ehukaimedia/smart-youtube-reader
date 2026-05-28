@@ -235,4 +235,6 @@ We welcome contributions and value our community's safety and security. Please r
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Smart YouTube Reader's Ehukai Media code is licensed under the MIT License. Bundled third-party skill and vendor material carries its own license terms, including Apache-2.0 skill content under `skills/` and the vendored MIT `modern-screenshot` browser helper.
+
+See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.

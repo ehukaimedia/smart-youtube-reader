@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 # Extract Flow
 
 Identify reusable patterns, components, and design tokens, then extract and consolidate them into the design system for systematic reuse.

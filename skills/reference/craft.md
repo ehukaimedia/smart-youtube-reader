@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 # Craft Flow
 
 Build a feature with impeccable UX and UI quality through a structured process: shape the design, land the visual direction, build real production code, then inspect and improve in-browser until the result meets a high-end studio bar.

@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 > **Additional context needed**: performance constraints.
 
 Analyze a feature and strategically add animations and micro-interactions that enhance understanding, provide feedback, and create delight.

@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 Shape the UX and UI for a feature before any code is written. This command produces a **design brief**: a structured artifact that guides implementation through discovery, not guesswork.
 
 **Scope**: Design planning only. This command does NOT write code. It produces the thinking that makes code good.

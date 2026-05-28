@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 > **Additional context needed**: what the interface is trying to accomplish.
 
 ### Gather Assessments

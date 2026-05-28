@@ -1,3 +1,5 @@
+> **Modified by Ehukai Media on 2026-05-27:** Adapted from Impeccable reference material for Codex/project-local agent workflows.
+
 Remove unnecessary complexity from designs, revealing the essential elements and creating clarity through ruthless simplification.
 
 
