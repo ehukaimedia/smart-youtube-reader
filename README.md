@@ -42,6 +42,9 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
 - **Video Slicer** — Cut precise clips from any job and export them with full metadata
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
+- **External-agent AI Digests** — Copy a CLI task for Codex, Claude, or another LLM to create a shorter learning-focused digest without modifying the source project
+- **AI Digest with Images** — Default digest workflow: Codex paired with GPT 2.0 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence
+- **Group AI Digests** — Combine multiple completed projects into a novel cross-video lesson with durable facts, theory, hypotheses, and generated WebP teaching images
 
 ---
 
@@ -116,28 +119,42 @@ npm run build
 ## CLIs & Tooling
 
 ### AI Digest CLI
-AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend.
+AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex, Claude, or another capable LLM. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
+
+The recommended default workflow is Codex paired with GPT 2.0 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>"
 ```
 
-That prints the exact task for Codex, Claude, or another agent. The agent writes a JSON draft, then materializes the digest project:
+The command above prints the default image-rich WebP digest task. For the explicit text-only fallback, add `--text-only`:
+
+```bash
+python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --text-only
+```
+
+Both commands print the exact task for Codex, Claude, or another agent. The agent writes a JSON draft, then materializes the digest project:
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "data/jobs/<project-folder>/generated/ai-digest-draft.json"
 ```
 
-The CLI creates a separate `kind: ai_digest` project under `data/jobs/`. It preserves image references from kept source chapters; image removal and replacement stay in the human curation workflow.
+The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Text-only AI digests preserve image references from kept source chapters so humans can curate images later. Default AI digests create one novel generated WebP teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project.
+
+Every digest task includes `preservation_items` extracted from the archive and transcript slices. Treat them as a checklist for names, metrics, benchmarks, examples, and claim direction so the digest is shorter without losing the facts that make the video useful.
 
 ### Group AI Digest CLI
-Group digest creation combines two or more completed projects into one new learning project. Unlike a single-video digest, a group digest does not preserve original frame paths. Source frames are evidence only. The materialized group project contains a novel transcript and exactly three newly generated teaching images. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
+Group digest creation combines two or more completed projects into one new learning project. From the Dashboard, select completed projects and use `Copy Group AI Digest CLI Task` to copy the external-agent workflow.
+
+Unlike a single-video digest, a group digest is not a playlist export and does not preserve original frame paths. The agent reads every source `archive.json`, inspects frame images as evidence, and writes a novel combined transcript rather than concatenating source transcripts. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
+
+The materialized group project contains exactly three newly generated WebP teaching images. Codex with GPT 2.0 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
 
 ```bash
 python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/jobs/<project-two>" --title "Combined Learning Digest"
 ```
 
-That prints the exact task for Codex, Claude, or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge.
+That prints the exact task for Codex, Claude, or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge. The source projects stay untouched.
 
 ### Summary Thumbnail CLI
 Create a project thumbnail from the archive text and attached frame images:
@@ -152,19 +169,57 @@ You can also pass a job id:
 python3 tools/create_summary_thumbnail.py "a24af63e-96e3-4ca5-9f59-5f04707889e4"
 ```
 
-The tool writes `generated/summary.png` inside the project and updates both `archive.json` and `manifest.json` with:
+The tool writes `generated/summary.webp` inside the project and updates both `archive.json` and `manifest.json` with:
 
 ```json
-"summary_image": "generated/summary.png"
+"summary_image": "generated/summary.webp"
 ```
 
 The dashboard uses that image as the project thumbnail.
 
 ---
 
+## Sharing Projects
+
+Smart YouTube Reader is local-first, so the "Copy Project Link" button on the dashboard and reader builds a URL that points at *your* machine. The dashboard toolbar has a **Share links use: Local / Tailscale** toggle that chooses how that URL is built. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+
+| Mode | When to use | Link format |
+|---|---|---|
+| **Local** *(default)* | Only opening links yourself, or sharing within the same browser session. | `http://<browser host>:3001/reader/<id>` (e.g. `http://localhost:3001/reader/...`) |
+| **Tailscale** | Sharing the link with another device on your tailnet (laptop, phone, another desktop) so the recipient can open the project from their own browser. | `http://<your tailnet IP>:3001/reader/<id>` (e.g. `http://100.x.y.z:3001/reader/...`) |
+
+### Enabling Tailscale mode
+
+The app never installs or starts Tailscale silently. To use Tailscale mode you need the [Tailscale](https://tailscale.com/download/macos) client running and signed in:
+
+```bash
+brew install --cask tailscale   # or download from https://tailscale.com/download/macos
+tailscale up                    # sign in and join your tailnet
+```
+
+When you flip the toggle to Tailscale, the dashboard inline-help reflects the current state:
+
+- **Tailscale is not installed** — install the client (link or Homebrew command above), then run `tailscale up`.
+- **No tailnet IP yet** — the CLI is installed but `tailscale up` has not produced a `100.64.0.0/10` address yet; sign in and try again.
+- **Tailscale is not running** — start the Tailscale menu-bar app or run `tailscale up`.
+
+### Overriding both modes
+
+If you front the app with a reverse proxy or a custom domain, set the `PUBLIC_SHARE_ORIGIN` environment variable on the backend (e.g. `PUBLIC_SHARE_ORIGIN=https://reader.example.com`). The toggle is then hidden and every copied link uses that origin.
+
+---
+
 ## Agent Integration
 
-The `archive.json` produced by each job is designed to be consumed by AI agents. See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
+The `archive.json` produced by each job is designed to be consumed by AI agents. Each archive includes timestamped chapter text plus local frame references, so external LLMs can reason from both transcript and visual evidence.
+
+Digest workflows turn that archive into new agent-readable projects:
+
+- **Single-project AI Digest** — Compresses one source video into a dense learning version while preserving important names, metrics, examples, and either default WebP teaching images or text-only source image references.
+- **AI Digest with Images** — Uses an external LLM plus image generation to create novel WebP teaching images under `generated/`; source frames are evidence, not output images.
+- **Group AI Digest** — Synthesizes multiple projects into a new lesson with its own transcript, exactly three generated WebP teaching images, and a `Group AI Digest` badge.
+
+See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
 ---
 

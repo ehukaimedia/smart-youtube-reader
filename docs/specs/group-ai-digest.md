@@ -2,7 +2,7 @@
 
 ## Context
 
-Users need to combine several Smart YouTube Reader projects into one higher-level learning artifact. A group digest is not a playlist export and not a merge of source archives. It is a new project built from multiple source transcripts and frame evidence, with a novel transcript and novel teaching images.
+Users need to combine several Smart YouTube Reader projects into one higher-level learning artifact. A group digest is not a playlist export and not a merge of source archives. It is a new project built from multiple source transcripts and frame evidence, with a novel transcript and novel lightweight WebP teaching images.
 
 ## Expected Behavior
 
@@ -18,7 +18,7 @@ Users need to combine several Smart YouTube Reader projects into one higher-leve
   - `facts`: compact source-grounded facts
   - `theory`: why the facts fit together into a reusable model
   - `hypothesis`: what the model predicts, or what would invalidate it
-- The group digest output uses exactly three new generated teaching images.
+- The group digest output uses exactly three new generated WebP teaching images.
 - The three output images must be created from the new combined transcript and visual evidence; they must not be copied source frames, YouTube thumbnails, or screenshots.
 - Source frames are allowed only as evidence during synthesis.
 - The group digest materializer creates a new completed project under `data/jobs/` with:
@@ -28,15 +28,15 @@ Users need to combine several Smart YouTube Reader projects into one higher-leve
   - `source_folders`
   - `source_titles`
   - `generated_images`
-  - `summary_image` set to the first generated teaching image
-- Each archive chapter references one of the three generated images.
+  - `summary_image` set to the first generated WebP teaching image
+- Each archive chapter references one of the three generated WebP images.
 - The reader and dashboard show a `Group AI Digest` badge.
 - The original projects and their AI digest versions are never modified.
-- Group digests retain normal Tailscale sharing, ZIP download, learning prompt, and dashboard behavior.
+- Group digests retain normal Local/Tailscale share, ZIP download, learning prompt, and dashboard behavior (see `docs/specs/share-mode-toggle.md`).
 
 ## CLI Behavior
 
-`tools/create_group_ai_digest_version.py` accepts two or more project references. Without `--draft`, it prints the task and creates a staging folder for the draft and image files. With `--draft`, it validates the draft, checks that exactly three generated image files exist, and materializes the new group digest project.
+`tools/create_group_ai_digest_version.py` accepts two or more project references. Without `--draft`, it prints the task and creates a staging folder for the draft and image files. With `--draft`, it validates the draft, checks that exactly three generated WebP image files exist, and materializes the new group digest project.
 
 The draft must include:
 

@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getApiBase, getShareOrigin } from '@/lib/api';
+import {
+    getApiBase,
+    getShareInfo,
+    readStoredShareMode,
+    resolveShareOrigin,
+    writeStoredShareMode,
+    type ShareInfo,
+    type ShareMode,
+} from '@/lib/api';
 import { copyText } from '@/lib/clipboard';
 import { useToast } from '../components/ToastProvider';
 
@@ -61,7 +69,8 @@ export default function DashboardPage() {
             return [];
         }
     });
-    const [shareOrigin, setShareOrigin] = useState('');
+    const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
+    const [shareMode, setShareMode] = useState<ShareMode>(() => readStoredShareMode());
     const toast = useToast();
 
     const fetchJobs = () => {
@@ -79,8 +88,18 @@ export default function DashboardPage() {
 
     useEffect(() => {
         fetchJobs();
-        getShareOrigin().then(setShareOrigin);
+        getShareInfo().then(setShareInfo);
     }, []);
+
+    const updateShareMode = (mode: ShareMode) => {
+        setShareMode(mode);
+        writeStoredShareMode(mode);
+    };
+
+    const tailscaleAvailable = shareInfo?.modes.tailscale.available ?? false;
+    const tailscaleStatus = shareInfo?.modes.tailscale.status;
+    const tailscaleInstallUrl = shareInfo?.modes.tailscale.install_url ?? 'https://tailscale.com/download/macos';
+    const configuredOverride = shareInfo?.configured_override ?? false;
 
     useEffect(() => {
         window.localStorage.setItem('smart-reader-group-selection', JSON.stringify(selectedGroupIds));
@@ -101,7 +120,19 @@ export default function DashboardPage() {
     };
 
     const copyProjectLink = async (id: string) => {
-        const origin = shareOrigin || await getShareOrigin();
+        const info = shareInfo ?? await getShareInfo();
+        if (!shareInfo) setShareInfo(info);
+        const origin = resolveShareOrigin(info, shareMode);
+        if (!origin) {
+            const reason = info.modes.tailscale.status;
+            const message = reason === 'not_installed'
+                ? 'Tailscale is not installed. Switch to Local or install Tailscale.'
+                : reason === 'no_tailnet_ip'
+                    ? 'Tailscale is installed but no tailnet IP is available. Run `tailscale up` and retry.'
+                    : 'Tailscale is not running. Start the Tailscale app or run `tailscale up`.';
+            toast.error(message);
+            return;
+        }
         const url = `${origin}/reader/${id}`;
         const onCopied = () => {
             setCopiedJobId(id);
@@ -149,7 +180,7 @@ export default function DashboardPage() {
 Do not use an in-app model option. You are the group digest agent.
 Run commands from the smart-youtube-reader repo root.
 
-Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel AI teaching images from that new transcript.
+Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel WebP AI teaching images from that new transcript.
 
 Teaching goal:
 - Teach digestible facts, theory, and testable hypotheses.
@@ -161,8 +192,8 @@ Workflow:
    python3 tools/create_group_ai_digest_version.py ${quotedProjects} --title "${groupTitle || 'Combined Learning Digest'}"
 2. Read every archive.json and inspect the attached frame images before deciding what to keep.
 3. Merge repeated lessons across videos into a new transcript with chapter-level facts, theory, and hypotheses. Cut fluff, repetition, intros/outros, and low-value transitions.
-4. Create exactly 3 new AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
-5. Write the required JSON draft and the 3 generated images to the staging paths printed by the CLI.
+4. Create exactly 3 new WebP AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
+5. Write the required JSON draft and the 3 generated WebP images to the staging paths printed by the CLI.
 6. Materialize the group AI digest with the command printed by the CLI.
 7. Verify the dashboard shows the new project with a Group AI Digest badge and the reader opens it.
 
@@ -235,6 +266,46 @@ ${projectFolders.join('\n')}`;
                         <option value="title">Title A-Z</option>
                     </select>
                 </section>
+
+                {!configuredOverride && (
+                    <section className="share-mode-toolbar" aria-label="Share link mode">
+                        <span className="share-mode-label">Share links use:</span>
+                        <div className="filter-pills" role="radiogroup" aria-label="Share link host">
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked={shareMode === 'local'}
+                                className={`pill-button ${shareMode === 'local' ? 'active' : ''}`}
+                                onClick={() => updateShareMode('local')}
+                            >
+                                Local
+                            </button>
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked={shareMode === 'tailscale'}
+                                className={`pill-button ${shareMode === 'tailscale' ? 'active' : ''}`}
+                                onClick={() => updateShareMode('tailscale')}
+                                title={tailscaleAvailable ? 'Use your tailnet IP for share links' : 'Tailscale is not currently available on this machine'}
+                            >
+                                Tailscale{!tailscaleAvailable && ' (unavailable)'}
+                            </button>
+                        </div>
+                        {shareMode === 'tailscale' && !tailscaleAvailable && (
+                            <p className="share-mode-help muted">
+                                {tailscaleStatus === 'not_installed' && (
+                                    <>Tailscale is not installed. <a href={tailscaleInstallUrl} target="_blank" rel="noopener noreferrer">Install Tailscale</a> (or <code>brew install --cask tailscale</code>), then run <code>tailscale up</code>.</>
+                                )}
+                                {tailscaleStatus === 'no_tailnet_ip' && (
+                                    <>Tailscale is installed but no tailnet IP is available yet. Run <code>tailscale up</code> and reload.</>
+                                )}
+                                {(!tailscaleStatus || tailscaleStatus === 'not_running') && (
+                                    <>Tailscale is not running. Open the Tailscale app or run <code>tailscale up</code>, then reload.</>
+                                )}
+                            </p>
+                        )}
+                    </section>
+                )}
 
                 {selectedJobs.length > 0 && (
                     <section className="group-bar">

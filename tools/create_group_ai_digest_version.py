@@ -99,7 +99,7 @@ def build_group_agent_task(source_dirs: list[Path], title: str | None = None) ->
 You are the digest agent. Do not use an in-app model option.
 
 Goal:
-Create one novel, intuitive combined transcript and exactly {IMAGE_COUNT} novel teaching images from the selected source projects.
+Create one novel, intuitive combined transcript and exactly {IMAGE_COUNT} novel WebP teaching images from the selected source projects.
 
 Teaching contract:
 - Do not concatenate or lightly paraphrase the source transcripts.
@@ -112,7 +112,7 @@ Teaching contract:
 Critical image rule:
 - Inspect the original frame images while researching.
 - Do not copy source frames, YouTube thumbnails, screenshots, or original image paths into the output.
-- The output project must use only {IMAGE_COUNT} newly generated teaching images created from the new combined transcript.
+- The output project must use only {IMAGE_COUNT} newly generated WebP teaching images created from the new combined transcript.
 - If you cannot create the {IMAGE_COUNT} new image files, stop and do not materialize the project.
 
 Workflow:
@@ -122,10 +122,10 @@ Workflow:
 4. Cut fluff, sponsor chatter, intros/outros, repeated examples, and low-value transitions.
 5. Write a novel group digest draft to:
    {draft_path}
-6. Create exactly {IMAGE_COUNT} new teaching images at:
-   {generated_dir}/01-framework-map.png
-   {generated_dir}/02-decision-flow.png
-   {generated_dir}/03-execution-checklist.png
+6. Create exactly {IMAGE_COUNT} new WebP teaching images at:
+   {generated_dir}/01-framework-map.webp
+   {generated_dir}/02-decision-flow.webp
+   {generated_dir}/03-execution-checklist.webp
 7. Materialize the new group project:
    {command}
 8. Verify the dashboard shows the new project with a Group AI Digest badge and the reader opens it.
@@ -134,22 +134,22 @@ Draft JSON shape:
 {{
   "title": "Short no-fluff group title",
   "learning_objective": "One sentence explaining what the combined digest teaches.",
-  "changes_summary": ["Merged repeated lessons.", "Created a novel transcript and three generated teaching images."],
+  "changes_summary": ["Merged repeated lessons.", "Created a novel transcript and three generated WebP teaching images."],
   "images": [
     {{
-      "path": "generated/01-framework-map.png",
+      "path": "generated/01-framework-map.webp",
       "title": "Framework Map",
       "alt": "Novel teaching image showing the combined framework",
       "prompt": "Short record of the image-generation intent"
     }},
     {{
-      "path": "generated/02-decision-flow.png",
+      "path": "generated/02-decision-flow.webp",
       "title": "Decision Flow",
       "alt": "Novel teaching image showing decision flow",
       "prompt": "Short record of the image-generation intent"
     }},
     {{
-      "path": "generated/03-execution-checklist.png",
+      "path": "generated/03-execution-checklist.webp",
       "title": "Execution Checklist",
       "alt": "Novel teaching image showing execution checklist",
       "prompt": "Short record of the image-generation intent"
@@ -166,7 +166,7 @@ Draft JSON shape:
       "hypothesis": "A testable expectation or failure condition derived from the model.",
       "timestamp_start": 0,
       "timestamp_end": 120,
-      "image_path": "generated/01-framework-map.png"
+      "image_path": "generated/01-framework-map.webp"
     }}
   ]
 }}
@@ -276,7 +276,7 @@ def materialize_group_digest_project(
         "learning_objective": learning_objective,
         "generated_images": normalized_images,
         "summary_image": normalized_images[0]["path"],
-        "image_policy": "Only novel generated teaching images are included. Source frames were evidence only.",
+        "image_policy": "Only novel generated WebP teaching images are included. Source frames were evidence only.",
     }
     manifest = {
         "job_id": digest_id,
@@ -318,7 +318,9 @@ def normalize_group_images(draft_path: Path, draft: dict[str, Any]) -> list[dict
             raise SystemExit("Each group image entry must be an object.")
         image_path = str(image.get("path") or "").strip()
         if not is_generated_image_path(image_path):
-            raise SystemExit(f"Image {index + 1} must use a generated/*.png path, not {image_path!r}.")
+            raise SystemExit(f"Image {index + 1} must use a safe generated image path, not {image_path!r}.")
+        if Path(image_path).suffix.lower() != ".webp":
+            raise SystemExit(f"Image {index + 1} must use a generated/*.webp path, not {image_path!r}.")
         if image_path in seen_paths:
             raise SystemExit(f"Duplicate generated image path: {image_path}")
         source_image = (draft_path.parent / image_path).resolve()
@@ -378,7 +380,7 @@ def normalize_group_chapters(
             "source_refs": refs,
             "image_review": {
                 "mode": "ai_generated_novel",
-                "note": "This is a novel generated teaching image for the group digest. Original source frames are not used in the output archive.",
+                "note": "This is a novel generated WebP teaching image for the group digest. Original source frames are not used in the output archive.",
             },
         })
 

@@ -55,14 +55,21 @@ def run() -> int:
     parser.add_argument(
         "--with-images",
         action="store_true",
-        help="When printing the agent task, require generated teaching images in the digest draft.",
+        help="Print the default image-rich agent task. Kept for compatibility; this is now the default.",
+    )
+    parser.add_argument(
+        "--text-only",
+        action="store_true",
+        help="Print the legacy text-only digest task that preserves source image references.",
     )
     args = parser.parse_args()
+    if args.with_images and args.text_only:
+        parser.error("--with-images and --text-only cannot be combined")
 
     source_dir = resolve_project(args.project)
 
     if not args.draft:
-        task = build_agent_task(source_dir, with_images=args.with_images)
+        task = build_agent_task(source_dir, with_images=not args.text_only)
         if args.task_output:
             output_path = Path(args.task_output).expanduser().resolve()
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,11 +102,11 @@ def build_agent_task(source_dir: Path, with_images: bool = False) -> str:
     command = f'python3 tools/create_ai_digest_version.py "{source_dir}" --draft "{draft_path}"'
 
     if with_images:
-        image_instruction = """4. Create one novel teaching image per digest chapter, with a maximum of 6 total images.
+        image_instruction = """4. Create one novel WebP teaching image per digest chapter, with a maximum of 6 total images.
    - Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
    - Use the source frame images only as evidence for the lesson.
-   - Save each image under this source project's generated/ folder before materializing.
-   - Reference each generated image from its chapter as "images": ["generated/<filename>.png"].
+   - Save each image as a .webp file under this source project's generated/ folder before materializing.
+   - Reference each generated image from its chapter as "images": ["generated/<filename>.webp"].
    - If the lesson truly needs more than 6 images, keep the best 6-image digest and add operator_image_note explaining how many images would be needed and why.
 5. Write JSON only to:"""
         draft_shape = """{
@@ -114,7 +121,7 @@ def build_agent_task(source_dir: Path, with_images: bool = False) -> str:
       "content": "Dense teaching text for AI agents.",
       "timestamp_start": 0,
       "timestamp_end": 120,
-      "images": ["generated/chapter-01-concept.png"]
+      "images": ["generated/chapter-01-concept.webp"]
     }
   ]
 }"""
