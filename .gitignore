@@ -37,3 +37,9 @@ downloads/
 *.wav
 *.zip
 *.log
+
+# Misc
+docs/code-reviews/
+docs/plans/
+docs/playgrounds/
+docs/specs/

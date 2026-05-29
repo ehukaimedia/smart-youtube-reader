@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import ShareModeToggle from './ShareModeToggle';
 
 export default function Navbar() {
     const pathname = usePathname();
@@ -12,7 +13,11 @@ export default function Navbar() {
                 <Link href="/" className="nav-logo">
                     Smart Reader
                 </Link>
-                <div style={{ display: 'flex', gap: '2rem' }}>
+                <div className="nav-actions">
+                    <ShareModeToggle />
+                    <Link href="/reader/demo-smart-youtube-reader-digest" className={`nav-link ${pathname === '/reader/demo-smart-youtube-reader-digest' ? 'active' : ''}`} title="Open the Smart YouTube Reader demo digest">
+                        Help
+                    </Link>
                     <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
                         New Project
                     </Link>

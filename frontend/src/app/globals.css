@@ -76,6 +76,30 @@ textarea {
   background: var(--surface-raised);
 }
 
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav-share-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.nav-share-toggle .pill-button {
+  min-height: 30px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -470,6 +494,10 @@ button:focus-visible {
   padding: 0 0.9rem 0.9rem;
 }
 
+.project-actions.has-digest-action {
+  grid-template-columns: minmax(0, 1fr) auto auto 36px;
+}
+
 .empty-state {
   grid-column: 1 / -1;
   display: grid;
@@ -598,6 +626,100 @@ button:focus-visible {
   border-radius: var(--radius-md);
   border: 1px solid var(--card-border);
   display: block;
+}
+
+.image-open-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+  text-align: left;
+}
+
+.image-open-button img {
+  transition: border-color 0.18s ease, filter 0.18s ease;
+}
+
+.image-open-button:hover img,
+.image-open-button:focus-visible img {
+  border-color: var(--primary);
+  filter: brightness(1.06);
+}
+
+.image-open-button::after {
+  content: "Open larger";
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  border: 1px solid rgba(244, 247, 251, 0.2);
+  border-radius: 999px;
+  background: rgba(5, 5, 5, 0.78);
+  color: var(--foreground);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+
+.image-open-button:hover::after,
+.image-open-button:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  background: rgba(5, 5, 5, 0.92);
+}
+
+.image-lightbox-shell {
+  width: min(1200px, 96vw);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.image-lightbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.image-lightbox-title {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-lightbox-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.image-lightbox-img {
+  width: 100%;
+  max-height: calc(100vh - 8rem);
+  object-fit: contain;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
 }
 
 .chapter-footer {

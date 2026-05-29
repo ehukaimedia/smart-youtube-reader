@@ -1,0 +1,38 @@
+{
+  "job_id": "demo-smart-youtube-reader-digest",
+  "url": "https://github.com/ehukaimedia/smart-youtube-reader",
+  "title": "Smart YouTube Reader Demo Digest",
+  "created_at": 1779935400,
+  "removed_duplicates": 0,
+  "archive_chapters": 5,
+  "status": "complete",
+  "video_ext": null,
+  "kind": "ai_digest",
+  "source_job_id": null,
+  "source_folder": null,
+  "digest_model": "Codex + GPT 2.0 images",
+  "digest_agent_status": "bundled_demo",
+  "digest_created_at": 1779935400,
+  "changes_summary": [
+    "Shows a first-run proof project that teaches Smart YouTube Reader instead of relying on explanatory copy alone.",
+    "Demonstrates capture, reader context, default AI digest generation, group digest synthesis, and global Tailscale sharing.",
+    "Shows both simple text-led and premium GPT 2.0 image-led WebP infographic styles while keeping the repository lightweight."
+  ],
+  "transcript_policy": "digest_transcript_only",
+  "generated_images": [
+    "generated/chapter-01-capture-to-archive.webp",
+    "generated/chapter-01-capture-to-archive-premium.webp",
+    "generated/chapter-02-reader-context.webp",
+    "generated/chapter-02-reader-context-premium.webp",
+    "generated/chapter-03-default-ai-digest.webp",
+    "generated/chapter-03-default-ai-digest-premium.webp",
+    "generated/chapter-04-group-digest.webp",
+    "generated/chapter-04-group-digest-premium.webp",
+    "generated/chapter-05-tailscale-sharing.webp",
+    "generated/chapter-05-tailscale-sharing-premium.webp"
+  ],
+  "media_policy": "lightweight_generated_images_only",
+  "image_policy": "Bundled demo digest images are novel generated WebP teaching visuals. Each chapter includes a simple infographic and a premium GPT 2.0 image-led infographic. They are examples of the default external-agent digest deliverable and are not copied from source videos.",
+  "summary_image": "generated/chapter-03-default-ai-digest-premium.webp",
+  "summary_image_source": "bundled_demo_digest"
+}

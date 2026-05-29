@@ -16,6 +16,8 @@ Smart YouTube Reader turns any YouTube URL into a structured, AI-readable archiv
 
 Success looks like: opening a project, glancing at its structure, copying a learning prompt or sharing a link, and having an AI agent immediately produce useful synthesis. Failure looks like: getting lost in the UI, repeating work because actions are scattered, or producing artifacts the AI cannot easily consume.
 
+AI digests can also carry generated teaching images: one card per chapter, six at most, plus a summary image that becomes the project thumbnail. These images are drawn by an agent, not a person, so they are the surface most likely to drift into generic AI output. Treat them as first-class artifacts designed to a premium product-marketing standard: one calm idea per card, a small eyebrow label, one bold tight headline, generous whitespace, and a restrained palette where color comes from a single focal element. They may be light or dark, chosen per digest and held consistent, but they are always quality-designed, never a stock template. The executable rules live in the Generated Image Art Direction section of DESIGN.md.
+
 ## Brand Personality
 
 Work-focused. Restrained. Calm. Dense without clutter. Dark by default because the operator works at night and in dim rooms. Closer in spirit to a terminal, a dataroom, or a developer tool than to a content-consumption product.
@@ -34,7 +36,9 @@ This product should not look or feel like:
 - **Gradient text.** The current `.title-gradient` (background-clip on a white-to-grey gradient) is exactly the anti-pattern to retire. Hierarchy comes from weight and size, never from a fade.
 - **Card grids of identical icon+heading+text tiles** that flatten content variety into wallpaper.
 - **Modal-first interaction.** Confirms and toasts in place; modals only when the action is genuinely interruptive.
-- **Notion, Linear, or Vercel pastiche.** These are good tools but this product is its own register; do not converge on their visual language.
+- **Productivity-app pastiche.** This product is its own register; do not converge on the visual language of other well-known tools.
+- **AI image slop, sci-fi register.** Generated digest images never show glowing robots, neon mascots, holographic HUDs, purple-to-magenta gradients, lens flare, or faux-3D renders. The reference is a premium product card, not launch key art.
+- **AI image slop, generic-infographic register.** Banned just as firmly: rainbow palettes (a different bright hue per box), pink or cyan accents, drop-shadowed clip-art tiles, generic system fonts presented as the type style, decorative grid lines, and truncated labels. Light backgrounds are allowed and often right; cheap is not. The bar is premium product-page craft, not a stock template.
 
 ## Design Principles
 
@@ -44,6 +48,7 @@ This product should not look or feel like:
 4. **Reading-comfortable typography.** Article columns cap at 72ch. Full-width body text is treated as a defect.
 5. **Real artifact content over decorative placeholders.** Stats, titles, chapter names should reflect what the operator actually has. Lorem ipsum and "Project 1 / Project 2" are not acceptable in any preview, mock, or empty state.
 6. **Preserve handlers, refactor presentation.** Existing copy/download/share/group flows work; UI work should reorganize them, not rewrite them. Behavior is stable; the surface gets calmer.
+7. **Generated images are premium product-card quality.** A digest's teaching images follow the premium art direction in DESIGN.md: one calm idea per card, a small eyebrow label, one bold tight headline, generous whitespace, Inter type, and a restrained palette. Light or dark is the agent's choice per digest, held consistent across the set. An agent that cannot meet the bar ships fewer images, never off-brand ones. The executable spec is the Generated Image Art Direction section of DESIGN.md.
 
 ## Accessibility & Inclusion
 

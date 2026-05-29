@@ -101,12 +101,18 @@ def build_agent_task(source_dir: Path, with_images: bool = False) -> str:
     draft_path = source_dir / "generated" / "ai-digest-draft.json"
     command = f'python3 tools/create_ai_digest_version.py "{source_dir}" --draft "{draft_path}"'
 
+    image_context_dir = ROOT / "docs" / "impeccable"
     if with_images:
-        image_instruction = """4. Create one novel WebP teaching image per digest chapter, with a maximum of 6 total images.
+        image_instruction = f"""4. Create one novel WebP teaching image per digest chapter, with a maximum of 6 total images.
+   - Before drawing anything, choose an infographic style for the whole digest: "simple" or "premium". Use "simple" for quiet text-led card strips via .codex/skills/simple-infographic, or "premium" for image-led editorial card strips via .codex/skills/premium-infographic. If the human gave a preference, obey it; otherwise choose the style that best fits the material and record the choice in operator_image_note.
+   - Premium style must use GPT Image 2 / GPT 2.0 image generation for the bitmap visual, not local vector-only placeholders. Simple style may use generated or deterministic visuals as long as it passes the quality bar.
+   - Load the product design system and follow it. The Impeccable skill is required: run it with the design context in {image_context_dir} (PRODUCT.md and DESIGN.md), for example by exporting IMPECCABLE_CONTEXT_DIR="{image_context_dir}". Obey the "Generated Image Art Direction" section of DESIGN.md and pass its acceptance checklist for every image. The bar is premium product-marketing quality: one calm idea per card, a small eyebrow label, one bold tight headline (Inter, large and tight), generous whitespace, precise alignment, and a restrained palette where color comes from a single focal element. Choose light (white #ffffff or #f5f5f7) or dark (#000000 to #101012) for the whole digest and hold it. Use one Operator Blue #3b82f6 accent at most. Do not include robots, mascots, faces, neon, glow, holograms, 3D renders, rainbow palettes, gradient text, decorative drop shadows, generic clip-art, grids of identical tiles, fake plus buttons, carousel arrows, pagination dots, navigation controls, and never truncate or clip a label.
+   - Keep the whole set consistent: all six images share one theme, type scale, accent, and card style.
    - Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
    - Use the source frame images only as evidence for the lesson.
    - Save each image as a .webp file under this source project's generated/ folder before materializing.
    - Reference each generated image from its chapter as "images": ["generated/<filename>.webp"].
+   - If a chapter image cannot meet the design bar, ship fewer images and explain the gap in operator_image_note. Never ship an off-brand image to fill a slot.
    - If the lesson truly needs more than 6 images, keep the best 6-image digest and add operator_image_note explaining how many images would be needed and why.
 5. Write JSON only to:"""
         draft_shape = """{

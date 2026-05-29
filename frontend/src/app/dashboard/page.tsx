@@ -7,7 +7,6 @@ import {
     getShareInfo,
     readStoredShareMode,
     resolveShareOrigin,
-    writeStoredShareMode,
     type ShareInfo,
     type ShareMode,
 } from '@/lib/api';
@@ -52,6 +51,7 @@ export default function DashboardPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+    const [digestTaskCopiedJobId, setDigestTaskCopiedJobId] = useState<string | null>(null);
     const [groupTaskCopied, setGroupTaskCopied] = useState(false);
     const [groupTitle, setGroupTitle] = useState('Combined Learning Digest');
     const [searchTerm, setSearchTerm] = useState('');
@@ -70,7 +70,7 @@ export default function DashboardPage() {
         }
     });
     const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
-    const [shareMode, setShareMode] = useState<ShareMode>(() => readStoredShareMode());
+    const [shareMode] = useState<ShareMode>(() => readStoredShareMode());
     const toast = useToast();
 
     const fetchJobs = () => {
@@ -90,16 +90,6 @@ export default function DashboardPage() {
         fetchJobs();
         getShareInfo().then(setShareInfo);
     }, []);
-
-    const updateShareMode = (mode: ShareMode) => {
-        setShareMode(mode);
-        writeStoredShareMode(mode);
-    };
-
-    const tailscaleAvailable = shareInfo?.modes.tailscale.available ?? false;
-    const tailscaleStatus = shareInfo?.modes.tailscale.status;
-    const tailscaleInstallUrl = shareInfo?.modes.tailscale.install_url ?? 'https://tailscale.com/download/macos';
-    const configuredOverride = shareInfo?.configured_override ?? false;
 
     useEffect(() => {
         window.localStorage.setItem('smart-reader-group-selection', JSON.stringify(selectedGroupIds));
@@ -142,6 +132,53 @@ export default function DashboardPage() {
         copyText(url, onCopied);
     };
 
+    const copyAiDigestWithImagesTask = (job: Job) => {
+        if (!job.data_folder_name) {
+            toast.error('This project is missing its data folder.');
+            return;
+        }
+        const projectFolder = `data/jobs/${job.data_folder_name}`;
+        const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
+        const prompt = `Create the default Smart YouTube Reader AI digest version with generated WebP teaching images for this project using the local CLI.
+
+Do not use an in-app model option. You are the digest-and-image agent. Codex with GPT 2.0 image generation is the recommended setup.
+Run commands from the smart-youtube-reader repo root.
+
+Important:
+- Infographic style is a human choice. Before generating images, set one style for the whole digest:
+  - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
+  - premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+  If the human has not chosen, pick the style that best fits the material and record the choice in operator_image_note.
+- Read archive.json and inspect the attached frame images before deciding what to keep.
+- Create a new digestible chapter structure, not a light paraphrase.
+- Create one novel generated WebP teaching image per digest chapter.
+- Keep the digest to at most 6 chapters/images. If the material truly needs more than 6 images, explain the needed count in operator_image_note and still produce the best 6-image digest.
+- Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
+- Do not include fake plus buttons, carousel arrows, pagination dots, or navigation controls inside static infographic images.
+- Save and reference only generated/*.webp output images in the draft.
+
+Workflow:
+1. Run this command to print the default image-rich digest task:
+   python3 tools/create_ai_digest_version.py "${projectFolder}"
+2. Read archive.json and inspect the attached frame images as evidence.
+3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
+4. Preserve durable facts, theory, procedures, examples, caveats, failure modes, and useful visual explanations.
+5. Save the generated WebP images under:
+   ${projectFolder}/generated/
+6. Write the required JSON draft to:
+   ${draftPath}
+7. Materialize the new AI digest project:
+   python3 tools/create_ai_digest_version.py "${projectFolder}" --draft "${draftPath}"
+8. Verify the dashboard shows the new project with an AI Digest badge and the reader opens it with one generated image per chapter.
+
+Source project:
+${projectFolder}`;
+        copyText(prompt, () => {
+            setDigestTaskCopiedJobId(job.id);
+            setTimeout(() => setDigestTaskCopiedJobId(null), 2000);
+        });
+    };
+
     const toggleGroupSelection = (job: Job) => {
         if (job.status !== 'complete' || !job.data_folder_name) return;
         setSelectedGroupIds(prev => (
@@ -182,6 +219,11 @@ Run commands from the smart-youtube-reader repo root.
 
 Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel WebP AI teaching images from that new transcript.
 
+Infographic style is a human choice. Before generating images, set one style for the whole group digest:
+- simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
+- premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+If the human has not chosen, pick the style that best fits the material and record the choice in the image prompts.
+
 Teaching goal:
 - Teach digestible facts, theory, and testable hypotheses.
 - Do not concatenate or lightly paraphrase the source transcripts.
@@ -192,7 +234,7 @@ Workflow:
    python3 tools/create_group_ai_digest_version.py ${quotedProjects} --title "${groupTitle || 'Combined Learning Digest'}"
 2. Read every archive.json and inspect the attached frame images before deciding what to keep.
 3. Merge repeated lessons across videos into a new transcript with chapter-level facts, theory, and hypotheses. Cut fluff, repetition, intros/outros, and low-value transitions.
-4. Create exactly 3 new WebP AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
+4. Create exactly 3 new WebP AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output. Do not include fake plus buttons, carousel arrows, pagination dots, or navigation controls inside static infographic images.
 5. Write the required JSON draft and the 3 generated WebP images to the staging paths printed by the CLI.
 6. Materialize the group AI digest with the command printed by the CLI.
 7. Verify the dashboard shows the new project with a Group AI Digest badge and the reader opens it.
@@ -267,46 +309,6 @@ ${projectFolders.join('\n')}`;
                     </select>
                 </section>
 
-                {!configuredOverride && (
-                    <section className="share-mode-toolbar" aria-label="Share link mode">
-                        <span className="share-mode-label">Share links use:</span>
-                        <div className="filter-pills" role="radiogroup" aria-label="Share link host">
-                            <button
-                                type="button"
-                                role="radio"
-                                aria-checked={shareMode === 'local'}
-                                className={`pill-button ${shareMode === 'local' ? 'active' : ''}`}
-                                onClick={() => updateShareMode('local')}
-                            >
-                                Local
-                            </button>
-                            <button
-                                type="button"
-                                role="radio"
-                                aria-checked={shareMode === 'tailscale'}
-                                className={`pill-button ${shareMode === 'tailscale' ? 'active' : ''}`}
-                                onClick={() => updateShareMode('tailscale')}
-                                title={tailscaleAvailable ? 'Use your tailnet IP for share links' : 'Tailscale is not currently available on this machine'}
-                            >
-                                Tailscale{!tailscaleAvailable && ' (unavailable)'}
-                            </button>
-                        </div>
-                        {shareMode === 'tailscale' && !tailscaleAvailable && (
-                            <p className="share-mode-help muted">
-                                {tailscaleStatus === 'not_installed' && (
-                                    <>Tailscale is not installed. <a href={tailscaleInstallUrl} target="_blank" rel="noopener noreferrer">Install Tailscale</a> (or <code>brew install --cask tailscale</code>), then run <code>tailscale up</code>.</>
-                                )}
-                                {tailscaleStatus === 'no_tailnet_ip' && (
-                                    <>Tailscale is installed but no tailnet IP is available yet. Run <code>tailscale up</code> and reload.</>
-                                )}
-                                {(!tailscaleStatus || tailscaleStatus === 'not_running') && (
-                                    <>Tailscale is not running. Open the Tailscale app or run <code>tailscale up</code>, then reload.</>
-                                )}
-                            </p>
-                        )}
-                    </section>
-                )}
-
                 {selectedJobs.length > 0 && (
                     <section className="group-bar">
                         <input
@@ -347,8 +349,10 @@ ${projectFolders.join('\n')}`;
                         const thumbnailUrl = job.summary_image && job.data_folder_name
                             ? `${getApiBase()}/data/jobs/${job.data_folder_name}/${job.summary_image}`
                             : getYouTubeThumbnailUrl(job.video_url);
+                        const isYouTubeUrl = Boolean(getYouTubeVideoId(job.video_url));
                         const isSelectedForGroup = selectedGroupIds.includes(job.id);
                         const canGroup = job.status === 'complete' && Boolean(job.data_folder_name);
+                        const canCreateAiDigest = job.status === 'complete' && Boolean(job.data_folder_name) && !job.kind;
                         const kindLabel = job.kind === 'group_ai_digest'
                             ? 'Group AI Digest'
                             : job.kind === 'ai_digest'
@@ -401,13 +405,24 @@ ${projectFolders.join('\n')}`;
                                 </p>
                             </div>
 
-                            <div className="project-actions">
+                            <div className={`project-actions ${canCreateAiDigest ? 'has-digest-action' : ''}`}>
                                 <Link href={`/reader/${job.id}`} className="btn btn-primary btn-compact">
                                     Open Project
                                 </Link>
-                                <a href={job.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
-                                    Open YouTube
-                                </a>
+                                {canCreateAiDigest && (
+                                    <button
+                                        onClick={() => copyAiDigestWithImagesTask(job)}
+                                        className="btn btn-success btn-compact"
+                                        title="Copy the default generated-WebP AI digest task"
+                                    >
+                                        {digestTaskCopiedJobId === job.id ? 'Copied Digest' : 'AI Digest'}
+                                    </button>
+                                )}
+                                {job.video_url && (
+                                    <a href={job.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
+                                        {isYouTubeUrl ? 'Open YouTube' : 'Open Source'}
+                                    </a>
+                                )}
                                 <details className="overflow-menu">
                                     <summary aria-label="Project actions">⋯</summary>
                                     <div className="overflow-content">

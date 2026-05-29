@@ -3,6 +3,20 @@
 # Navigate to the directory where this script resides
 cd "$(dirname "$0")"
 
+detect_tailscale_ip() {
+    if command -v tailscale &> /dev/null; then
+        TAILSCALE_CLI_IP="$(tailscale ip -4 2>/dev/null | head -n 1)"
+        if [ -n "$TAILSCALE_CLI_IP" ]; then
+            echo "$TAILSCALE_CLI_IP"
+            return
+        fi
+    fi
+
+    if command -v ifconfig &> /dev/null; then
+        ifconfig 2>/dev/null | awk '/inet 100\\./ { print $2; exit }'
+    fi
+}
+
 # Function to kill background processes on exit
 cleanup() {
     echo "Stopping servers..."
@@ -55,16 +69,33 @@ cd ../frontend
 npm run dev -- -H 0.0.0.0 --port 3001 &
 FRONTEND_PID=$!
 
+TAILSCALE_IP="$(detect_tailscale_ip)"
+if [ -n "$TAILSCALE_IP" ]; then
+    APP_URL="http://${TAILSCALE_IP}:3001/dashboard"
+else
+    APP_URL="http://localhost:3001/dashboard"
+fi
+
 echo "============================================"
 echo "   App is Running!"
-echo "   Open: http://localhost:3001"
+echo "   Open: $APP_URL"
 echo "============================================"
 echo "   (Close this window to stop the app)"
 echo "============================================"
 
-# Auto-launch browser
+# Auto-launch browser in a private session so app state starts cleanly.
 sleep 3
-open "http://localhost:3001"
+if [ -d "/Applications/Google Chrome.app" ]; then
+    open -na "Google Chrome" --args --incognito "$APP_URL"
+elif [ -d "/Applications/Chromium.app" ]; then
+    open -na "Chromium" --args --incognito "$APP_URL"
+elif [ -d "/Applications/Brave Browser.app" ]; then
+    open -na "Brave Browser" --args --incognito "$APP_URL"
+else
+    echo "Warning: Chrome/Chromium/Brave not found. Opening the app in the default browser instead."
+    echo "For a private session, open this URL in an incognito/private window: $APP_URL"
+    open "$APP_URL"
+fi
 
 # Wait for both processes
 wait

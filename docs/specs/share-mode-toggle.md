@@ -6,16 +6,16 @@
 
 ## Goal
 
-Give users an explicit choice between **Local** and **Tailscale** sharing for the project link copied from the dashboard or reader. Replace the previous implicit "auto-Tailscale when accessed from localhost" behavior with a transparent toggle that can also explain itself when Tailscale is not installed or not running.
+Give users an explicit global choice between **Local** and **Tailscale** app access. Replace the previous implicit "auto-Tailscale when accessed from localhost" behavior with a transparent toggle that redirects the current app session to the selected origin and also controls project links copied from the dashboard or reader.
 
 ## Behavior
 
 ### Modes
 
-- **Local** — share links use the same host the browser is currently using (e.g. `http://localhost:3001`). This is the default for a fresh user.
-- **Tailscale** — share links use the machine's tailnet IP (e.g. `http://100.x.y.z:3001`) so other devices on the same tailnet can open the link.
+- **Local** — the app and copied links use localhost for same-machine work. This is the default for a fresh user.
+- **Tailscale** — the app and copied links use the machine's tailnet IP (e.g. `http://100.x.y.z:3001`) so other devices on the same tailnet can open the dashboard and project links.
 
-Selection persists in `localStorage` under `smart-reader-share-mode`. The dashboard exposes the toggle in its toolbar.
+Selection persists in `localStorage` under `smart-reader-share-mode`. The top navigation exposes the toggle globally across dashboard, reader, slicer, and new-project views.
 
 ### Backend
 
@@ -52,9 +52,10 @@ A legacy top-level `share_origin` field is also returned for clients that pre-da
 
 ### Frontend
 
-- A "Share links use: [Local] [Tailscale]" pill toggle lives in the dashboard toolbar (hidden when `configured_override` is `true`).
-- Copying a project link uses the persisted mode. If the user has chosen Tailscale but Tailscale is unavailable, the copy is aborted and an inline help message + toast point to the right next step (install, run `tailscale up`, etc.).
-- The reader page reads the same persisted mode for its own "Copy Project Link" action; it relies on the dashboard for changing the mode rather than duplicating the toggle UI.
+- A global "Local / Tailscale" pill toggle lives in the top navigation (hidden when `configured_override` is `true`).
+- Choosing Tailscale redirects the current URL to the Tailscale origin when available. Choosing Local redirects the current URL to the local origin.
+- Copying a project link uses the persisted mode. If the user has chosen Tailscale but Tailscale is unavailable, the copy is aborted and a toast points to the right next step (install, run `tailscale up`, etc.).
+- `start.command` opens `/dashboard` on the Tailscale origin when a tailnet IP is available, otherwise it falls back to localhost.
 
 ### Setup Path (no silent install)
 
@@ -71,14 +72,15 @@ tailscale up
 
 - No automatic / silent install of Tailscale.
 - No mDNS or LAN-discovery alternative — Local mode is intentionally just "the browser's current host".
-- No per-project share mode override; the toggle is a single global preference.
+- No per-project share mode override; the toggle is a single global app preference.
 - No backend-side change to anything outside `/share-info` and its helper functions.
 
 ## Acceptance Criteria
 
 - `/share-info` returns the `modes` shape above; legacy `share_origin` field is preserved and equals `modes.local.share_origin` (or the `PUBLIC_SHARE_ORIGIN` override when set).
-- Dashboard renders a Local / Tailscale pill toggle that persists across reloads.
+- Top navigation renders a Local / Tailscale pill toggle that persists across reloads and redirects the app to the selected origin.
 - Tailscale-unavailable selection surfaces a clear next-step hint linking to the install page and mentioning `tailscale up`.
+- `start.command` opens the dashboard on `http://<tailnet-ip>:3001/dashboard` when a tailnet IP is available.
 - When `PUBLIC_SHARE_ORIGIN` is set, the toggle is hidden and both modes return the override.
 - New backend tests cover the four `_tailscale_status()` branches and the override path.
 - README has a "Sharing" section that documents both modes and the install command.

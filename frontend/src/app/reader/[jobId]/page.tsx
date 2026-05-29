@@ -60,6 +60,12 @@ type SliceManifest = {
     }>;
 };
 
+type ImagePreview = {
+    src: string;
+    alt: string;
+    label: string;
+};
+
 export default function ReaderPage() {
     const { jobId } = useParams();
     const [job, setJob] = useState<Job | null>(null);
@@ -132,11 +138,16 @@ Do not use an in-app model option. You are the digest-and-image agent. Codex wit
 Run commands from the smart-youtube-reader repo root.
 
 Important:
+- Infographic style is a human choice. Before generating images, set one style for the whole digest:
+  - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
+  - premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+  If the human has not chosen, pick the style that best fits the material and record the choice in operator_image_note.
 - Read archive.json and inspect the attached frame images before deciding what to keep.
 - Create a new digestible chapter structure, not a light paraphrase.
 - Create one novel generated WebP teaching image per digest chapter.
 - Keep the digest to at most 6 chapters/images. If the material truly needs more than 6 images, explain the needed count in operator_image_note and still produce the best 6-image digest.
 - Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
+- Do not include fake plus buttons, carousel arrows, pagination dots, or navigation controls inside static infographic images.
 - Save and reference only generated/*.webp output images in the draft.
 
 Workflow:
@@ -235,6 +246,7 @@ ${projectFolder}`;
     if (error) return <div className="container text-red-500">{error}</div>;
     if (!job) return <div className="container">Loading...</div>;
     const canOpenSlicer = job.kind !== 'group_ai_digest' && job.media_policy !== 'lightweight_generated_images_only';
+    const isYouTubeUrl = Boolean(job.video_url?.match(/(?:youtube\.com|youtu\.be)/));
     const kindLabel = job.kind === 'group_ai_digest'
         ? 'Group AI Digest'
         : job.kind === 'ai_digest'
@@ -270,9 +282,17 @@ ${projectFolder}`;
                     >
                         {linkCopied ? 'Copied Link' : 'Copy Project Link'}
                     </button>
+                    {!job.kind && (
+                        <button
+                            onClick={() => copyAiDigestWithImagesTask(job)}
+                            className="btn btn-success btn-compact"
+                        >
+                            {digestWithImagesTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
+                        </button>
+                    )}
                     {job.video_url && (
                         <a href={job.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
-                            Open YouTube
+                            {isYouTubeUrl ? 'Open YouTube' : 'Open Source'}
                         </a>
                     )}
                     {canOpenSlicer && (
@@ -284,14 +304,9 @@ ${projectFolder}`;
                         <summary aria-label="Reader actions">⋯</summary>
                         <div className="overflow-content">
                             {!job.kind && (
-                                <>
-                                    <button onClick={() => copyAiDigestWithImagesTask(job)}>
-                                        {digestWithImagesTaskCopied ? 'Copied Digest Task' : 'Copy AI Digest CLI Task'}
-                                    </button>
-                                    <button onClick={() => copyAiDigestTask(job)}>
-                                        {digestTaskCopied ? 'Copied Text-Only Task' : 'Copy Text-Only AI Digest Task'}
-                                    </button>
-                                </>
+                                <button onClick={() => copyAiDigestTask(job)}>
+                                    {digestTaskCopied ? 'Copied Text-Only Task' : 'Copy Text-Only AI Digest Task'}
+                                </button>
                             )}
                             <a
                                 href={`${getApiBase()}/jobs/${job.id}/download`}
@@ -373,6 +388,7 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
     const [frameMetadata, setFrameMetadata] = useState<Record<string, FrameMetadata>>({});
     const [loading, setLoading] = useState(true);
     const [imageAction, setImageAction] = useState('');
+    const [selectedImage, setSelectedImage] = useState<ImagePreview | null>(null);
     const usesGeneratedOnlyImages = kind === 'group_ai_digest';
 
     const loadArchive = useCallback(async () => {
@@ -560,6 +576,26 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
 
     const usesLightweightGeneratedImages = archiveMeta.media_policy === 'lightweight_generated_images_only';
     const hideSourceImageControls = usesGeneratedOnlyImages || usesLightweightGeneratedImages;
+    const buildDataUrl = (imagePath: string) => `${getApiBase()}/data/jobs/${folderName}/${imagePath}`;
+    const summaryImageAlt = usesGeneratedOnlyImages
+        ? 'AI-generated group summary'
+        : usesLightweightGeneratedImages
+            ? 'AI-generated digest teaching summary'
+            : 'AI-generated video summary';
+
+    useEffect(() => {
+        if (!selectedImage) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setSelectedImage(null);
+        };
+        window.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [selectedImage]);
 
     if (loading) return <div className="blink">Loading Archive Preview... (Waiting for file)</div>;
     if (timeline.length === 0) return <div style={{ color: 'var(--error)' }}>Archive could not be loaded.</div>;
@@ -586,17 +622,25 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
                                     ? 'AI Digest Summary Image'
                                     : 'Video Summary Image'}
                         </h3>
-                        <img
-                            src={`${getApiBase()}/data/jobs/${folderName}/${archiveMeta.summary_image}`}
-                            alt={usesGeneratedOnlyImages
-                                ? 'AI-generated group summary'
-                                : usesLightweightGeneratedImages
-                                    ? 'AI-generated digest teaching summary'
-                                    : 'AI-generated video summary'}
-                            className="archive-image"
-                            loading="lazy"
-                            decoding="async"
-                        />
+                        <button
+                            type="button"
+                            className="image-open-button"
+                            onClick={() => setSelectedImage({
+                                src: buildDataUrl(archiveMeta.summary_image || ''),
+                                alt: summaryImageAlt,
+                                label: 'Summary image'
+                            })}
+                            aria-label="Open summary image in a larger view"
+                            title="Open larger view"
+                        >
+                            <img
+                                src={buildDataUrl(archiveMeta.summary_image)}
+                                alt={summaryImageAlt}
+                                className="archive-image"
+                                loading="lazy"
+                                decoding="async"
+                            />
+                        </button>
                     </section>
                 )}
                 {timeline.map((item: ArchiveChapter, idx: number) => (
@@ -626,17 +670,31 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
                             {item.images.map((img: string, i: number) => {
                                 const info = findFrameInfo(img, item);
                                 const isGeneratedImage = img.startsWith('generated/');
+                                const imageSrc = buildDataUrl(img);
+                                const imageAlt = `${item.concept} image ${i + 1}`;
                                 return (
                                     <div key={`${img}-${i}`} style={{ position: 'relative', minWidth: 0 }}>
-                                        <img
-                                            src={`${getApiBase()}/data/jobs/${folderName}/${img}`}
-                                            alt={`Scene ${i}`}
-                                            loading="lazy"
-                                            decoding="async"
-                                            style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block', background: '#05070a' }}
-                                        />
+                                        <button
+                                            type="button"
+                                            className="image-open-button"
+                                            onClick={() => setSelectedImage({
+                                                src: imageSrc,
+                                                alt: imageAlt,
+                                                label: img
+                                            })}
+                                            aria-label={`Open ${item.concept} image ${i + 1} in a larger view`}
+                                            title="Open larger view"
+                                        >
+                                            <img
+                                                src={imageSrc}
+                                                alt={imageAlt}
+                                                loading="lazy"
+                                                decoding="async"
+                                                style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--card-border)', display: 'block', background: '#05070a' }}
+                                            />
+                                        </button>
                                         {!hideSourceImageControls && !isGeneratedImage && (
-                                            <div style={{ position: 'absolute', left: '0.5rem', bottom: '0.5rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', maxWidth: 'calc(100% - 1rem)' }}>
+                                            <div style={{ position: 'absolute', left: '0.5rem', bottom: '0.5rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', maxWidth: 'calc(100% - 1rem)', zIndex: 2 }}>
                                                 <span style={{ border: '1px solid rgba(255,255,255,0.24)', borderRadius: '999px', background: 'rgba(0,0,0,0.72)', color: 'var(--foreground)', padding: '0.15rem 0.45rem', fontSize: '0.7rem' }}>
                                                     {formatTimestamp(info?.timestamp)}
                                                 </span>
@@ -646,7 +704,7 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
                                             </div>
                                         )}
                                         {!hideSourceImageControls && !isGeneratedImage && (
-                                            <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.4rem' }}>
+                                            <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.4rem', zIndex: 2 }}>
                                                 <button
                                                     onClick={() => replaceInSlicer(idx, img, item.timestamp_start)}
                                                     disabled={Boolean(imageAction)}
@@ -704,6 +762,35 @@ function ArchivePreview({ jobId, folderName, videoUrl, kind }: { jobId: string, 
                     </section>
                 ))}
             </article>
+            {selectedImage && (
+                <div
+                    className="image-lightbox"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Large image view"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <div className="image-lightbox-shell" onClick={(event) => event.stopPropagation()}>
+                        <div className="image-lightbox-header">
+                            <span className="image-lightbox-title">{selectedImage.label}</span>
+                            <div className="image-lightbox-actions">
+                                <a href={selectedImage.src} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-small">
+                                    Open original
+                                </a>
+                                <button type="button" className="btn btn-secondary btn-small" onClick={() => setSelectedImage(null)}>
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                        <img
+                            src={selectedImage.src}
+                            alt={selectedImage.alt}
+                            className="image-lightbox-img"
+                            decoding="async"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

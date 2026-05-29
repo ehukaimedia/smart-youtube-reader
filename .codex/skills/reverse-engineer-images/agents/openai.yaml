@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reverse Engineer Images"
+  short_description: "Turn source frames into digest image briefs"
+  default_prompt: "Use $reverse-engineer-images to inspect these source slice frames and produce a novel, source-agnostic AI digest image prompt."

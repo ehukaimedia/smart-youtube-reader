@@ -88,6 +88,20 @@ class Job:
 
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
+EXAMPLE_JOBS_ROOT = Path(__file__).resolve().parents[2] / "examples" / "demo-jobs"
+
+
+def ensure_demo_jobs() -> None:
+    if not EXAMPLE_JOBS_ROOT.exists():
+        return
+
+    for source_dir in EXAMPLE_JOBS_ROOT.iterdir():
+        if not source_dir.is_dir() or not (source_dir / "manifest.json").exists():
+            continue
+        target_dir = DATA_ROOT / source_dir.name
+        if target_dir.exists():
+            continue
+        shutil.copytree(source_dir, target_dir)
 
 def normalized_video_key(video_url: str | None) -> str:
     if not video_url:
@@ -116,6 +130,7 @@ class JobStore:
 
     def _load_from_disk(self):
         """Reconstruct job state from disk."""
+        ensure_demo_jobs()
         if not DATA_ROOT.exists():
             return
             
