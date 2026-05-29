@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getApiBase, getShareInfo, readStoredShareMode, resolveShareOrigin } from '@/lib/api';
 import { copyText } from '@/lib/clipboard';
 import { useToast } from '../../components/ToastProvider';
+import DemoProviderTabs from '../../components/DemoProviderTabs';
 
 type Job = {
     id: string;
@@ -267,6 +268,8 @@ ${projectFolder}`;
                     )}
                 </div>
             </header>
+
+            <DemoProviderTabs jobId={String(jobId ?? '')} />
 
             {job.status === 'complete' && job.data_folder_name && (
                 <section className="action-bar">

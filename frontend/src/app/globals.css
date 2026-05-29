@@ -490,6 +490,31 @@ button:focus-visible {
   background: var(--surface);
 }
 
+.demo-provider-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.demo-provider-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.demo-provider-tabs .pill-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .reader-content-stack {
   display: grid;
   gap: 1.25rem;

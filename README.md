@@ -12,7 +12,9 @@ The repository ships with a bundled **Smart YouTube Reader Demo Digest** so the 
 
 [Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation.
 
-![Default AI digest workflow: archive evidence to Codex agent to GPT 2.0 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+The demo ships in three image-generation variants so you can compare provider output side by side. A **Demo image versions** selector on the demo reader switches between the **Codex** (GPT Image 2 photographic), **Gemini** (image-model illustration), and **Claude** (HTML/CSS editorial cards rendered to WebP) versions of the same five teaching chapters.
+
+![Default AI digest workflow: archive evidence to agent to WebP teaching images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
 
 | Capture | Reader context | Group synthesis |
 |---|---|---|
