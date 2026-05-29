@@ -1,0 +1,130 @@
+{
+  "job_id": "demo-smart-youtube-reader-gemini",
+  "folder": "smart-youtube-reader-gemini",
+  "url": "https://github.com/ehukaimedia/smart-youtube-reader",
+  "title": "Smart YouTube Reader Demo Digest (Gemini)",
+  "created_at": 1779935400,
+  "kind": "ai_digest",
+  "source_job_id": null,
+  "source_folder": null,
+  "digest_model": "Codex + Gemini images",
+  "digest_agent_status": "bundled_demo",
+  "digest_created_at": 1779935400,
+  "changes_summary": [
+    "This bundled digest is a proof deliverable for first-time users.",
+    "It teaches how to use the app and shows both simple and premium Gemini generated-image digest styles."
+  ],
+  "transcript_policy": "digest_transcript_only",
+  "generated_images": [
+    "generated/chapter-01-capture-to-archive.webp",
+    "generated/chapter-01-capture-to-archive-premium.webp",
+    "generated/chapter-02-reader-context.webp",
+    "generated/chapter-02-reader-context-premium.webp",
+    "generated/chapter-03-default-ai-digest.webp",
+    "generated/chapter-03-default-ai-digest-premium.webp",
+    "generated/chapter-04-group-digest.webp",
+    "generated/chapter-04-group-digest-premium.webp",
+    "generated/chapter-05-tailscale-sharing.webp",
+    "generated/chapter-05-tailscale-sharing-premium.webp"
+  ],
+  "media_policy": "lightweight_generated_images_only",
+  "image_policy": "Bundled demo digest images are novel generated WebP teaching visuals. Each chapter includes a simple infographic and a premium Gemini image-led infographic. They are examples of the default external-agent digest deliverable and are not copied from source videos.",
+  "summary_image": "generated/chapter-03-default-ai-digest-premium.webp",
+  "archive": [
+    {
+      "concept": "Turn Video Into Structured Context",
+      "summary": "Smart YouTube Reader converts a long video into a local archive with chapters, transcript, timestamps, and visual evidence.",
+      "content": "Start with a video URL. The app runs locally, downloads the media, extracts audio, transcribes the content, samples frames, removes duplicate visuals, and groups the material into semantic chapters. The result is not just a transcript. It is a structured project folder with archive.json, transcript.json, manifest.json, and image evidence that humans and AI agents can inspect quickly. This saves time because the expensive first pass through the video happens once, then the archive becomes reusable context.",
+      "timestamp_start": 0,
+      "timestamp_end": 95,
+      "images": [
+        "generated/chapter-01-capture-to-archive.webp",
+        "generated/chapter-01-capture-to-archive-premium.webp"
+      ],
+      "source_indices": [
+        0
+      ],
+      "image_review": {
+        "mode": "agent_generated",
+        "kept": 1,
+        "note": "Generated demo visuals showing source video to local archive in simple and premium styles."
+      }
+    },
+    {
+      "concept": "Read, Search, And Ask With Evidence",
+      "summary": "The reader turns raw capture output into a browsable learning surface that preserves the evidence behind each chapter.",
+      "content": "Open any completed project to read the archive. The left index gives fast chapter navigation. The article view keeps the important explanation, timestamps, transcript context, and visual evidence together. The learning prompt and project link actions are built for external agents: instead of pasting a messy transcript, you can send the agent a structured archive with images and timestamps. That is the core time-saving move: the app packages context so the next AI interaction starts from organized evidence rather than a blank prompt.",
+      "timestamp_start": 95,
+      "timestamp_end": 190,
+      "images": [
+        "generated/chapter-02-reader-context.webp",
+        "generated/chapter-02-reader-context-premium.webp"
+      ],
+      "source_indices": [
+        1
+      ],
+      "image_review": {
+        "mode": "agent_generated",
+        "kept": 1,
+        "note": "Generated demo visuals showing the reader as structured AI context in simple and premium styles."
+      }
+    },
+    {
+      "concept": "Default AI Digest With GPT 2.0 Images",
+      "summary": "The default digest workflow asks an external agent such as Codex to read the archive, create a concise lesson, and generate novel WebP teaching images.",
+      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex, Claude, or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Codex and GPT 2.0 image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
+      "timestamp_start": 190,
+      "timestamp_end": 315,
+      "images": [
+        "generated/chapter-03-default-ai-digest.webp",
+        "generated/chapter-03-default-ai-digest-premium.webp"
+      ],
+      "source_indices": [
+        2
+      ],
+      "image_review": {
+        "mode": "agent_generated",
+        "kept": 1,
+        "note": "Generated demo visuals showing Codex plus GPT 2.0 images creating the default digest deliverable in simple and premium styles."
+      }
+    },
+    {
+      "concept": "Group Digests Create New Lessons",
+      "summary": "Group AI digests merge multiple completed projects into one cross-video lesson with new structure and generated visuals.",
+      "content": "When several videos explain related ideas, selecting them as a group lets an external agent build a synthesis instead of a playlist. The agent compares archives, merges repeated points, flags contradictions, keeps unique insights, and writes one new lesson. The group digest output contains exactly three generated WebP teaching images. This is useful for research, trading reviews, software learning, product education, or any workflow where the user wants the conclusion rather than hours of source material.",
+      "timestamp_start": 315,
+      "timestamp_end": 420,
+      "images": [
+        "generated/chapter-04-group-digest.webp",
+        "generated/chapter-04-group-digest-premium.webp"
+      ],
+      "source_indices": [
+        3
+      ],
+      "image_review": {
+        "mode": "agent_generated",
+        "kept": 1,
+        "note": "Generated demo visuals showing multi-project synthesis into one lesson in simple and premium styles."
+      }
+    },
+    {
+      "concept": "Share The Dashboard Through Tailscale",
+      "summary": "The global Local/Tailscale mode changes the app origin so the dashboard and copied links can run on a private tailnet IP.",
+      "content": "Smart YouTube Reader stays local-first, but local does not have to mean trapped on one browser. The global Local/Tailscale toggle switches the active app origin. Local opens localhost for same-machine work. Tailscale opens the dashboard through the machine's 100.x.x.x tailnet IP so another device on the same private network can open the dashboard or a project link. The app never installs Tailscale silently; it detects availability and explains what to do if Tailscale is missing or not running.",
+      "timestamp_start": 420,
+      "timestamp_end": 520,
+      "images": [
+        "generated/chapter-05-tailscale-sharing.webp",
+        "generated/chapter-05-tailscale-sharing-premium.webp"
+      ],
+      "source_indices": [
+        4
+      ],
+      "image_review": {
+        "mode": "agent_generated",
+        "kept": 1,
+        "note": "Generated demo visuals showing global Local/Tailscale app mode in simple and premium styles."
+      }
+    }
+  ]
+}
