@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smart YouTube Reader Help Demo"
+  short_description: "Build or update the bundled visual help demo digest."
+  default_prompt: "Create or update the Smart YouTube Reader help demo digest with WebP visuals, README showcase content, and runtime seeding."
