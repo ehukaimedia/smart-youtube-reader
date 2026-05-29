@@ -1,0 +1,27 @@
+[
+  {
+    "text": "Smart YouTube Reader starts with a video URL and turns it into structured local context. It downloads, transcribes, samples frames, removes duplicates, and writes an archive that can be read again without rewatching the whole video.",
+    "start": 0,
+    "duration": 95
+  },
+  {
+    "text": "The reader is the working surface. Chapters, timestamps, transcript text, and evidence images stay together, so a person or external AI agent can ask better questions from grounded context.",
+    "start": 95,
+    "duration": 95
+  },
+  {
+    "text": "The default AI digest workflow can use an external agent with Gemini 3.5 Flash High image generation to inspect the archive and source frames, then produce a concise learning project with novel generated WebP teaching images. This bundled version gives users a Gemini comparison path beside the Codex and GPT 2.0 showcase.",
+    "start": 190,
+    "duration": 125
+  },
+  {
+    "text": "Group AI digests merge several completed projects into a new lesson. Repeated ideas are collapsed, contradictions are flagged, unique insights are kept, and exactly three new WebP images teach the combined model.",
+    "start": 315,
+    "duration": 105
+  },
+  {
+    "text": "The global Local and Tailscale mode changes the app origin. Local is for same-machine work. Tailscale opens the dashboard and copied project links through a private 100 dot x address for devices on the same tailnet.",
+    "start": 420,
+    "duration": 100
+  }
+]

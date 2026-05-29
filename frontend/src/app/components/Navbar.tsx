@@ -6,6 +6,9 @@ import ShareModeToggle from './ShareModeToggle';
 
 export default function Navbar() {
     const pathname = usePathname();
+    const isDemoRoute = pathname === '/demo'
+        || pathname === '/reader/demo-smart-youtube-reader-digest'
+        || pathname === '/reader/demo-smart-youtube-reader-gemini';
 
     return (
         <nav className="navbar">
@@ -15,7 +18,7 @@ export default function Navbar() {
                 </Link>
                 <div className="nav-actions">
                     <ShareModeToggle />
-                    <Link href="/reader/demo-smart-youtube-reader-digest" className={`nav-link ${pathname === '/reader/demo-smart-youtube-reader-digest' ? 'active' : ''}`} title="Open the Smart YouTube Reader demo digest">
+                    <Link href="/demo" className={`nav-link ${isDemoRoute ? 'active' : ''}`} title="Choose a Smart YouTube Reader demo digest">
                         Help
                     </Link>
                     <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>

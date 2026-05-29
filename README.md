@@ -8,9 +8,9 @@
 
 ## Proof: Demo AI Digest
 
-The repository ships with a bundled **Smart YouTube Reader Demo Digest** so the first dashboard already contains a finished deliverable. It teaches how to use the system and shows the viral edge: structured context becomes a concise, visual, shareable learning artifact.
+The repository ships with bundled **Smart YouTube Reader Demo Digest** examples so the first dashboard already contains finished deliverables. They teach how to use the system and show the viral edge: structured context becomes a concise, visual, shareable learning artifact.
 
-[Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation.
+[Open the demo selector from the app](http://localhost:3001/demo) after running `./start.command`, or use the **Help** link in the top navigation. The selector has tabs for the Codex + GPT 2.0 image version and the Gemini 3.5 Flash High image version.
 
 ![Default AI digest workflow: archive evidence to Codex agent to GPT 2.0 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
 
