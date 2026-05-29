@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reverse Engineer Images"
+  short_description: "Turn reference images into generation prompts"
+  default_prompt: "Use $reverse-engineer-images to analyze this reference image and produce a reusable image-generation prompt."

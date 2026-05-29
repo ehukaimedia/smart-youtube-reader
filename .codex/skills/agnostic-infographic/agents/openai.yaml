@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agnostic Infographic"
+  short_description: "Create neutral premium infographic layouts"
+  default_prompt: "Use $agnostic-infographic to turn this content into a clean, brand-neutral infographic card system."
