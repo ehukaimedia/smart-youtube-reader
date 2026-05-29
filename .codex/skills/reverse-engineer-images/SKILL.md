@@ -97,13 +97,13 @@ Quality constraints: [clean composition, readable text, no clutter, no extra tex
 
 ## Example Pattern From The Digest
 
-The video's McDonald's-style ad example worked because the prompt named the visible structure, not because it was long for its own sake:
+The video's fast-food ad example worked because the prompt named the visible structure, not because it was long for its own sake:
 
 - A vertical poster with a bright red background.
 - A large white headline in the upper left.
 - Smaller yellow and white supporting copy under it.
 - A glossy commercial burger, fries, and drink arranged in the bottom half.
-- Cropped golden arches behind the food for depth.
+- A cropped brand mark behind the food for depth.
 - A small logo area, price block, bright studio lighting, saturated colors, and clean print-ad composition.
 
 Use this level of specificity for any reference: describe what is visible, where it sits, how it is styled, and which details make the image feel like its category.
@@ -111,7 +111,7 @@ Use this level of specificity for any reference: describe what is visible, where
 The updated side-by-side frames also show how to judge a reverse-engineered prompt:
 
 - The generated ad can match the original's category, palette, headline, food subjects, logo cues, and offer block while still drifting in layout.
-- Compare item-by-item instead of asking whether it "looks right": headline position, food stack scale, drink/fries order, golden arch crop, top logo placement, price block location, and empty red space.
+- Compare item-by-item instead of asking whether it "looks right": headline position, food stack scale, drink/fries order, brand mark crop, top logo placement, price block location, and empty red space.
 - If the user wants closer recreation, tighten the geometry and relationships. If the user wants a variant, keep the stable style grammar and intentionally change only the requested element.
 
 ## Safety And Rights

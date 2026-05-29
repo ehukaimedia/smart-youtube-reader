@@ -9,6 +9,8 @@ description: Create, repair, or update the bundled Smart YouTube Reader help/dem
 
 Build a shipped proof project, not just documentation. The help demo should appear in the dashboard, open from the top-nav Help link, teach how to use Smart YouTube Reader, and show a polished generated-image AI digest deliverable.
 
+**Required gate:** the Impeccable skill governs all AI digest image work. Before generating or updating any teaching image, load the design context (`IMPECCABLE_CONTEXT_DIR=docs/impeccable`) and follow the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`. The bar is premium product-marketing quality. Every image must pass that section's acceptance checklist before it ships. This is not optional and is the difference between a proof point and AI slop.
+
 ## Required Shape
 
 - Store tracked source assets under `examples/demo-jobs/smart-youtube-reader-demo-digest_demo/`.
@@ -26,7 +28,10 @@ Build a shipped proof project, not just documentation. The help demo should appe
    - `frontend/src/app/dashboard/page.tsx`
    - `frontend/src/app/reader/[jobId]/page.tsx`
    - existing examples under `examples/demo-jobs/`
-2. If visuals are missing or stale, use the `imagegen` skill to generate raster teaching visuals.
+2. If visuals are missing or stale, generate new teaching visuals. The Impeccable skill is required for this step:
+   - First load the design context: run Impeccable with `IMPECCABLE_CONTEXT_DIR=docs/impeccable` and read the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`.
+   - Build each `imagegen` prompt with the `agnostic-infographic` skill's card recipe and base prompt, bound to the project bar in `docs/impeccable/DESIGN.md` §7: premium product-marketing quality, one calm idea per card, an eyebrow label plus one bold tight headline (Inter, large and tight), generous whitespace, and a restrained palette where color comes from a single focal element with one Operator Blue `#3b82f6` accent at most. Choose light or dark for the whole set and hold it. No robots, neon, rainbow palettes, gradient text, decorative drop shadows, clip-art, or truncated labels.
+   - Every image must pass the section's acceptance checklist before use. If an image cannot meet the bar, ship fewer images and note the gap in `operator_image_note`; never ship an off-brand image to fill a slot.
    - Convert selected outputs to WebP with `cwebp -q 82 -resize 1280 720`.
    - Copy final WebP assets into `examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/`.
    - Leave original generated images in `$CODEX_HOME/generated_images/`.

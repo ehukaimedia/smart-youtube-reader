@@ -19,7 +19,7 @@ colors:
   badge-success-border: "#256d3b"
 typography:
   display:
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontFamily: "Inter, system-ui, Segoe UI, sans-serif"
     fontSize: "clamp(1.75rem, 2.6vw, 2.25rem)"
     fontWeight: 700
     lineHeight: 1.1
@@ -110,6 +110,25 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
     padding: "14px"
+imagery:
+  northStar: "premium product-marketing infographic cards"
+  theme: "light or dark, chosen per digest and held consistent across all images"
+  canvasLight: "#ffffff or #f5f5f7"
+  canvasDark: "#000000 to #101012"
+  headlineLight: "#1d1d1f"
+  headlineDark: "#f5f5f7"
+  bodyLight: "#6e6e73"
+  bodyDark: "#a1a1a6"
+  accent: "Operator Blue #3b82f6 fill, #2563eb text"
+  accentRule: "one accent at most, color comes from one focal element, never a rainbow"
+  font: "Inter, Helvetica Neue, or the system UI sans, never a default serif"
+  elevation: "flat, subtle shadow only under a real product photo, never decorative"
+  craft: "generous whitespace, precise alignment, one idea per card"
+  format: "webp"
+  aspectRatio: "16:9"
+  pixelSize: "1600x900"
+  maxImagesPerDigest: 6
+  oneIdeaPerImage: true
 ---
 
 # Design System: Smart YouTube Reader
@@ -162,7 +181,7 @@ A near-monochrome dark palette with one cool-blue accent. Status is carried by g
 
 ## 3. Typography
 
-**Display Font:** Inter (with `-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif` fallback)
+**Display Font:** Inter (with `system-ui, Segoe UI, sans-serif` fallback)
 **Body Font:** Inter
 **Label/Mono Font:** `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` (for textarea prompt content and raw JSON only)
 
@@ -274,6 +293,106 @@ A horizontal bar of buttons that sits beneath a page title, holding one primary 
 - **Don't** ship five equally-weighted buttons in a page header. One primary, the rest in an action bar or overflow.
 - **Don't** use `outline: none` on focusable elements without a visible replacement.
 - **Don't** use modal dialogs for confirmations that work as toasts.
-- **Don't** copy the visual language of Notion, Linear, or Vercel. This product is its own register.
+- **Don't** copy the visual language of other well-known productivity apps. This product is its own register.
 - **Don't** use `#000` or `#fff`. Every neutral is tinted.
 - **Don't** use em dashes in UI copy or labels. Commas, colons, semicolons, periods, or parentheses only.
+
+## 7. Generated Image Art Direction
+
+This section governs the images an AI digest generates: the per-chapter teaching cards and the summary image. It is the executable contract a designing agent (Codex, Claude Code, or any image-capable agent) follows when it creates those images.
+
+**North star: premium product-marketing infographic cards.** The standard is the clean, spacious, typographic style of high-end product pages: a single calm idea per card, a small eyebrow label, one bold tight headline, generous whitespace, precise alignment, and a restrained palette where color comes from one focal element, not from decoration.
+
+This is a different surface from the app chrome. The dark operator UI in Sections 2 through 6 governs buttons, cards, and nav inside the app. These generated images instead follow the premium direction below, and they may be **light or dark**: that choice is the agent's, made per digest, and is the only sanctioned exception to the app's "never white" rule. The bar is not a theme; the bar is quality.
+
+### Where these images appear
+
+- **Chapter teaching card:** one per digest chapter, six maximum, saved as `generated/chapter-NN-<slug>.webp` and referenced from the chapter as `"images": ["generated/chapter-NN-<slug>.webp"]`.
+- **Summary image:** the first chapter image doubles as the project's `summary_image`, shown on dashboard cards at roughly 320px wide and as the share and social preview. It must read as a thumbnail, not only at full size.
+
+### Format
+
+- 16:9, at least 1280x720 (1600x900 preferred), WebP, roughly 50 to 120 KB. One image carries one idea.
+- Legible at 320px wide: the eyebrow, headline, and one key element must read at thumbnail scale.
+
+### Pick a theme, then commit (light or dark)
+
+Choose one theme for the whole digest and hold it across all six images. Mixing light and dark within one digest is a defect.
+
+- **Light** (default for explanatory or diagrammatic content): canvas pure white (`#ffffff`) or light grey (`#f5f5f7`). Headline near-black (`#1d1d1f`), body secondary grey (`#6e6e73`).
+- **Dark** (for dramatic, data-forward, or photographic content): canvas true black (`#000000`) to charcoal (`#101012`). Headline white (`#f5f5f7`), body grey (`#a1a1a6`).
+- **Tinted** (optional, at most one soft hue per card): a single desaturated wash (sky `#e8f0fb`, lavender `#ece9f6`, peach `#f7ece6`, mint `#e9f3ec`). The tint is the canvas, not an accent on top of it.
+
+### Card craft
+
+The reusable card recipe lives in the **agnostic-infographic** skill (`.codex/skills/agnostic-infographic/SKILL.md`): card anatomy (margins, eyebrow, headline, body, focal element), layout patterns, the content model, and the base image-generation prompt. Use it for craft. This section does not duplicate that recipe; it sets the project-specific bar the skill's output must meet, defined by the theme, palette, type, named rules, and acceptance checklist below.
+
+The one focal element per card is chosen per chapter: clean single-color line-art, one large confident data figure, or a restrained two-or-three-node diagram. Whichever it is, it uses the project palette below, not a new one.
+
+### Color discipline
+
+- **Restraint first.** The canvas and type carry the card. Color enters through the one focal element, not the chrome.
+- **One accent: Operator Blue.** Links and any pill or CTA use `#2563eb` (text) or `#3b82f6` (filled). Line-art uses Operator Blue as its single stroke color on light backgrounds. Nothing else competes.
+- **No rainbow.** A different bright hue per box is the clearest tell of slop. If two elements need to differ, differ by weight, size, or label, not by inventing a new color.
+
+### Typography
+
+- **Inter** for headlines and body (the product's UI font), or the nearest clean grotesk the generator supports (Helvetica Neue, the system UI sans). Never a default serif, never Arial as a look.
+- Hierarchy from **size and weight**, never from color. Headlines are tight and confident; body is calm and legible.
+
+### Named rules
+
+- **The Craft Rule.** Alignment, optical balance, and generous whitespace are not optional polish; they are the design. A cramped or misaligned card fails even if every element is "correct."
+- **The One-Idea Rule.** One card states one idea. If it needs a second idea, it needs a second chapter.
+- **The Restrained-Color Rule.** Color comes from one focal element and at most one Operator Blue accent. No rainbow, no per-box hues.
+- **The No-Truncation Rule.** Every label is fully written. Ellipsis truncation ("3. Craft...") and text clipped by the edge are defects. Shorten the wording; never clip glyphs.
+- **The No-Collision Rule.** Lines, arrows, and connectors never cross text. Leave a clear gap.
+- **The Consistent-Set Rule.** All six images share one theme, one type scale, one accent, and one card treatment. A set that mixes light and dark, or shifts the accent per image, has failed as a set even if each image passes alone.
+
+### Banned (these read as AI slop, in either theme)
+
+- glowing robots, androids, mascots, brains, or "AI" faces
+- neon glow, bloom, lens flare, holographic or HUD treatments, particle fields, starfields
+- purple-to-magenta or cyberpunk gradients; gradient text
+- faux-3D renders or glassy chrome used as decoration
+- rainbow category palettes (a different bright hue per box)
+- drop shadows used as decoration (a subtle, realistic shadow under a real product photo is fine; a soft shadow under every flat card is not)
+- grids of identical icon + heading + text tiles
+- generic default fonts presented as the type style (Arial, DejaVu, Liberation)
+- decorative grid lines, random colored bars, clip-art arrows, or filler ornament
+- truncated or edge-clipped text, and any line crossing a label
+
+### Building the generation prompt
+
+Start from the base image-generation prompt in the **agnostic-infographic** skill, then bind these project values into it before calling the image model:
+
+- **Theme:** the one chosen above (light, dark, or one tint), held across all six images.
+- **Accent:** Operator Blue, filled `#3b82f6` / deep `#2563eb`, as the single accent and the line-art stroke color. No second hue.
+- **Type:** Inter (or the nearest clean grotesk the generator supports).
+- **Per chapter:** the `Show:` line carries the chapter's one idea plus its concrete specifics (numbers, benchmark names, proper nouns, named examples).
+- **Constraints:** the Banned list and the acceptance checklist below are hard requirements on the result, not suggestions.
+
+### Acceptance checklist (run this before referencing any image)
+
+This is `detect`, applied to images. Confirm every line; any "no" means regenerate, do not ship.
+
+- [ ] Reads like a premium product-marketing card: one idea, generous whitespace, precise alignment.
+- [ ] Single theme committed (light, dark, or one tint) and consistent across all six images.
+- [ ] Color is restrained; one focal element carries it; one Operator Blue accent at most; no rainbow, no per-box hues.
+- [ ] Inter-style grotesk; hierarchy from size and weight, not color; no gradient text.
+- [ ] Eyebrow + headline structure present; headline tight and confident; at most two headline lines.
+- [ ] Every label fully written; nothing truncated or clipped by the edge; no line crosses text.
+- [ ] One idea per image; the chapter's concrete specifics (numbers, names) are present and correct.
+- [ ] No robot, mascot, face, neon, hologram, 3D render, or grid of identical tiles.
+- [ ] No decorative drop shadows (subtle shadow under a real product photo only).
+- [ ] Readable at 320px thumbnail width.
+
+### How an agent uses this
+
+The design context lives in `docs/impeccable/` (this file and PRODUCT.md). Point the impeccable loader at it before generating images:
+
+```
+IMPECCABLE_CONTEXT_DIR=docs/impeccable
+```
+
+The AI digest task prompt (`tools/create_ai_digest_version.py`) and the help-demo skill instruct the digest agent to load this context, build images with the **agnostic-infographic** skill's card recipe, and satisfy the checklist above before referencing any image. This section sets the bar; that skill provides the craft. If the agent cannot meet the bar for a chapter, it ships fewer images and records the gap in `operator_image_note`; it never ships an off-brand image to fill a slot.
