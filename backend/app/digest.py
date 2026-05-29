@@ -242,6 +242,14 @@ def build_digest_user_prompt(
 
     if include_generated_images:
         image_instruction = (
+            "Before creating images, choose one infographic style for the whole digest: "
+            '"simple" via .codex/skills/simple-infographic or "premium" via '
+            ".codex/skills/premium-infographic. If the human gave a preference, obey it; "
+            "otherwise choose the style that best fits the material and mention the choice "
+            "in operator_image_note. Premium style must use GPT Image 2 / GPT 2.0 image "
+            "generation for the bitmap visual, not local vector-only placeholders. Static "
+            "infographics must not include fake plus buttons, carousel arrows, pagination "
+            "dots, or navigation controls. "
             "Each output chapter must also include exactly one generated WebP image path in "
             'images, using the shape "images":["generated/chapter-01-concept.webp"]. '
             "Use at most 6 output chapters/images. If more images would improve the lesson, "

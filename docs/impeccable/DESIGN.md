@@ -325,9 +325,11 @@ Choose one theme for the whole digest and hold it across all six images. Mixing 
 
 ### Card craft
 
-The reusable card recipe lives in the **agnostic-infographic** skill (`.codex/skills/agnostic-infographic/SKILL.md`): card anatomy (margins, eyebrow, headline, body, focal element), layout patterns, the content model, and the base image-generation prompt. Use it for craft. This section does not duplicate that recipe; it sets the project-specific bar the skill's output must meet, defined by the theme, palette, type, named rules, and acceptance checklist below.
+The reusable card recipes live in the infographic skills: `simple-infographic` for quiet text-led card strips, `premium-infographic` for image-led editorial card strips, and `agnostic-infographic` for shared neutral rules. Use the style the operator chooses. Premium generated assets require GPT Image 2 / GPT 2.0 image generation for the bitmap visual, not local vector-only placeholders. This section sets the project-specific bar the skill output must meet, defined by the theme, palette, type, named rules, and acceptance checklist below.
 
-The one focal element per card is chosen per chapter: clean single-color line-art, one large confident data figure, or a restrained two-or-three-node diagram. Whichever it is, it uses the project palette below, not a new one.
+For generated digest images, "one card" means one cohesive teaching image. That image may be a single hero diagram, a large data figure, or a polished horizontal strip of subcards when the chapter is best explained as one workflow or capability set. Do not force a useful card-strip idea into one lone icon.
+
+The focal composition is chosen per chapter: clean single-color line-art, one large confident data figure, a restrained two-or-three-node diagram, or a compact row of subcards that all support the same headline. Whichever it is, it uses the project palette below, not a new one.
 
 ### Color discipline
 
@@ -343,10 +345,11 @@ The one focal element per card is chosen per chapter: clean single-color line-ar
 ### Named rules
 
 - **The Craft Rule.** Alignment, optical balance, and generous whitespace are not optional polish; they are the design. A cramped or misaligned card fails even if every element is "correct."
-- **The One-Idea Rule.** One card states one idea. If it needs a second idea, it needs a second chapter.
+- **The One-Idea Rule.** One generated image states one idea. A card strip is acceptable when every subcard supports that same idea; if the image needs a second headline-level idea, it needs a second chapter.
 - **The Restrained-Color Rule.** Color comes from one focal element and at most one Operator Blue accent. No rainbow, no per-box hues.
 - **The No-Truncation Rule.** Every label is fully written. Ellipsis truncation ("3. Craft...") and text clipped by the edge are defects. Shorten the wording; never clip glyphs.
 - **The No-Collision Rule.** Lines, arrows, and connectors never cross text. Leave a clear gap.
+- **The No-Redundant-Controls Rule.** Static generated digest images do not show fake plus buttons, expand links, carousel arrows, pagination dots, or other nonfunctional controls. The image is the artifact; the reader UI already supplies navigation and interaction.
 - **The Consistent-Set Rule.** All six images share one theme, one type scale, one accent, and one card treatment. A set that mixes light and dark, or shifts the accent per image, has failed as a set even if each image passes alone.
 
 ### Banned (these read as AI slop, in either theme)
@@ -357,9 +360,10 @@ The one focal element per card is chosen per chapter: clean single-color line-ar
 - faux-3D renders or glassy chrome used as decoration
 - rainbow category palettes (a different bright hue per box)
 - drop shadows used as decoration (a subtle, realistic shadow under a real product photo is fine; a soft shadow under every flat card is not)
-- grids of identical icon + heading + text tiles
+- grids of identical icon + heading + text tiles that read as wallpaper rather than one composed teaching card
 - generic default fonts presented as the type style (Arial, DejaVu, Liberation)
 - decorative grid lines, random colored bars, clip-art arrows, or filler ornament
+- fake plus buttons, expand affordances, carousel arrows, pagination dots, or other redundant static controls
 - truncated or edge-clipped text, and any line crossing a label
 
 ### Building the generation prompt
@@ -376,13 +380,14 @@ Start from the base image-generation prompt in the **agnostic-infographic** skil
 
 This is `detect`, applied to images. Confirm every line; any "no" means regenerate, do not ship.
 
-- [ ] Reads like a premium product-marketing card: one idea, generous whitespace, precise alignment.
+- [ ] Reads like a premium product-marketing teaching card: one idea, generous whitespace, precise alignment.
 - [ ] Single theme committed (light, dark, or one tint) and consistent across all six images.
 - [ ] Color is restrained; one focal element carries it; one Operator Blue accent at most; no rainbow, no per-box hues.
 - [ ] Inter-style grotesk; hierarchy from size and weight, not color; no gradient text.
 - [ ] Eyebrow + headline structure present; headline tight and confident; at most two headline lines.
 - [ ] Every label fully written; nothing truncated or clipped by the edge; no line crosses text.
-- [ ] One idea per image; the chapter's concrete specifics (numbers, names) are present and correct.
+- [ ] One idea per image; if it uses subcards, every subcard supports the same chapter idea and the chapter's concrete specifics are present and correct.
+- [ ] No redundant static controls: no plus buttons, expand links, carousel arrows, or pagination dots.
 - [ ] No robot, mascot, face, neon, hologram, 3D render, or grid of identical tiles.
 - [ ] No decorative drop shadows (subtle shadow under a real product photo only).
 - [ ] Readable at 320px thumbnail width.

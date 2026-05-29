@@ -19,6 +19,7 @@ Build a shipped proof project, not just documentation. The help demo should appe
 - Keep the demo `kind` as `ai_digest`, `digest_model` as `Codex + GPT 2.0 images`, and `media_policy` as `lightweight_generated_images_only`.
 - Save teaching visuals as WebP under `generated/`; target 16:9, 1280x720, and roughly 50-100 KB per image.
 - Keep generated images novel teaching visuals. Do not copy source frames, YouTube thumbnails, product logos, OpenAI logos, Tailscale logos, or copyrighted UI.
+- The bundled demo should show both infographic modes when assets are available: a simple text-led card strip and a premium GPT Image 2 / GPT 2.0 image-led card strip for each chapter.
 
 ## Workflow
 
@@ -30,7 +31,7 @@ Build a shipped proof project, not just documentation. The help demo should appe
    - existing examples under `examples/demo-jobs/`
 2. If visuals are missing or stale, generate new teaching visuals. The Impeccable skill is required for this step:
    - First load the design context: run Impeccable with `IMPECCABLE_CONTEXT_DIR=docs/impeccable` and read the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`.
-   - Build each `imagegen` prompt with the `agnostic-infographic` skill's card recipe and base prompt, bound to the project bar in `docs/impeccable/DESIGN.md` §7: premium product-marketing quality, one calm idea per card, an eyebrow label plus one bold tight headline (Inter, large and tight), generous whitespace, and a restrained palette where color comes from a single focal element with one Operator Blue `#3b82f6` accent at most. Choose light or dark for the whole set and hold it. No robots, neon, rainbow palettes, gradient text, decorative drop shadows, clip-art, or truncated labels.
+   - Build each `imagegen` prompt with either the `simple-infographic` or `premium-infographic` skill, bound to the project bar in `docs/impeccable/DESIGN.md` §7. Simple images are quiet text-led card strips. Premium images are image-led card strips and must use GPT Image 2 / GPT 2.0 generation for the bitmap visual, not local vector-only placeholders. In both modes: one calm idea per image, an eyebrow label plus one bold tight headline (Inter, large and tight), generous whitespace, a restrained palette with Operator Blue `#3b82f6` at most, and no static plus buttons, carousel arrows, pagination dots, or navigation controls.
    - Every image must pass the section's acceptance checklist before use. If an image cannot meet the bar, ship fewer images and note the gap in `operator_image_note`; never ship an off-brand image to fill a slot.
    - Convert selected outputs to WebP with `cwebp -q 82 -resize 1280 720`.
    - Copy final WebP assets into `examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/`.

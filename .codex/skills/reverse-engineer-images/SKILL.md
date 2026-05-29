@@ -37,7 +37,7 @@ Do not copy, crop, trace, screenshot, restyle, or directly reproduce original fr
    - Product demo -> generic object, system, or process illustration focused on the lesson.
    - Presenter shot -> omit the person and visualize the concept they are explaining.
    - Brand-heavy frame -> replace brand marks with neutral category labels or the user's authorized brand vocabulary.
-   - Multi-step explanation -> two-or-three-node flow, not a wall of boxes.
+   - Multi-step explanation -> a concise flow or one cohesive card strip, not a wall of unrelated boxes.
 
 4. Build a digest image brief.
    - State the digest chapter concept and source indices.
@@ -85,11 +85,11 @@ Source evidence: [specific facts, numbers, relationships, or visual claims learn
 
 Show: [one transformed teaching idea, not the source frame]. Use [diagram/data figure/line-art/card system/workflow/comparison] to explain [lesson].
 
-Layout: [theme and composition]. Use a small eyebrow label, one bold readable headline, optional one-line body, and one focal visual element. Keep generous margins, precise alignment, and clear hierarchy.
+Layout: [theme and composition]. Use a small eyebrow label, one bold readable headline, optional one-line body, and one focal visual element. The focal element may be a polished row of subcards when the chapter teaches one workflow through several supporting parts. Keep generous margins, precise alignment, and clear hierarchy.
 
 Style: clean premium product-marketing infographic, restrained color, modern neutral sans-serif, no clutter.
 
-Do not include: copied source frames, screenshots, logos, presenter faces, source-specific UI chrome, protected product names unless authorized, watermarks, dense text walls, decorative effects, or any visual that looks like a crop or trace of the original video.
+Do not include: copied source frames, screenshots, logos, presenter faces, source-specific UI chrome, protected product names unless authorized, watermarks, dense text walls, decorative effects, fake plus buttons, carousel arrows, pagination controls, or any visual that looks like a crop or trace of the original video.
 ```
 
 For concise requests, return only the final prompt. For AI digest work, include evidence notes plus the final prompt unless the user asks otherwise.
@@ -121,7 +121,7 @@ Validation:
 - The output image is novel and uses `generated/*.webp`, never a source frame path.
 - Logos, exact UI, presenter faces, copied layouts, and protected trade dress are removed unless the user owns or explicitly authorizes them.
 - The image can stand alone as a teaching card at thumbnail size.
-- The prompt has one clear focal idea and does not ask for a collage of every source detail.
+- The prompt has one clear focal idea and does not ask for a collage of every source detail. If it uses subcards, they all support the same chapter idea and avoid nonfunctional controls.
 
 ## Safety And Rights
 

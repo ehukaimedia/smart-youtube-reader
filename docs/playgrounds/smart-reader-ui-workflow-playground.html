@@ -405,6 +405,46 @@
         linear-gradient(135deg, #15202a, #0c1118 60%);
     }
 
+    .image-open {
+      position: relative;
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: inherit;
+      cursor: zoom-in;
+    }
+
+    .image-open::after {
+      content: "Open larger";
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      border: 1px solid rgba(244,247,251,.2);
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: rgba(5,5,5,.78);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity .16s ease, transform .16s ease;
+      pointer-events: none;
+    }
+
+    .image-open:hover::after, .image-open:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .image-open:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
     .hero-image {
       aspect-ratio: 16/7;
     }
@@ -751,13 +791,13 @@
             `).join('')}
           </aside>
           <article class="article">
-            <div class="hero-image"></div>
+            <button class="image-open" aria-label="Open summary image in a larger view"><div class="hero-image"></div></button>
             ${chapters.map(chapter => `
               <section class="chapter">
                 <h4>${chapter[1]}</h4>
                 <p class="muted">Compact transcript-grounded summary for this concept, with the visual evidence grouped below the explanation.</p>
                 <p>Article text remains capped at a readable 72ch. Utility actions are outside the heading so chapter titles stay clean and scannable.</p>
-                <div class="chapter-image"></div>
+                <button class="image-open" aria-label="Open ${chapter[1]} image in a larger view"><div class="chapter-image"></div></button>
                 <div class="chapter-footer">
                   <button class="btn">Improve images</button>
                   <button class="btn">Curated - remove</button>
@@ -887,7 +927,7 @@
 
       const copy = {
         dashboard: `Implement the canonical Dashboard proposal in ${target}. Keep the existing jobs API, delete flow, copy handlers, group digest prompt generation, ZIP download URLs, global Local/Tailscale app-mode toggle, Help link to /reader/demo-smart-youtube-reader-digest, and job.video_url access intact. Replace the current card-heavy action layout with: top Navbar parity, page title "Learning library", stats row (23 Projects, 7 AI digests, selected count, storage), search input, status pills, sort dropdown, and a conditional group digest bar that renders only when selectedGroupIds.length >= 1. Remove the rendered Tailscale URL block from each card; the app only needs one share affordance, so keep Copy Project Link behind the card overflow menu. Card primary action remains "Open Project" and should navigate to /reader/{job.id}. Add visible "AI Digest" card action for completed source projects, plus visible "Open YouTube" or "Open Source" action based on job.video_url. Put Copy Link, Download ZIP, Add to Group, and Delete behind the card overflow menu. Use the live job titles and preserve status/kind badges.`,
-        reader: `Implement the canonical Reader proposal in ${target}. Keep archive/transcript fetching, polling, copyLearningPrompt, copyProjectLink, AI digest task copy functions, ZIP download, slicer route behavior, and job.video_url intact. Change the header to only show kind badge, title, and status. Move actions into one action bar below the title: Copy Learning Prompt, Copy Project Link, visible Copy AI Digest CLI Task for source projects, Open YouTube, Open Slicer, plus an overflow menu for Copy Text-Only AI Digest Task and Download Project ZIP. Open YouTube should link to the original job.video_url. Use a 250px sticky left chapter index and cap the article column at 72ch. Remove the right action rail. Render chapter titles as plain concept names and move Improve images / curated-remove controls into a small footer toolbar below each chapter summary.`,
+        reader: `Implement the canonical Reader proposal in ${target}. Keep archive/transcript fetching, polling, copyLearningPrompt, copyProjectLink, AI digest task copy functions, ZIP download, slicer route behavior, and job.video_url intact. Change the header to only show kind badge, title, and status. Move actions into one action bar below the title: Copy Learning Prompt, Copy Project Link, visible Copy AI Digest CLI Task for source projects, Open YouTube, Open Slicer, plus an overflow menu for Copy Text-Only AI Digest Task and Download Project ZIP. Open YouTube should link to the original job.video_url. Use a 250px sticky left chapter index and cap the article column at 72ch. Remove the right action rail. Render chapter titles as plain concept names and move Improve images / curated-remove controls into a small footer toolbar below each chapter summary. Preserve the large image view: summary and chapter images are accessible zoom buttons with a hover/focus hint, open a fixed lightbox, lock page scroll, and close from backdrop, Close, or Escape while still offering Open original for the served asset.`,
         slicer: `Implement the canonical Slicer proposal in ${target}. Keep existing job loading, video source resolution, preview/finalize/save handlers, frame selection, return routing, and toast behavior intact. Add a persistent 3-step indicator at the top: 1. Set range, 2. Review frames, 3. Done. Use the review state as the most distinctive layout, keep the video area wide, tighten the right Format panel to about 260px, and fix the visible label from "Expert Ready!" to "Export Ready!". Current baseline has no step indicator; the proposed UI should make workflow state explicit without changing the API contract.`
       }[state.screen];
 

@@ -267,7 +267,7 @@ const BANDS = [
 const NODES = [
   { id:'home',         label:'Home Page',       sub:'app/page.tsx',                     x: 40, y: 50,  w:145, h:52, layer:'ui' },
   { id:'dashboard',    label:'Dashboard',       sub:'cards, digest thumbnails, links',  x:215, y: 50,  w:145, h:52, layer:'ui' },
-  { id:'reader',       label:'Reader',          sub:'archive preview, image QA',        x:390, y: 50,  w:145, h:52, layer:'ui' },
+  { id:'reader',       label:'Reader',          sub:'archive preview, image QA, lightbox', x:390, y: 50,  w:145, h:52, layer:'ui' },
   { id:'slicer-ui',    label:'Slicer UI',       sub:'app/slicer/[jobId]/page.tsx',      x:565, y: 50,  w:145, h:52, layer:'ui' },
   { id:'api-client',   label:'API Client',      sub:'frontend/lib/api.ts',             x:740, y: 50,  w:145, h:52, layer:'ui' },
   { id:'toast',        label:'Toast Provider',  sub:'DOM alerts + confirmations',      x:915, y: 50,  w:145, h:52, layer:'ui' },
@@ -301,7 +301,7 @@ const CONNECTIONS = [
   { from:'dashboard',   to:'main',         type:'data-flow',  label:'GET /jobs' },
   { from:'reader',      to:'main',         type:'event',      label:'polls 2s' },
   { from:'reader',      to:'main',         type:'data-flow',  label:'curate images' },
-  { from:'reader',      to:'data-dir',     type:'data-flow',  label:'load slice timestamps' },
+  { from:'reader',      to:'data-dir',     type:'data-flow',  label:'load images + slice timestamps' },
   { from:'reader',      to:'digest',       type:'event',      label:'copy digest tasks' },
   { from:'slicer-ui',   to:'main',         type:'data-flow',  label:'POST /slicer' },
   { from:'dashboard',   to:'toast',        type:'event',      label:'confirm' },
@@ -739,6 +739,7 @@ function updatePrompt() {
     '• AI digest versions are created by an external-agent CLI draft, not a backend digest model',
     '• The Slicer UI lets users select frame ranges and export clips via FFmpeg',
     '• Reader image QA shows timestamp/quality signals and opens the slicer for operator replacement',
+    '• Reader summary and chapter images open in a larger modal preview with backdrop, Close, Escape, and Open original affordances',
   ].join('\n');
 
   if (state.comments.length) {

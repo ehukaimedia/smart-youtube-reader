@@ -12,19 +12,24 @@
   "digest_created_at": 1779935400,
   "changes_summary": [
     "This bundled digest is a proof deliverable for first-time users.",
-    "It teaches how to use the app and shows the generated-image digest format that makes the project worth sharing."
+    "It teaches how to use the app and shows both simple and premium GPT 2.0 generated-image digest styles."
   ],
   "transcript_policy": "digest_transcript_only",
   "generated_images": [
     "generated/chapter-01-capture-to-archive.webp",
+    "generated/chapter-01-capture-to-archive-premium.webp",
     "generated/chapter-02-reader-context.webp",
+    "generated/chapter-02-reader-context-premium.webp",
     "generated/chapter-03-default-ai-digest.webp",
+    "generated/chapter-03-default-ai-digest-premium.webp",
     "generated/chapter-04-group-digest.webp",
-    "generated/chapter-05-tailscale-sharing.webp"
+    "generated/chapter-04-group-digest-premium.webp",
+    "generated/chapter-05-tailscale-sharing.webp",
+    "generated/chapter-05-tailscale-sharing-premium.webp"
   ],
   "media_policy": "lightweight_generated_images_only",
-  "image_policy": "Bundled demo digest images are novel generated WebP teaching visuals. They are examples of the default external-agent digest deliverable and are not copied from source videos.",
-  "summary_image": "generated/chapter-03-default-ai-digest.webp",
+  "image_policy": "Bundled demo digest images are novel generated WebP teaching visuals. Each chapter includes a simple infographic and a premium GPT 2.0 image-led infographic. They are examples of the default external-agent digest deliverable and are not copied from source videos.",
+  "summary_image": "generated/chapter-03-default-ai-digest-premium.webp",
   "archive": [
     {
       "concept": "Turn Video Into Structured Context",
@@ -33,7 +38,8 @@
       "timestamp_start": 0,
       "timestamp_end": 95,
       "images": [
-        "generated/chapter-01-capture-to-archive.webp"
+        "generated/chapter-01-capture-to-archive.webp",
+        "generated/chapter-01-capture-to-archive-premium.webp"
       ],
       "source_indices": [
         0
@@ -41,7 +47,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visual showing source video to local archive."
+        "note": "Generated demo visuals showing source video to local archive in simple and premium styles."
       }
     },
     {
@@ -51,7 +57,8 @@
       "timestamp_start": 95,
       "timestamp_end": 190,
       "images": [
-        "generated/chapter-02-reader-context.webp"
+        "generated/chapter-02-reader-context.webp",
+        "generated/chapter-02-reader-context-premium.webp"
       ],
       "source_indices": [
         1
@@ -59,7 +66,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visual showing the reader as structured AI context."
+        "note": "Generated demo visuals showing the reader as structured AI context in simple and premium styles."
       }
     },
     {
@@ -69,7 +76,8 @@
       "timestamp_start": 190,
       "timestamp_end": 315,
       "images": [
-        "generated/chapter-03-default-ai-digest.webp"
+        "generated/chapter-03-default-ai-digest.webp",
+        "generated/chapter-03-default-ai-digest-premium.webp"
       ],
       "source_indices": [
         2
@@ -77,7 +85,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visual showing Codex plus GPT 2.0 images creating the default digest deliverable."
+        "note": "Generated demo visuals showing Codex plus GPT 2.0 images creating the default digest deliverable in simple and premium styles."
       }
     },
     {
@@ -87,7 +95,8 @@
       "timestamp_start": 315,
       "timestamp_end": 420,
       "images": [
-        "generated/chapter-04-group-digest.webp"
+        "generated/chapter-04-group-digest.webp",
+        "generated/chapter-04-group-digest-premium.webp"
       ],
       "source_indices": [
         3
@@ -95,7 +104,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visual showing multi-project synthesis into one lesson."
+        "note": "Generated demo visuals showing multi-project synthesis into one lesson in simple and premium styles."
       }
     },
     {
@@ -105,7 +114,8 @@
       "timestamp_start": 420,
       "timestamp_end": 520,
       "images": [
-        "generated/chapter-05-tailscale-sharing.webp"
+        "generated/chapter-05-tailscale-sharing.webp",
+        "generated/chapter-05-tailscale-sharing-premium.webp"
       ],
       "source_indices": [
         4
@@ -113,7 +123,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visual showing global Local/Tailscale app mode."
+        "note": "Generated demo visuals showing global Local/Tailscale app mode in simple and premium styles."
       }
     }
   ]

@@ -145,11 +145,16 @@ Do not use an in-app model option. You are the digest-and-image agent. Codex wit
 Run commands from the smart-youtube-reader repo root.
 
 Important:
+- Infographic style is a human choice. Before generating images, set one style for the whole digest:
+  - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
+  - premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+  If the human has not chosen, pick the style that best fits the material and record the choice in operator_image_note.
 - Read archive.json and inspect the attached frame images before deciding what to keep.
 - Create a new digestible chapter structure, not a light paraphrase.
 - Create one novel generated WebP teaching image per digest chapter.
 - Keep the digest to at most 6 chapters/images. If the material truly needs more than 6 images, explain the needed count in operator_image_note and still produce the best 6-image digest.
 - Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
+- Do not include fake plus buttons, carousel arrows, pagination dots, or navigation controls inside static infographic images.
 - Save and reference only generated/*.webp output images in the draft.
 
 Workflow:
@@ -214,6 +219,11 @@ Run commands from the smart-youtube-reader repo root.
 
 Important: this is not a source-frame merge. Read all source archives and inspect the attached frame images as evidence, then create one novel, intuitive combined transcript and exactly 3 novel WebP AI teaching images from that new transcript.
 
+Infographic style is a human choice. Before generating images, set one style for the whole group digest:
+- simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
+- premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+If the human has not chosen, pick the style that best fits the material and record the choice in the image prompts.
+
 Teaching goal:
 - Teach digestible facts, theory, and testable hypotheses.
 - Do not concatenate or lightly paraphrase the source transcripts.
@@ -224,7 +234,7 @@ Workflow:
    python3 tools/create_group_ai_digest_version.py ${quotedProjects} --title "${groupTitle || 'Combined Learning Digest'}"
 2. Read every archive.json and inspect the attached frame images before deciding what to keep.
 3. Merge repeated lessons across videos into a new transcript with chapter-level facts, theory, and hypotheses. Cut fluff, repetition, intros/outros, and low-value transitions.
-4. Create exactly 3 new WebP AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output.
+4. Create exactly 3 new WebP AI teaching images from the new combined transcript. Do not copy original frames, screenshots, or YouTube thumbnails into the output. Do not include fake plus buttons, carousel arrows, pagination dots, or navigation controls inside static infographic images.
 5. Write the required JSON draft and the 3 generated WebP images to the staging paths printed by the CLI.
 6. Materialize the group AI digest with the command printed by the CLI.
 7. Verify the dashboard shows the new project with a Group AI Digest badge and the reader opens it.
