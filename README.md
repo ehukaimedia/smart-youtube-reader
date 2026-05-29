@@ -10,7 +10,7 @@
 
 The repository ships with bundled **Smart YouTube Reader Demo Digest** examples so the first dashboard already contains finished deliverables. They teach how to use the system and show the viral edge: structured context becomes a concise, visual, shareable learning artifact.
 
-[Open the demo selector from the app](http://localhost:3001/demo) after running `./start.command`, or use the **Help** link in the top navigation. The selector has tabs for the **Claude Opus 4.8**, **Codex GPT 5.5**, and **Gemini 3.5 Flash High** versions, and each demo reader includes the same provider switcher for side-by-side review.
+[Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation. The demo reader includes a provider switcher for the **Claude Opus 4.8**, **Codex GPT 5.5**, and **Gemini 3.5 Flash High** versions.
 
 No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally on Apple Silicon using Gemma 4 through MLX-VLM; the external-agent demos are optional examples for generating polished follow-up digest images. When you want tighter visual evidence, the slicer lets you manually select the exact video frames that best match the chapter content.
 
