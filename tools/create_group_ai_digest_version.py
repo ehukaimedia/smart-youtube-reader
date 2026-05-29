@@ -110,8 +110,9 @@ Teaching contract:
 - Prefer plain causal language over trading-video narration. Avoid "the speaker says" framing.
 
 Critical image rule:
-- Choose one infographic style for the whole group digest before creating images: "simple" via .codex/skills/simple-infographic or "premium" via .codex/skills/premium-infographic. If the human gave a preference, obey it; otherwise choose the style that best fits the material and record the choice in each image prompt.
+- Choose one infographic style for the whole group digest before creating images: "simple" via .codex/skills/simple-infographic or "premium" via .codex/skills/premium-infographic. Use premium for full-color, concept-adaptive visual-learning infographics when the combined lesson benefits from richer teaching imagery. If the human gave a preference, obey it; otherwise choose the style that best fits the material and record the choice in each image prompt.
 - Premium style must use GPT Image 2 / GPT 2.0 image generation for the bitmap visual, not local vector-only placeholders.
+- Premium images are not hard-gated to a carousel, blue-only accent, light/dark theme, or single template. Reverse-engineer the combined lesson and choose the composition and palette that best make the mental model memorable and pleasing to understand.
 - Inspect the original frame images while researching.
 - Do not copy source frames, YouTube thumbnails, screenshots, or original image paths into the output.
 - The output project must use only {IMAGE_COUNT} newly generated WebP teaching images created from the new combined transcript.

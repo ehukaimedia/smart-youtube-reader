@@ -9,7 +9,7 @@ description: Use when building, repairing, or updating the bundled Smart YouTube
 
 Build a shipped proof project, not just documentation. The help demo should appear in the dashboard, open from the top-nav Help link, teach how to use Smart YouTube Reader, and show a polished generated-image AI digest deliverable.
 
-**Required gate:** the Impeccable skill governs all AI digest image work. Before generating or updating any teaching image, load the design context (`IMPECCABLE_CONTEXT_DIR=docs/impeccable`) and follow the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`. The bar is premium product-marketing quality. Every image must pass that section's acceptance checklist before it ships. This is not optional and is the difference between a proof point and AI slop.
+**Required gate:** the Impeccable skill governs all AI digest image work. Before generating or updating any teaching image, load the design context (`IMPECCABLE_CONTEXT_DIR=docs/impeccable`) and follow the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`. The bar is inspired visual learning: evidence-grounded, high-definition, emotionally rewarding, and useful to humans and AI. Every image must pass that section's acceptance checklist before it ships. This is not optional and is the difference between a proof point and AI slop.
 
 ## Required Shape
 
@@ -35,7 +35,7 @@ Build a shipped proof project, not just documentation. The help demo should appe
    - existing examples under `examples/demo-jobs/`
 2. If visuals are missing or stale, generate new teaching visuals. The Impeccable skill is required for this step:
    - First load the design context: run Impeccable with `IMPECCABLE_CONTEXT_DIR=docs/impeccable` and read the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`.
-   - Build each image with either the `simple-infographic` or `premium-infographic` skill, bound to the project bar in `docs/impeccable/DESIGN.md` §7. Simple images are quiet text-led card strips. Premium images are image-led card strips. In both modes: one calm idea per image, an eyebrow label plus one bold tight headline (Inter, large and tight), generous whitespace, a restrained palette with Operator Blue `#3b82f6` at most, and no static plus buttons, carousel arrows, pagination dots, or navigation controls.
+   - Build each image with either the `simple-infographic` or `premium-infographic` skill, bound to the project bar in `docs/impeccable/DESIGN.md` §7. Simple images are quiet text-led card strips. Premium images are full-color visual-learning infographics customized to the digest concept. Premium is not hard-gated to a carousel, blue-only palette, dark template, or single house layout; reverse-engineer the chapter idea and choose the composition that best teaches it. In both modes: one durable idea per image, an eyebrow label plus one bold tight headline where useful, generous whitespace, high-definition polish, and no static plus buttons, carousel arrows, pagination dots, or navigation controls.
    - Produce the bitmap with the path the harness supports. **Claude Opus 4.8 variant:** author each card as a complete HTML/CSS/SVG editorial composition and render it to 1280x720 raster with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP). This is the genuine Claude Opus 4.8-generated artifact — never a thin vector placeholder. A harness with a native image model may instead generate the focal bitmap with that model.
    - Every image must pass the section's acceptance checklist before use. If an image cannot meet the bar, ship fewer images and note the gap in `operator_image_note`; never ship an off-brand image to fill a slot.
    - Convert selected outputs to WebP with `cwebp -q 82 -resize 1280 720`.
@@ -63,13 +63,13 @@ Build a shipped proof project, not just documentation. The help demo should appe
 The runnable tooling for the Claude image path lives in this skill's `scripts/`, so you do not rebuild the toolchain each time. This is the fast path; it removes the setup work, not the design judgment.
 
 - `scripts/setup_fonts.sh [dir]` fetches Inter woff2 into `fonts/` (Inter is not installed system-wide).
-- `scripts/infographic_kit.py` provides `simple_page`, `premium_page`, `node`, `arrow`, `glyph`, `write_pages`. Its theme tokens, glyph library, and light/dark card templates already satisfy the `docs/impeccable/DESIGN.md` Section 7 checklist (Inter, Operator Blue `#3b82f6` as the only accent, committed theme, no decorative shadows, no rainbow, no fake controls).
+- `scripts/infographic_kit.py` provides `simple_page`, `premium_page`, `node`, `arrow`, `glyph`, `write_pages`. Its theme tokens, glyph library, and light/dark card templates are a reusable production starting point (Inter, authored theme, no decorative shadows, no fake controls). They are not the ceiling for premium work: extend the templates with concept-led full color, richer imagery, and custom visual structure when that teaches the digest better.
 - `scripts/render_to_webp.py <html_dir> <out_dir>` renders each HTML with headless Chrome (Playwright `channel="chrome"`) at 2x, then `cwebp` to 1280x720 WebP.
 
 Fast path:
 
 1. `bash <skill>/scripts/setup_fonts.sh fonts`
-2. Write a short generator that imports the kit and builds one `simple_page` (light, 4-6 cards) and one `premium_page` (dark, a focal `node()`/`arrow()` flow or panel) per chapter. Keep simple = light, premium = dark; that is the Claude identity. One calm idea, tight headline, fully written labels.
+2. Write a short generator that imports the kit and builds one `simple_page` (light, 4-6 cards) and one premium visual per chapter. The existing `premium_page` helper is a fast path, not a hard gate; adapt color, composition, focal imagery, and structure to the chapter concept when that improves teaching. One durable idea, tight headline, fully written labels.
 3. Smoke-test the toolchain first: `python3 <skill>/scripts/infographic_kit.py` then `python3 <skill>/scripts/render_to_webp.py _kit_example/html _kit_example/out`. Then render your set into the demo folder's `generated/`.
 4. Render one premium card and get a thumbs-up before producing the rest. Validate every image against the Section 7 checklist and confirm 1280x720 WebP.
 

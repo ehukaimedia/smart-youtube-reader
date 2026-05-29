@@ -141,7 +141,7 @@ Run commands from the smart-youtube-reader repo root.
 Important:
 - Infographic style is a human choice. Before generating images, set one style for the whole digest:
   - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
-  - premium: use .codex/skills/premium-infographic and GPT 5.5 image generation for image-led editorial teaching images.
+  - premium: use .codex/skills/premium-infographic and GPT 5.5 image generation for full-color, concept-adaptive visual-learning images that teach the chapter idea.
   If the human has not chosen, pick the style that best fits the material and record the choice in operator_image_note.
 - Read archive.json and inspect the attached frame images before deciding what to keep.
 - Create a new digestible chapter structure, not a light paraphrase.

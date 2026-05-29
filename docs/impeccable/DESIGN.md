@@ -111,8 +111,8 @@ components:
     rounded: "{rounded.md}"
     padding: "14px"
 imagery:
-  northStar: "premium product-marketing infographic cards"
-  theme: "light or dark, chosen per digest and held consistent across all images"
+  northStar: "inspired visual learning"
+  theme: "concept-led visual system, adapted per digest and held coherent across all images"
   canvasLight: "#ffffff or #f5f5f7"
   canvasDark: "#000000 to #101012"
   headlineLight: "#1d1d1f"
@@ -120,7 +120,7 @@ imagery:
   bodyLight: "#6e6e73"
   bodyDark: "#a1a1a6"
   accent: "Operator Blue #3b82f6 fill, #2563eb text"
-  accentRule: "one accent at most, color comes from one focal element, never a rainbow"
+  accentRule: "premium images may use full color when it teaches; color must be intentional, never arbitrary"
   font: "Inter, Helvetica Neue, or the system UI sans, never a default serif"
   elevation: "flat, subtle shadow only under a real product photo, never decorative"
   craft: "generous whitespace, precise alignment, one idea per card"
@@ -301,9 +301,9 @@ A horizontal bar of buttons that sits beneath a page title, holding one primary 
 
 This section governs the images an AI digest generates: the per-chapter teaching cards and the summary image. It is the executable contract a designing agent (Codex or any image-capable agent) follows when it creates those images.
 
-**North star: premium product-marketing infographic cards.** The standard is the clean, spacious, typographic style of high-end product pages: a single calm idea per card, a small eyebrow label, one bold tight headline, generous whitespace, precise alignment, and a restrained palette where color comes from one focal element, not from decoration.
+**North star: inspired visual learning.** The standard is the clean, spacious, typographic craft of high-end product pages, but the goal is teaching, not template compliance. Each image should make a digest idea easier to grasp, more memorable, and more pleasurable to look at. Premium visuals may use full color, cinematic atmosphere, rich focal imagery, diagrams, or card strips when those choices help the viewer feel curiosity, recognition, and inspired understanding.
 
-This is a different surface from the app chrome. The dark operator UI in Sections 2 through 6 governs buttons, cards, and nav inside the app. These generated images instead follow the premium direction below, and they may be **light or dark**: that choice is the agent's, made per digest, and is the only sanctioned exception to the app's "never white" rule. The bar is not a theme; the bar is quality.
+This is a different surface from the app chrome. The dark operator UI in Sections 2 through 6 governs buttons, cards, and nav inside the app. Generated digest images follow the premium direction below and may be light, dark, full-color, photographic, diagrammatic, or mixed when the concept calls for it. The bar is not a theme; the bar is quality and learning impact.
 
 ### Where these images appear
 
@@ -315,27 +315,28 @@ This is a different surface from the app chrome. The dark operator UI in Section
 - 16:9, at least 1280x720 (1600x900 preferred), WebP, roughly 50 to 120 KB. One image carries one idea.
 - Legible at 320px wide: the eyebrow, headline, and one key element must read at thumbnail scale.
 
-### Pick a theme, then commit (light or dark)
+### Pick a visual system, then commit
 
-Choose one theme for the whole digest and hold it across all six images. Mixing light and dark within one digest is a defect.
+Choose one visual system for the whole digest and hold its logic across all images. This is not a hard gate to one layout, one accent, or one background color. A coherent set can mix light and dark moments when the concept calls for it, as long as type, pacing, composition, and palette feel authored rather than accidental.
 
 - **Light** (default for explanatory or diagrammatic content): canvas pure white (`#ffffff`) or light grey (`#f5f5f7`). Headline near-black (`#1d1d1f`), body secondary grey (`#6e6e73`).
 - **Dark** (for dramatic, data-forward, or photographic content): canvas true black (`#000000`) to charcoal (`#101012`). Headline white (`#f5f5f7`), body grey (`#a1a1a6`).
-- **Tinted** (optional, at most one soft hue per card): a single desaturated wash (sky `#e8f0fb`, lavender `#ece9f6`, peach `#f7ece6`, mint `#e9f3ec`). The tint is the canvas, not an accent on top of it.
+- **Full-color premium** (for inspired visual learning): use a concept-led palette with saturated focal color, gradients, atmosphere, data color, or illustrative color when it increases comprehension, emotion, and recall. Full color must be composed, not random category coloring.
 
 ### Card craft
 
-The reusable card recipes live in the infographic skills: `simple-infographic` for quiet text-led card strips, `premium-infographic` for image-led editorial card strips, and `agnostic-infographic` for shared neutral rules. Use the style the operator chooses. Premium generated assets require GPT Image 2 / GPT 2.0 image generation for the bitmap visual, not local vector-only placeholders. This section sets the project-specific bar the skill output must meet, defined by the theme, palette, type, named rules, and acceptance checklist below.
+The reusable card recipes live in the infographic skills: `simple-infographic` for quiet text-led card strips, `premium-infographic` for adaptive full-color visual-learning infographics, and `agnostic-infographic` for shared neutral rules. Use the style the operator chooses. Premium generated assets should use the strongest available image path for the bitmap visual, with local post-processing allowed for type, cropping, WebP conversion, and placement. This section sets a quality bar, not a rigid house template.
 
 For generated digest images, "one card" means one cohesive teaching image. That image may be a single hero diagram, a large data figure, or a polished horizontal strip of subcards when the chapter is best explained as one workflow or capability set. Do not force a useful card-strip idea into one lone icon.
 
-The focal composition is chosen per chapter: clean single-color line-art, one large confident data figure, a restrained two-or-three-node diagram, or a compact row of subcards that all support the same headline. Whichever it is, it uses the project palette below, not a new one.
+The focal composition is chosen per chapter: full-color editorial card strip, one large confident data figure, cinematic metaphor, map/status scene, process flow, comparison tableau, abstract teaching image, or another concept-specific form. Reverse-engineer the evidence first, then choose the form that teaches the concept best.
 
-### Color discipline
+### Color and visual-reward discipline
 
-- **Restraint first.** The canvas and type carry the card. Color enters through the one focal element, not the chrome.
-- **One accent: Operator Blue.** Links and any pill or CTA use `#2563eb` (text) or `#3b82f6` (filled). Line-art uses Operator Blue as its single stroke color on light backgrounds. Nothing else competes.
-- **No rainbow.** A different bright hue per box is the clearest tell of slop. If two elements need to differ, differ by weight, size, or label, not by inventing a new color.
+- **Teaching first.** Color should clarify relationships, hierarchy, sequence, contrast, status, or emotional stakes.
+- **Full color is allowed and encouraged in premium.** Use it to make the image pleasing to the mind and eye, giving the viewer a small reward for understanding the concept.
+- **Avoid arbitrary color.** A different bright hue per box still reads as slop when the hues do not teach anything. If color varies, the variation must encode meaning, mood, focal emphasis, or scene identity.
+- **Operator Blue remains the product accent.** It is available for system diagrams and labels, but premium images are not limited to blue-only line art.
 
 ### Typography
 
@@ -346,11 +347,12 @@ The focal composition is chosen per chapter: clean single-color line-art, one la
 
 - **The Craft Rule.** Alignment, optical balance, and generous whitespace are not optional polish; they are the design. A cramped or misaligned card fails even if every element is "correct."
 - **The One-Idea Rule.** One generated image states one idea. A card strip is acceptable when every subcard supports that same idea; if the image needs a second headline-level idea, it needs a second chapter.
-- **The Restrained-Color Rule.** Color comes from one focal element and at most one Operator Blue accent. No rainbow, no per-box hues.
+- **The Inspired-Learning Rule.** A premium image should make the idea feel worth understanding. Beauty, color, novelty, and visual reward are valid teaching tools when they preserve the facts.
+- **The Adaptive-Structure Rule.** Premium images are not hard-gated to a single card-strip grammar, theme, or palette. Choose the structure that fits the digest concept.
 - **The No-Truncation Rule.** Every label is fully written. Ellipsis truncation ("3. Craft...") and text clipped by the edge are defects. Shorten the wording; never clip glyphs.
 - **The No-Collision Rule.** Lines, arrows, and connectors never cross text. Leave a clear gap.
 - **The No-Redundant-Controls Rule.** Static generated digest images do not show fake plus buttons, expand links, carousel arrows, pagination dots, or other nonfunctional controls. The image is the artifact; the reader UI already supplies navigation and interaction.
-- **The Consistent-Set Rule.** All six images share one theme, one type scale, one accent, and one card treatment. A set that mixes light and dark, or shifts the accent per image, has failed as a set even if each image passes alone.
+- **The Coherent-Set Rule.** The set shares design authorship: type quality, composition discipline, image sharpness, and visual-learning intent. It may adapt color and structure per chapter when the concepts need different teaching forms.
 
 ### Banned (these read as AI slop, in either theme)
 
@@ -358,7 +360,7 @@ The focal composition is chosen per chapter: clean single-color line-art, one la
 - neon glow, bloom, lens flare, holographic or HUD treatments, particle fields, starfields
 - purple-to-magenta or cyberpunk gradients; gradient text
 - faux-3D renders or glassy chrome used as decoration
-- rainbow category palettes (a different bright hue per box)
+- arbitrary rainbow category palettes where color has no teaching role
 - drop shadows used as decoration (a subtle, realistic shadow under a real product photo is fine; a soft shadow under every flat card is not)
 - grids of identical icon + heading + text tiles that read as wallpaper rather than one composed teaching card
 - generic default fonts presented as the type style (Arial, DejaVu, Liberation)
@@ -368,27 +370,28 @@ The focal composition is chosen per chapter: clean single-color line-art, one la
 
 ### Building the generation prompt
 
-Start from the base image-generation prompt in the **agnostic-infographic** skill, then bind these project values into it before calling the image model:
+Start from the base image-generation prompt in the **agnostic-infographic** or **premium-infographic** skill, then bind these project values into it before calling the image model:
 
-- **Theme:** the one chosen above (light, dark, or one tint), held across all six images.
-- **Accent:** Operator Blue, filled `#3b82f6` / deep `#2563eb`, as the single accent and the line-art stroke color. No second hue.
+- **Visual-learning goal:** what the viewer should understand faster, remember longer, and feel inspired by.
+- **Composition:** the form that fits the chapter: card strip, hero diagram, data scene, map/status surface, cinematic metaphor, process flow, or comparison tableau.
+- **Palette:** concept-led full color when useful; restrained when the concept calls for calm. Color must teach or reward, not decorate randomly.
 - **Type:** Inter (or the nearest clean grotesk the generator supports).
 - **Per chapter:** the `Show:` line carries the chapter's one idea plus its concrete specifics (numbers, benchmark names, proper nouns, named examples).
-- **Constraints:** the Banned list and the acceptance checklist below are hard requirements on the result, not suggestions.
+- **Constraints:** source-copying, unreadable text, fake controls, and rights violations remain hard stops. Layout and palette are adaptive.
 
 ### Acceptance checklist (run this before referencing any image)
 
-This is `detect`, applied to images. Confirm every line; any "no" means regenerate, do not ship.
+This is `detect`, applied to images. Use it as a design review, not a template lock. Source-copying, illegible text, fake controls, and rights issues are hard stops; layout, palette, and imagery should adapt until the image teaches well.
 
-- [ ] Reads like a premium product-marketing teaching card: one idea, generous whitespace, precise alignment.
-- [ ] Single theme committed (light, dark, or one tint) and consistent across all six images.
-- [ ] Color is restrained; one focal element carries it; one Operator Blue accent at most; no rainbow, no per-box hues.
+- [ ] Reads like premium visual learning: one idea, generous whitespace, precise alignment, and a memorable mental model.
+- [ ] Structure adapts to the chapter concept rather than forcing a generic template.
+- [ ] Color is concept-led and pleasing; full color is welcome when it teaches, inspires, or improves recall.
 - [ ] Inter-style grotesk; hierarchy from size and weight, not color; no gradient text.
 - [ ] Eyebrow + headline structure present; headline tight and confident; at most two headline lines.
 - [ ] Every label fully written; nothing truncated or clipped by the edge; no line crosses text.
 - [ ] One idea per image; if it uses subcards, every subcard supports the same chapter idea and the chapter's concrete specifics are present and correct.
 - [ ] No redundant static controls: no plus buttons, expand links, carousel arrows, or pagination dots.
-- [ ] No robot, mascot, face, neon, hologram, 3D render, or grid of identical tiles.
+- [ ] No robot, mascot, copied face, hologram, faux-3D decoration, or grid of identical tiles.
 - [ ] No decorative drop shadows (subtle shadow under a real product photo only).
 - [ ] Readable at 320px thumbnail width.
 
@@ -400,4 +403,4 @@ The design context lives in `docs/impeccable/` (this file and PRODUCT.md). Point
 IMPECCABLE_CONTEXT_DIR=docs/impeccable
 ```
 
-The AI digest task prompt (`tools/create_ai_digest_version.py`) and the help-demo skill instruct the digest agent to load this context, build images with the **agnostic-infographic** skill's card recipe, and satisfy the checklist above before referencing any image. This section sets the bar; that skill provides the craft. If the agent cannot meet the bar for a chapter, it ships fewer images and records the gap in `operator_image_note`; it never ships an off-brand image to fill a slot.
+The AI digest task prompt (`tools/create_ai_digest_version.py`) and the help-demo skill instruct the digest agent to load this context, reverse-engineer source evidence, build images with the infographic skills, and satisfy the checklist above before referencing any image. This section sets the learning bar; the skills provide the craft. If the agent cannot meet the bar for a chapter, it ships fewer images and records the gap in `operator_image_note`; it never ships an off-brand image to fill a slot.
