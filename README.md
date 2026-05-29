@@ -10,9 +10,15 @@
 
 The repository ships with bundled **Smart YouTube Reader Demo Digest** examples so the first dashboard already contains finished deliverables. They teach how to use the system and show the viral edge: structured context becomes a concise, visual, shareable learning artifact.
 
-[Open the demo selector from the app](http://localhost:3001/demo) after running `./start.command`, or use the **Help** link in the top navigation. The selector has tabs for the Codex + GPT 2.0 image version and the Gemini 3.5 Flash High image version.
+[Open the demo selector from the app](http://localhost:3001/demo) after running `./start.command`, or use the **Help** link in the top navigation. The selector has tabs for the **Claude Opus 4.8**, **Codex GPT 5.5**, and **Gemini 3.5 Flash High** versions, and each demo reader includes the same provider switcher for side-by-side review.
 
-![Default AI digest workflow: archive evidence to Codex agent to GPT 2.0 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally on Apple Silicon using Gemma 4 through MLX-VLM; the external-agent demos are optional examples for generating polished follow-up digest images. When you want tighter visual evidence, the slicer lets you manually select the exact video frames that best match the chapter content.
+
+![Default AI digest workflow: archive evidence to Codex agent to GPT 5.5 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+
+| Claude Opus 4.8 premium | Codex GPT 5.5 premium | Gemini 3.5 Flash High premium |
+|---|---|---|
+| ![Claude premium demo digest image](examples/demo-jobs/smart-youtube-reader-claude/generated/chapter-03-default-ai-digest-premium.webp) | ![Codex premium demo digest image](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest-premium.webp) | ![Gemini premium demo digest image](examples/demo-jobs/smart-youtube-reader-gemini/generated/chapter-04-group-digest-premium.webp) |
 
 | Capture | Reader context | Group synthesis |
 |---|---|---|
@@ -28,6 +34,7 @@ The repository ships with bundled **Smart YouTube Reader Demo Digest** examples 
 Smart YouTube Reader is built on a **local-first** architecture.
 * **No Database**: It uses the local filesystem for all storage. Jobs, transcripts, and frames are kept under the `data/` directory.
 * **Privacy & Control**: All processing is performed on your machine.
+* **No AI subscription for the initial digest**: The first structured video archive is generated locally; paid cloud AI tools are optional for later external-agent digest variants.
 * **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local MLX-VLM server management.
 * **Frontend**: A Next.js (React) application provides a visual dashboard, an interactive reader with timestamp-linked transcript search, and a clip-slicer.
 
@@ -56,11 +63,11 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 - **Visual matching** — Each chapter is paired with high-signal frames from the video using local frame metadata
 - **Local model** — Archive generation uses Gemma 4 models through MLX-VLM
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
-- **Video Slicer** — Cut precise clips from any job and export them with full metadata
+- **Video Slicer** — Cut precise clips and manually select the frames that best match the chapter content
 - **Large image inspection** — Click any Reader summary or chapter image to open a focused larger view with the original file link
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
 - **External-agent AI Digests** — Copy a CLI task for Codex, Claude, or another LLM to create a shorter learning-focused digest without modifying the source project
-- **AI Digest with Images** — Default digest workflow: Codex paired with GPT 2.0 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence
+- **AI Digest with Images** — Default digest workflow: Codex paired with GPT 5.5 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence
 - **Group AI Digests** — Combine multiple completed projects into a novel cross-video lesson with durable facts, theory, hypotheses, and generated WebP teaching images
 
 ---
@@ -136,9 +143,9 @@ npm run build
 ## CLIs & Tooling
 
 ### AI Digest CLI
-AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex, Claude, or another capable LLM. The copied task lets the operator choose `simple` text-led infographics or `premium` GPT Image 2 / GPT 2.0 image-led infographics before generation. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
+AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex, Claude, or another capable LLM. The copied task lets the operator choose `simple` text-led infographics or `premium` GPT 5.5 image-led infographics before generation. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
 
-The recommended default workflow is Codex paired with GPT 2.0 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
+The recommended default workflow is Codex paired with GPT 5.5 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>"
@@ -156,7 +163,7 @@ Both commands print the exact task for Codex, Claude, or another agent. The agen
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "data/jobs/<project-folder>/generated/ai-digest-draft.json"
 ```
 
-The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Text-only AI digests preserve image references from kept source chapters so humans can curate images later. Default AI digests create one novel generated WebP teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project. Premium infographic mode requires GPT Image 2 / GPT 2.0 image generation for the bitmap visual rather than local vector-only placeholders.
+The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Text-only AI digests preserve image references from kept source chapters so humans can curate images later. Default AI digests create one novel generated WebP teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project. Premium infographic mode requires GPT 5.5 image generation for the bitmap visual rather than local vector-only placeholders.
 
 Every digest task includes `preservation_items` extracted from the archive and transcript slices. Treat them as a checklist for names, metrics, benchmarks, examples, and claim direction so the digest is shorter without losing the facts that make the video useful.
 
@@ -165,7 +172,7 @@ Group digest creation combines two or more completed projects into one new learn
 
 Unlike a single-video digest, a group digest is not a playlist export and does not preserve original frame paths. The agent reads every source `archive.json`, inspects frame images as evidence, and writes a novel combined transcript rather than concatenating source transcripts. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
 
-The materialized group project contains exactly three newly generated WebP teaching images. Codex with GPT 2.0 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
+The materialized group project contains exactly three newly generated WebP teaching images. Codex GPT 5.5 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
 
 ```bash
 python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/jobs/<project-two>" --title "Combined Learning Digest"

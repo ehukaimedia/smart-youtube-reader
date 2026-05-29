@@ -3,41 +3,11 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { getApiBase } from '@/lib/api';
-
-type DemoKey = 'codex' | 'gemini';
-
-const DEMOS: Record<DemoKey, {
-    label: string;
-    title: string;
-    model: string;
-    jobId: string;
-    folder: string;
-    summaryImage: string;
-    description: string;
-}> = {
-    codex: {
-        label: 'Codex',
-        title: 'Codex Demo Digest',
-        model: 'Codex + GPT 2.0 images',
-        jobId: 'demo-smart-youtube-reader-digest',
-        folder: 'smart-youtube-reader-demo-digest_demo',
-        summaryImage: 'generated/chapter-03-default-ai-digest-premium.webp',
-        description: 'The default bundled proof project, using Codex with GPT 2.0 image generation for the premium teaching-card set.'
-    },
-    gemini: {
-        label: 'Gemini',
-        title: 'Gemini Demo Digest',
-        model: 'Gemini 3.5 Flash High images',
-        jobId: 'demo-smart-youtube-reader-gemini',
-        folder: 'smart-youtube-reader-gemini',
-        summaryImage: 'generated/chapter-03-default-ai-digest-premium.webp',
-        description: 'A parallel bundled proof project, using Gemini 3.5 Flash High image generation for the simple and premium teaching-card sets.'
-    }
-};
+import { DEFAULT_DEMO_JOB_ID, DEMO_PROVIDERS } from '../components/demoProviders';
 
 export default function DemoPage() {
-    const [activeDemo, setActiveDemo] = useState<DemoKey>('codex');
-    const demo = DEMOS[activeDemo];
+    const [activeJobId, setActiveJobId] = useState(DEFAULT_DEMO_JOB_ID);
+    const demo = DEMO_PROVIDERS.find((provider) => provider.jobId === activeJobId) ?? DEMO_PROVIDERS[0];
     const imageUrl = `${getApiBase()}/data/jobs/${demo.folder}/${demo.summaryImage}`;
 
     return (
@@ -46,6 +16,12 @@ export default function DemoPage() {
                 <div>
                     <h1 className="page-title">Demo digest</h1>
                     <p className="muted">Choose the image-generation version you want to inspect.</p>
+                    <p className="muted" style={{ marginTop: '0.5rem', maxWidth: '64ch' }}>
+                        The initial video digest runs locally with Gemma 4 through MLX-VLM, so no AI subscription is needed to capture and read a structured archive. These demos compare optional external-agent image digest styles.
+                    </p>
+                    <p className="muted" style={{ marginTop: '0.5rem', maxWidth: '64ch' }}>
+                        For source archives, the slicer lets you manually select the exact video frames that best match the chapter content before sharing or sending the archive to an agent.
+                    </p>
                 </div>
                 <Link href="/dashboard" className="btn btn-secondary btn-compact">
                     Dashboard
@@ -53,19 +29,18 @@ export default function DemoPage() {
             </header>
 
             <div className="demo-tabs" role="tablist" aria-label="Demo digest image generator">
-                {(Object.keys(DEMOS) as DemoKey[]).map((key) => {
-                    const item = DEMOS[key];
-                    const isActive = activeDemo === key;
+                {DEMO_PROVIDERS.map((item) => {
+                    const isActive = demo.jobId === item.jobId;
                     return (
                         <button
-                            key={key}
+                            key={item.jobId}
                             type="button"
                             role="tab"
                             aria-selected={isActive}
                             aria-controls="demo-panel"
-                            id={`demo-tab-${key}`}
+                            id={`demo-tab-${item.label.toLowerCase()}`}
                             className={`demo-tab ${isActive ? 'active' : ''}`}
-                            onClick={() => setActiveDemo(key)}
+                            onClick={() => setActiveJobId(item.jobId)}
                         >
                             <span>{item.label}</span>
                             <small>{item.model}</small>
@@ -77,7 +52,7 @@ export default function DemoPage() {
             <section
                 id="demo-panel"
                 role="tabpanel"
-                aria-labelledby={`demo-tab-${activeDemo}`}
+                aria-labelledby={`demo-tab-${demo.label.toLowerCase()}`}
                 className="demo-panel"
             >
                 <div className="demo-preview">

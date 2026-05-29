@@ -141,13 +141,13 @@ export default function DashboardPage() {
         const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
         const prompt = `Create the default Smart YouTube Reader AI digest version with generated WebP teaching images for this project using the local CLI.
 
-Do not use an in-app model option. You are the digest-and-image agent. Codex with GPT 2.0 image generation is the recommended setup.
+Do not use an in-app model option. You are the digest-and-image agent. Codex GPT 5.5 image generation is the recommended setup.
 Run commands from the smart-youtube-reader repo root.
 
 Important:
 - Infographic style is a human choice. Before generating images, set one style for the whole digest:
   - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
-  - premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+  - premium: use .codex/skills/premium-infographic and GPT 5.5 image generation for image-led editorial teaching images.
   If the human has not chosen, pick the style that best fits the material and record the choice in operator_image_note.
 - Read archive.json and inspect the attached frame images before deciding what to keep.
 - Create a new digestible chapter structure, not a light paraphrase.
@@ -221,7 +221,7 @@ Important: this is not a source-frame merge. Read all source archives and inspec
 
 Infographic style is a human choice. Before generating images, set one style for the whole group digest:
 - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
-- premium: use .codex/skills/premium-infographic and GPT Image 2 / GPT 2.0 image generation for image-led editorial teaching images.
+- premium: use .codex/skills/premium-infographic and GPT 5.5 image generation for image-led editorial teaching images.
 If the human has not chosen, pick the style that best fits the material and record the choice in the image prompts.
 
 Teaching goal:

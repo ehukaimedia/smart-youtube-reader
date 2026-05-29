@@ -1,6 +1,6 @@
 ---
 name: smart-youtube-reader-help-demo
-description: Create, repair, or update the bundled Smart YouTube Reader help/demo digest that teaches the app and showcases the default Codex + GPT 2.0 generated-WebP digest deliverable. Use when Codex is asked to make the default help digest, README showcase visuals, first-run demo project, demo AI digest assets, or proof-of-value onboarding content for this repository.
+description: Create, repair, or update the bundled Smart YouTube Reader help/demo digest that teaches the app and showcases the default Codex GPT 5.5 generated-WebP digest deliverable. Use when Codex is asked to make the default help digest, README showcase visuals, first-run demo project, demo AI digest assets, or proof-of-value onboarding content for this repository.
 ---
 
 # Smart YouTube Reader Help Demo
@@ -16,10 +16,10 @@ Build a shipped proof project, not just documentation. The help demo should appe
 - Store tracked source assets under `examples/demo-jobs/smart-youtube-reader-demo-digest_demo/`.
 - Do not commit runtime `data/` output. `data/` is ignored and should be seeded from `examples/demo-jobs/`.
 - Use stable job id `demo-smart-youtube-reader-digest` unless a migration explicitly requires a new id.
-- Keep the demo `kind` as `ai_digest`, `digest_model` as `Codex + GPT 2.0 images`, and `media_policy` as `lightweight_generated_images_only`.
+- Keep the demo `kind` as `ai_digest`, `digest_model` as `Codex GPT 5.5 images`, and `media_policy` as `lightweight_generated_images_only`.
 - Save teaching visuals as WebP under `generated/`; target 16:9, 1280x720, and roughly 50-100 KB per image.
 - Keep generated images novel teaching visuals. Do not copy source frames, YouTube thumbnails, product logos, OpenAI logos, Tailscale logos, or copyrighted UI.
-- The bundled demo should show both infographic modes when assets are available: a simple text-led card strip and a premium GPT Image 2 / GPT 2.0 image-led card strip for each chapter.
+- The bundled demo should show both infographic modes when assets are available: a simple text-led card strip and a premium GPT 5.5 image-led card strip for each chapter.
 
 ## Workflow
 
@@ -31,7 +31,7 @@ Build a shipped proof project, not just documentation. The help demo should appe
    - existing examples under `examples/demo-jobs/`
 2. If visuals are missing or stale, generate new teaching visuals. The Impeccable skill is required for this step:
    - First load the design context: run Impeccable with `IMPECCABLE_CONTEXT_DIR=docs/impeccable` and read the "Generated Image Art Direction" section of `docs/impeccable/DESIGN.md`.
-   - Build each `imagegen` prompt with either the `simple-infographic` or `premium-infographic` skill, bound to the project bar in `docs/impeccable/DESIGN.md` §7. Simple images are quiet text-led card strips. Premium images are image-led card strips and must use GPT Image 2 / GPT 2.0 generation for the bitmap visual, not local vector-only placeholders. In both modes: one calm idea per image, an eyebrow label plus one bold tight headline (Inter, large and tight), generous whitespace, a restrained palette with Operator Blue `#3b82f6` at most, and no static plus buttons, carousel arrows, pagination dots, or navigation controls.
+   - Build each `imagegen` prompt with either the `simple-infographic` or `premium-infographic` skill, bound to the project bar in `docs/impeccable/DESIGN.md` §7. Simple images are quiet text-led card strips. Premium images are image-led card strips and must use GPT 5.5 generation for the bitmap visual, not local vector-only placeholders. In both modes: one calm idea per image, an eyebrow label plus one bold tight headline (Inter, large and tight), generous whitespace, a restrained palette with Operator Blue `#3b82f6` at most, and no static plus buttons, carousel arrows, pagination dots, or navigation controls.
    - Every image must pass the section's acceptance checklist before use. If an image cannot meet the bar, ship fewer images and note the gap in `operator_image_note`; never ship an off-brand image to fill a slot.
    - Convert selected outputs to WebP with `cwebp -q 82 -resize 1280 720`.
    - Copy final WebP assets into `examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/`.
@@ -59,7 +59,7 @@ The demo should teach five jobs-to-be-done:
 
 1. Turn a video URL into a structured local archive.
 2. Use Reader chapters, transcript, timestamps, and evidence images as AI-ready context.
-3. Create the default AI digest with Codex and GPT 2.0 generated WebP teaching images.
+3. Create the default AI digest with Codex GPT 5.5 generated WebP teaching images.
 4. Combine multiple archives into a group digest that creates a new lesson.
 5. Use the global Local/Tailscale app mode to open the dashboard through localhost or a private tailnet IP.
 

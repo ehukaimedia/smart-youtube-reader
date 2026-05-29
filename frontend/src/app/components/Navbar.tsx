@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ShareModeToggle from './ShareModeToggle';
+import { DEMO_JOB_IDS } from './demoProviders';
 
 export default function Navbar() {
     const pathname = usePathname();
     const isDemoRoute = pathname === '/demo'
-        || pathname === '/reader/demo-smart-youtube-reader-digest'
-        || pathname === '/reader/demo-smart-youtube-reader-gemini';
+        || DEMO_JOB_IDS.some((jobId) => pathname === `/reader/${jobId}`);
 
     return (
         <nav className="navbar">

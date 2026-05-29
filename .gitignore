@@ -4,8 +4,16 @@
 .vscode/
 *.swp
 
-# Agent local worktrees
-.claude/
+# Agent tool homes
+.antigravitycli/*
+!.antigravitycli/skills/
+!.antigravitycli/skills/**
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+.codex/*
+!.codex/skills/
+!.codex/skills/**
 
 # Python Backend
 __pycache__/

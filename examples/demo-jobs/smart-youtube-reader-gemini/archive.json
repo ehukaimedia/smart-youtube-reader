@@ -72,7 +72,7 @@
     {
       "concept": "Default AI Digest With Gemini Images",
       "summary": "The default digest workflow can ask an external agent using Gemini 3.5 Flash High to read the archive, create a concise lesson, and generate novel WebP teaching images.",
-      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask a capable external agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Gemini 3.5 Flash High image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to compare against the Codex + GPT 2.0 version.",
+      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask a capable external agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Gemini 3.5 Flash High image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to compare against the Codex GPT 5.5 version.",
       "timestamp_start": 190,
       "timestamp_end": 315,
       "images": [

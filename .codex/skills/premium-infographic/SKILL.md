@@ -28,7 +28,7 @@ For generated/static infographics, do not include nonfunctional plus buttons, ex
 
 ## Generation Rule
 
-Premium generated infographic images should use GPT Image 2 / GPT 2.0 image generation for the bitmap visual, not local vector-only placeholders. Use the `imagegen` skill and keep the original generated PNG under `$CODEX_HOME/generated_images/`. Local post-processing is allowed for exact text overlay, cropping, WebP conversion, compression, and placement in the repo, but the focal imagery must come from the GPT image model.
+Premium generated infographic images should use GPT 5.5 image generation for the bitmap visual, not local vector-only placeholders. Use the `imagegen` skill and keep the original generated PNG under `$CODEX_HOME/generated_images/`. Local post-processing is allowed for exact text overlay, cropping, WebP conversion, compression, and placement in the repo, but the focal imagery must come from the GPT image model.
 
 If the explicit CLI/API route is requested, use `gpt-image-2`. If the CLI cannot run because `OPENAI_API_KEY` is missing, use the built-in image generation path available in Codex and clearly report that path. Do not silently substitute a hand-drawn Pillow/SVG/canvas image for a premium generated asset.
 
