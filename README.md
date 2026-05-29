@@ -66,7 +66,7 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 - **Video Slicer** — Cut precise clips and manually select the frames that best match the chapter content
 - **Large image inspection** — Click any Reader summary or chapter image to open a focused larger view with the original file link
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
-- **External-agent AI Digests** — Copy a CLI task for Codex, Claude, or another LLM to create a shorter learning-focused digest without modifying the source project
+- **External-agent AI Digests** — Copy a CLI task for Codex or another LLM to create a shorter learning-focused digest without modifying the source project
 - **AI Digest with Images** — Default digest workflow: Codex paired with GPT 5.5 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence
 - **Group AI Digests** — Combine multiple completed projects into a novel cross-video lesson with durable facts, theory, hypotheses, and generated WebP teaching images
 
@@ -143,7 +143,7 @@ npm run build
 ## CLIs & Tooling
 
 ### AI Digest CLI
-AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex, Claude, or another capable LLM. The copied task lets the operator choose `simple` text-led infographics or `premium` GPT 5.5 image-led infographics before generation. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
+AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex or another capable LLM. The copied task lets the operator choose `simple` text-led infographics or `premium` GPT 5.5 image-led infographics before generation. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
 
 The recommended default workflow is Codex paired with GPT 5.5 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
 
@@ -157,7 +157,7 @@ The command above prints the default image-rich WebP digest task. For the explic
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --text-only
 ```
 
-Both commands print the exact task for Codex, Claude, or another agent. The agent writes a JSON draft, then materializes the digest project:
+Both commands print the exact task for Codex or another agent. The agent writes a JSON draft, then materializes the digest project:
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "data/jobs/<project-folder>/generated/ai-digest-draft.json"
@@ -178,7 +178,7 @@ The materialized group project contains exactly three newly generated WebP teach
 python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/jobs/<project-two>" --title "Combined Learning Digest"
 ```
 
-That prints the exact task for Codex, Claude, or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge. The source projects stay untouched.
+That prints the exact task for Codex or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge. The source projects stay untouched.
 
 ### Summary Thumbnail CLI
 Create a project thumbnail from the archive text and attached frame images:

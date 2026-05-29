@@ -72,7 +72,7 @@
     {
       "concept": "Default AI Digest With GPT 5.5 Images",
       "summary": "The default digest workflow asks an external agent such as Codex to read the archive, create a concise lesson, and generate novel WebP teaching images.",
-      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex, Claude, or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Codex GPT 5.5 image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
+      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Codex GPT 5.5 image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
       "timestamp_start": 190,
       "timestamp_end": 315,
       "images": [

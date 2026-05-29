@@ -299,7 +299,7 @@ A horizontal bar of buttons that sits beneath a page title, holding one primary 
 
 ## 7. Generated Image Art Direction
 
-This section governs the images an AI digest generates: the per-chapter teaching cards and the summary image. It is the executable contract a designing agent (Codex, Claude Code, or any image-capable agent) follows when it creates those images.
+This section governs the images an AI digest generates: the per-chapter teaching cards and the summary image. It is the executable contract a designing agent (Codex or any image-capable agent) follows when it creates those images.
 
 **North star: premium product-marketing infographic cards.** The standard is the clean, spacious, typographic style of high-end product pages: a single calm idea per card, a small eyebrow label, one bold tight headline, generous whitespace, precise alignment, and a restrained palette where color comes from one focal element, not from decoration.
 
