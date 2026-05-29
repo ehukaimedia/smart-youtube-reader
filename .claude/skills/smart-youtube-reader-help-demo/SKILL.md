@@ -58,6 +58,23 @@ Build a shipped proof project, not just documentation. The help demo should appe
    - `docs/specs/share-mode-toggle.md` if the demo teaches global Local/Tailscale behavior.
    - relevant playground docs if the dashboard or reader architecture changes.
 
+## Reproducible image pipeline (Claude path)
+
+The runnable tooling for the Claude image path lives in this skill's `scripts/`, so you do not rebuild the toolchain each time. This is the fast path; it removes the setup work, not the design judgment.
+
+- `scripts/setup_fonts.sh [dir]` fetches Inter woff2 into `fonts/` (Inter is not installed system-wide).
+- `scripts/infographic_kit.py` provides `simple_page`, `premium_page`, `node`, `arrow`, `glyph`, `write_pages`. Its theme tokens, glyph library, and light/dark card templates already satisfy the `docs/impeccable/DESIGN.md` Section 7 checklist (Inter, Operator Blue `#3b82f6` as the only accent, committed theme, no decorative shadows, no rainbow, no fake controls).
+- `scripts/render_to_webp.py <html_dir> <out_dir>` renders each HTML with headless Chrome (Playwright `channel="chrome"`) at 2x, then `cwebp` to 1280x720 WebP.
+
+Fast path:
+
+1. `bash <skill>/scripts/setup_fonts.sh fonts`
+2. Write a short generator that imports the kit and builds one `simple_page` (light, 4-6 cards) and one `premium_page` (dark, a focal `node()`/`arrow()` flow or panel) per chapter. Keep simple = light, premium = dark; that is the Claude identity. One calm idea, tight headline, fully written labels.
+3. Smoke-test the toolchain first: `python3 <skill>/scripts/infographic_kit.py` then `python3 <skill>/scripts/render_to_webp.py _kit_example/html _kit_example/out`. Then render your set into the demo folder's `generated/`.
+4. Render one premium card and get a thumbs-up before producing the rest. Validate every image against the Section 7 checklist and confirm 1280x720 WebP.
+
+A harness with a native image model can skip this and use that model instead; the kit is the path for current Claude Code, which has none.
+
 ## Demo Content
 
 The demo should teach five jobs-to-be-done:
