@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# Put the backend root on sys.path so `from app import ...` resolves regardless of
+# the directory pytest is invoked from (CI no longer has to pin working-directory).
+pythonpath = ["."]
+testpaths = ["tests"]
