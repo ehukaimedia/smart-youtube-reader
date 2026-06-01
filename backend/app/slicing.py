@@ -165,7 +165,8 @@ def create_slice(job_id: str, start: float, end: float, format_type: str, fps: i
     """
     # Quick fix to keep MP4 working
     if format_type == "mp4":
-        if not job_store: raise ValueError("JobStore required")
+        if not job_store:
+            raise ValueError("JobStore required")
         job = job_store.get(job_id)
         ext = getattr(job, 'video_ext', None) or 'mp4'
         video_path = job.data_dir / f"video.{ext}"

@@ -486,7 +486,8 @@ async def get_job_slices(job_id: str):
 @app.delete("/jobs/{job_id}/slices/{slice_id}", status_code=204)
 async def delete_slice(job_id: str, slice_id: str):
     try:
-        import shutil, json
+        import json
+        import shutil
         job = job_store.get(job_id)
         slice_dir = job.data_dir / "slices" / slice_id
         if not slice_dir.exists():

@@ -118,13 +118,14 @@ Then open `http://localhost:3001` in your browser. For the full contributor walk
 
 ## Verification & Testing
 
-Backend unit tests (pytest) cover the digest prompt, archive parsing, share-info, and MLX-runtime helpers. The frontend is gated in CI by ESLint and a production build. The download → frame-extraction → de-duplication → slicing pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
+Backend unit tests (pytest) cover the digest prompt, archive parsing, share-info, MLX-runtime, and slicer-security helpers, and the backend is linted with [ruff](https://docs.astral.sh/ruff/). The frontend is gated in CI by ESLint (`--max-warnings 0`) and a production build. The download → frame-extraction → de-duplication pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
 
 ### Backend Verification
-Verify the backend using `pytest`:
+Verify the backend with `ruff` and `pytest`:
 ```bash
 cd backend
 source .venv/bin/activate
+ruff check .
 python -m pytest
 ```
 
