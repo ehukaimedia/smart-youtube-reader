@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getApiBase, getShareInfo, readStoredShareMode, resolveShareOrigin } from '@/lib/api';
+import { getApiBase, getShareInfo, inferShareModeFromLocation, resolveShareOrigin } from '@/lib/api';
+import {
+    buildAiDigestTextOnlyTask,
+    buildAiDigestWithImagesTask,
+    buildLearningPrompt,
+} from '@/lib/prompts';
 import { copyText } from '@/lib/clipboard';
 import { useToast } from '../../components/ToastProvider';
 import DemoProviderTabs from '../../components/DemoProviderTabs';
@@ -81,25 +86,13 @@ export default function ReaderPage() {
     const copyLearningPrompt = (job: Job) => {
         const archiveUrl = `${getApiBase()}/jobs/${job.id}/archive`;
         const baseUrl = `${getApiBase()}/data/jobs/${job.data_folder_name}`;
-        const prompt = `You have access to a structured archive of a YouTube video.
-
-Video: "${job.title || job.id}"
-YouTube: ${job.video_url || '(not available)'}
-Archive JSON: ${archiveUrl}
-
-Each chapter in the archive has:
-- concept: topic title
-- summary: one-sentence overview
-- content: compact transcript-grounded teaching evidence for the section
-- timestamp_start / timestamp_end: seconds into the video
-- images: array of frame filenames — fetch and read these, they often contain slides, diagrams, and visual explanations that are NOT in the transcript text
-
-To read a frame image: ${baseUrl}/<filename>  (e.g. ${baseUrl}/frames/0007.png)
-To jump to a section on YouTube: append &t=<timestamp_start> to the YouTube URL
-
-Start by fetching the archive JSON, then for each chapter read both the content text AND the frame images — this video likely uses visual slides to explain its concepts.
-
-What would you like to know about this video?`;
+        const prompt = buildLearningPrompt({
+            title: job.title,
+            id: job.id,
+            videoUrl: job.video_url,
+            archiveUrl,
+            baseUrl,
+        });
         const onCopied = () => {
             setPromptCopied(true);
             setTimeout(() => setPromptCopied(false), 2000);
@@ -109,7 +102,7 @@ What would you like to know about this video?`;
 
     const copyProjectLink = async () => {
         const info = await getShareInfo();
-        const mode = readStoredShareMode();
+        const mode = inferShareModeFromLocation();
         const origin = resolveShareOrigin(info, mode);
         if (!origin) {
             const reason = info.modes.tailscale.status;
@@ -131,42 +124,7 @@ What would you like to know about this video?`;
     };
 
     const copyAiDigestWithImagesTask = (job: Job) => {
-        const projectFolder = `data/jobs/${job.data_folder_name}`;
-        const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
-        const prompt = `Create the default Smart YouTube Reader AI digest version with generated WebP teaching images for this project using the local CLI.
-
-Do not use an in-app model option. You are the digest-and-image agent. Codex GPT 5.5 image generation is the recommended setup.
-Run commands from the smart-youtube-reader repo root.
-
-Important:
-- Infographic style is a human choice. Before generating images, set one style for the whole digest:
-  - simple: use .codex/skills/simple-infographic for quiet text-led card-strip teaching images.
-  - premium: use .codex/skills/premium-infographic and GPT 5.5 image generation for full-color, concept-adaptive visual-learning images that teach the chapter idea.
-  If the human has not chosen, pick the style that best fits the material and record the choice in operator_image_note.
-- Read archive.json and inspect the attached frame images before deciding what to keep.
-- Create a new digestible chapter structure, not a light paraphrase.
-- Create one novel generated WebP teaching image per digest chapter.
-- Keep the digest to at most 6 chapters/images. If the material truly needs more than 6 images, explain the needed count in operator_image_note and still produce the best 6-image digest.
-- Do not copy, crop, trace, or reuse source frames, screenshots, or YouTube thumbnails.
-- Do not include fake plus buttons, carousel arrows, pagination dots, or navigation controls inside static infographic images.
-- Save and reference only generated/*.webp output images in the draft.
-
-Workflow:
-1. Run this command to print the default image-rich digest task:
-   python3 tools/create_ai_digest_version.py "${projectFolder}"
-2. Read archive.json and inspect the attached frame images as evidence.
-3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
-4. Preserve durable facts, theory, procedures, examples, caveats, failure modes, and useful visual explanations.
-5. Save the generated WebP images under:
-   ${projectFolder}/generated/
-6. Write the required JSON draft to:
-   ${draftPath}
-7. Materialize the new AI digest project:
-   python3 tools/create_ai_digest_version.py "${projectFolder}" --draft "${draftPath}"
-8. Verify the dashboard shows the new project with an AI Digest badge and the reader opens it with one generated image per chapter.
-
-Source project:
-${projectFolder}`;
+        const prompt = buildAiDigestWithImagesTask(job.data_folder_name);
         const onCopied = () => {
             setDigestWithImagesTaskCopied(true);
             setTimeout(() => setDigestWithImagesTaskCopied(false), 2000);
@@ -176,27 +134,7 @@ ${projectFolder}`;
     };
 
     const copyAiDigestTask = (job: Job) => {
-        const projectFolder = `data/jobs/${job.data_folder_name}`;
-        const draftPath = `${projectFolder}/generated/ai-digest-draft.json`;
-        const prompt = `Create a text-only Smart YouTube Reader AI digest version for this project using the local CLI.
-
-Do not use an in-app model option. You are the digest agent.
-Run commands from the smart-youtube-reader repo root.
-
-Workflow:
-1. Run this command to print the text-only digest task:
-   python3 tools/create_ai_digest_version.py "${projectFolder}" --text-only
-2. Read archive.json and inspect the attached frame images before deciding what to keep.
-3. Cut fluff, repetition, sponsor chatter, intros/outros, and low-value transitions.
-4. Preserve durable concepts, procedures, definitions, examples, caveats, and useful visual explanations.
-5. Write the required JSON draft to:
-   ${draftPath}
-6. Materialize the new AI digest project:
-   python3 tools/create_ai_digest_version.py "${projectFolder}" --draft "${draftPath}"
-7. Verify the dashboard shows the new project with an AI Digest badge and the reader opens it.
-
-Source project:
-${projectFolder}`;
+        const prompt = buildAiDigestTextOnlyTask(job.data_folder_name);
         const onCopied = () => {
             setDigestTaskCopied(true);
             setTimeout(() => setDigestTaskCopied(false), 2000);

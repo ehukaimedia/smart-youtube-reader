@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import logging
 import socket
 import subprocess
 import tempfile
@@ -27,16 +28,28 @@ from .mlx_runtime import AVAILABLE_MODELS, DEFAULT_MODEL, list_loaded_models
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Smart YouTube Reader", version="1.0.0")
 
-# Allow CORS for frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+# CORS — the dashboard/reader is served by the Next.js frontend on port 3001 and
+# calls this API on port 8001 (cross-origin by port). Allow only the local frontend
+# and, when sharing over a tailnet, the same host on the 100.x range — never a
+# wildcard origin. No cookie/credential flow exists, so credentials are disabled
+# (a wildcard origin with credentials would let any visited site read local data).
+# The origin regex + credentials=False is the actual fix; once origins are locked
+# to :3001 a method allowlist buys nothing, so methods stay open to avoid silently
+# breaking the preflight of a future PUT/PATCH route.
+_cors_kwargs = dict(
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1|\[::1\]|100\.\d{1,3}\.\d{1,3}\.\d{1,3}):3001$",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+_public_share_origin = os.environ.get("PUBLIC_SHARE_ORIGIN")
+if _public_share_origin:
+    _cors_kwargs["allow_origins"] = [_public_share_origin.rstrip("/")]
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 app.mount("/data/jobs", StaticFiles(directory=DATA_ROOT), name="jobs_data")
 
@@ -409,8 +422,8 @@ async def create_new_slice(job_id: str, request: SliceRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"Slice error: {e}")
+    except Exception:
+        logger.exception("Slice error")
         raise HTTPException(status_code=500, detail="Slicing failed")
 
 
@@ -426,16 +439,18 @@ async def create_preview(job_id: str, request: PreviewRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        print(f"Preview error: {e}")
+    except Exception:
+        logger.exception("Preview error")
         raise HTTPException(status_code=500, detail="Preview generation failed")
 
 @app.post("/jobs/{job_id}/slicer/finalize")
 async def finalize_slice(job_id: str, request: FinalizeRequest):
     try:
         return finalize_sequence(job_id, request.preview_id, request.selected_files, job_store)
-    except Exception as e:
-        print(f"Finalize error: {e}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Finalize error")
         raise HTTPException(status_code=500, detail="Finalization failed")
 
 @app.post("/jobs/{job_id}/slicer/save")
@@ -453,8 +468,8 @@ async def save_slicer_to_project(job_id: str, request: SaveSliceRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"Save error: {e}")
+    except Exception:
+        logger.exception("Save error")
         raise HTTPException(status_code=500, detail="Save failed")
 
 @app.get("/jobs/{job_id}/slices")
@@ -464,14 +479,15 @@ async def get_job_slices(job_id: str):
         return list_slices(job_id, job_store)
     except KeyError:
          raise HTTPException(status_code=404, detail="Job not found")
-    except Exception as e:
-        print(f"List slices error: {e}")
+    except Exception:
+        logger.exception("List slices error")
         raise HTTPException(status_code=500, detail="Failed to list slices")
 
 @app.delete("/jobs/{job_id}/slices/{slice_id}", status_code=204)
 async def delete_slice(job_id: str, slice_id: str):
     try:
-        import shutil, json
+        import json
+        import shutil
         job = job_store.get(job_id)
         slice_dir = job.data_dir / "slices" / slice_id
         if not slice_dir.exists():

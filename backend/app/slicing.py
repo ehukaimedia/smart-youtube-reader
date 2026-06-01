@@ -1,16 +1,36 @@
 import ffmpeg
 from pathlib import Path
 import os
+import json
+import logging
 import uuid
 import zipfile
 import shutil
 from .jobs import JobStore
+
+logger = logging.getLogger(__name__)
 
 def _slice_id_from_image_path(image_path: str) -> str | None:
     parts = image_path.split("/")
     if len(parts) >= 2 and parts[0] == "slices" and parts[1]:
         return parts[1]
     return None
+
+
+def _resolve_preview_file(preview_dir: Path, filename: str) -> Path:
+    """Resolve a caller-supplied preview filename safely, rejecting path traversal.
+
+    Selected frame files are always bare basenames like "0001.jpg" (produced by the
+    "%04d.jpg" ffmpeg pattern). Anything with a directory component, an absolute path,
+    or a name that escapes ``preview_dir`` is rejected so a malicious ``selected_files``
+    entry (e.g. "../../../etc/passwd") cannot be read into a slice or zip.
+    """
+    if not filename or filename != os.path.basename(filename):
+        raise ValueError(f"Invalid frame filename: {filename!r}")
+    candidate = (preview_dir / filename).resolve()
+    if not candidate.is_relative_to(preview_dir.resolve()):
+        raise ValueError(f"Frame path escapes the preview directory: {filename!r}")
+    return candidate
 
 
 def _append_unique(values: list[str], value: str | None) -> None:
@@ -65,24 +85,23 @@ def generate_preview(job_id: str, start: float, end: float, fps: int, job_store:
         )
     except ffmpeg.Error as e:
         detail = e.stderr.decode(errors="replace") if e.stderr else str(e)
-        print(detail)
+        logger.error("FFmpeg frame extraction failed: %s", detail)
         raise RuntimeError(f"FFmpeg frame extraction failed: {detail[-500:]}")
 
     # List generated files
     frames = sorted([f.name for f in preview_dir.glob("*.jpg")])
     if not frames:
         raise ValueError("No preview frames were generated for that time range")
-    
+
     # Save metadata for later timestamp calculation
-    import json
     with open(preview_dir / "preview_meta.json", "w") as f:
         json.dump({"start": start, "end": end, "fps": fps}, f)
-    
+
     # Cleanup old previews (Aggressive: delete ALL old previews)
     try:
         cleanup_old_previews(job.data_dir / "previews", keep=0, exclude=preview_id)
     except Exception as e:
-        print(f"Cleanup warning: {e}")
+        logger.warning("Preview cleanup warning: %s", e)
 
     return {
         "preview_id": preview_id,
@@ -128,7 +147,7 @@ def finalize_sequence(job_id: str, preview_id: str, selected_files: list[str], j
     
     with zipfile.ZipFile(zip_path, 'w') as zf:
         for filename in selected_files:
-            file_path = preview_dir / filename
+            file_path = _resolve_preview_file(preview_dir, filename)
             if file_path.exists():
                 zf.write(file_path, filename)
     
@@ -146,7 +165,8 @@ def create_slice(job_id: str, start: float, end: float, format_type: str, fps: i
     """
     # Quick fix to keep MP4 working
     if format_type == "mp4":
-        if not job_store: raise ValueError("JobStore required")
+        if not job_store:
+            raise ValueError("JobStore required")
         job = job_store.get(job_id)
         ext = getattr(job, 'video_ext', None) or 'mp4'
         video_path = job.data_dir / f"video.{ext}"
@@ -180,8 +200,6 @@ def save_slice_to_project(
     Saves selected frames into the job's archive.json, updating the matching chapter's images.
     The operator uses this to curate the visual evidence shown to agents and readers.
     """
-    import json
-
     job = job_store.get(job_id)
     preview_dir = job.data_dir / "previews" / preview_id
 
@@ -205,7 +223,7 @@ def save_slice_to_project(
     image_paths = []  # relative paths for archive.json
 
     for filename in selected_files:
-        src = preview_dir / filename
+        src = _resolve_preview_file(preview_dir, filename)
         if src.exists():
             shutil.copy(src, frames_dir / filename)
             try:
@@ -217,7 +235,8 @@ def save_slice_to_project(
                     "timestamp": round(absolute_time, 3),
                     "relative_time": round(time_offset, 3)
                 })
-            except:
+            except (ValueError, ZeroDivisionError):
+                # Non-numeric frame name or zero fps — keep the image, skip timing.
                 pass
             image_paths.append(f"slices/{slice_id}/frames/{filename}")
 
@@ -311,8 +330,6 @@ def list_slices(job_id: str, job_store: JobStore):
     """
     Lists all saved slices for a job.
     """
-    import json
-    
     job = job_store.get(job_id)
     slices_dir = job.data_dir / "slices"
     if not slices_dir.exists():
@@ -328,6 +345,6 @@ def list_slices(job_id: str, job_store: JobStore):
                     with open(manifest_path, 'r') as f:
                         data = json.load(f)
                         slices.append(data)
-                except:
-                    pass
+                except (OSError, json.JSONDecodeError):
+                    logger.warning("Skipping unreadable slice manifest: %s", manifest_path)
     return slices

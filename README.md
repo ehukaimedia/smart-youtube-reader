@@ -1,5 +1,7 @@
 # Smart YouTube Reader
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![CI](https://github.com/ehukaimedia/smart-youtube-reader/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ehukaimedia/smart-youtube-reader/actions/workflows/ci.yml)
+
 **Smart YouTube Reader** is an official Ehukai Media open-source project. It turns any YouTube URL into a structured, AI-readable archive — transcript, de-duplicated visual frames, and semantic chapters — that you or an AI agent can search, read, and learn from.
 
 > **Why this exists:** Videos are great for watching, but terrible for referencing. This tool makes video content as accessible and searchable as a book.
@@ -38,11 +40,39 @@ Smart YouTube Reader is built on a **local-first** architecture.
 * **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local MLX-VLM server management.
 * **Frontend**: A Next.js (React) application provides a visual dashboard, an interactive reader with timestamp-linked transcript search, and a clip-slicer.
 
+### System Flow
+
+```mermaid
+flowchart LR
+    Launch["start.command / start.sh<br/>localhost by default<br/>SYR_SHARE=1 for tailnet"] --> FE["Next.js app<br/>:3001"]
+    Launch --> API["FastAPI backend<br/>:8001"]
+    FE -->|"REST + static media<br/>localhost/tailnet CORS"| API
+    API --> Jobs["Local filesystem<br/>data/jobs/&lt;project&gt;"]
+    API -->|"download + metadata"| YTDLP["yt-dlp<br/>Node on PATH"]
+    YTDLP --> YouTube["YouTube"]
+    API --> FFmpeg["FFmpeg<br/>frames + clips"]
+    FFmpeg --> Jobs
+    API --> MLX["MLX-VLM local server<br/>Gemma 4 on Apple Silicon"]
+    MLX --> Jobs
+    FE --> Reader["Dashboard / Reader / Slicer<br/>copy digest tasks"]
+    Reader --> Jobs
+    Tools["External agent CLIs<br/>tools/create_*_digest_version.py"] --> Jobs
+```
+
 ### Local AI Model Expectations
 For semantic chaptering and visual summary generation, Smart YouTube Reader uses Apple's **MLX-VLM** framework to execute models locally.
 * **Hardware Requirement**: Running the local AI model requires **Apple Silicon macOS** (M1/M2/M3/M4 chipsets). This is because the underlying `mlx` library is optimized exclusively for Apple Silicon GPU acceleration.
 * **Default Model**: The application defaults to `mlx-community/gemma-4-e4b-it-4bit`, a highly optimized quantized visual model from the Gemma 4 family.
-* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported.
+* **First-run download**: The first archive run downloads the model (~5.25 GB, 4-bit) into `data/mlx` and needs roughly **8 GB+ unified memory**. Allow several minutes on first run — the download happens lazily on the first chaptering request and there is no progress bar yet. The model is public (no Hugging Face token required).
+* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported. The `mlx-vlm` dependency carries a platform marker, so `pip install -r requirements.txt` simply skips it on those systems rather than failing.
+
+### Why This Over yt-dlp + Whisper or Cloud Tools?
+
+| Option | Best at | Smart YouTube Reader adds |
+|---|---|---|
+| `yt-dlp` + transcript tooling | Raw media, captions, and one-off extraction. | A durable archive folder with transcript, visual frames, semantic chapters, reader UI, slicer workflow, and agent-ready JSON. |
+| Cloud video AI tools | Hosted summaries and fast collaboration. | Local-first storage and processing for the initial archive, no required AI subscription, and inspectable files you can keep, script, or hand to external agents. |
+| Manual notes from a video | Human judgment and selective attention. | Timestamp-linked context, de-duplicated evidence frames, search, reusable digest workflows, and repeatable project exports. |
 
 ---
 
@@ -78,8 +108,10 @@ To run Smart YouTube Reader locally, you need the following:
 
 - **macOS (Apple Silicon)** — Required for local model generation.
 - **FFmpeg** — Used for frame extraction and video slicing (`brew install ffmpeg`).
-- **Python 3.10+**
-- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc))
+- **Python 3.11+** — The version CI verifies.
+- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc)) — Required by **both** the frontend **and** the backend. `yt-dlp` invokes Node at download time to solve YouTube's challenge, so Node must be on the `PATH` the backend process inherits (the backend also searches `~/.nvm`, `~/.volta/bin`, and `/opt/homebrew/bin`).
+
+> **Optional — private/age-restricted videos:** set `YDL_COOKIES_BROWSER=chrome` (or `firefox`) before launching so `yt-dlp` reads cookies from that browser. It is unset by default; cookies are sent only to YouTube via `yt-dlp`.
 
 ---
 
@@ -89,7 +121,7 @@ To run Smart YouTube Reader locally, you need the following:
 ```bash
 ./start.command
 ```
-This automatically starts both the backend and frontend.
+This starts both the backend and frontend. On first run it creates the backend virtualenv, installs Python and Node dependencies, and then launches — so the first launch takes a few minutes; later launches are fast. By default it binds to `localhost` only; set `SYR_SHARE=1 ./start.command` to also expose the app on your network/tailnet.
 
 ### Manual setup
 
@@ -98,9 +130,7 @@ This automatically starts both the backend and frontend.
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-# To run tests, also install development dependencies:
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
@@ -111,19 +141,20 @@ npm install
 npm run dev -- --port 3001
 ```
 
-Then open `http://localhost:3001` in your browser.
+Then open `http://localhost:3001` in your browser. For the full contributor walkthrough (and code-style guidelines), see [CONTRIBUTING.md](CONTRIBUTING.md), the canonical setup reference.
 
 ---
 
 ## Verification & Testing
 
-We maintain a rigorous test and linting suite to ensure codebase health.
+Backend unit tests (pytest) cover the digest prompt, archive parsing, share-info, MLX-runtime, and slicer-security helpers, and the backend is linted with [ruff](https://docs.astral.sh/ruff/). The frontend is gated in CI by ESLint (`--max-warnings 0`) and a production build. The download → frame-extraction → de-duplication pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
 
 ### Backend Verification
-Verify the backend using `pytest`:
+Verify the backend with `ruff` and `pytest`:
 ```bash
 cd backend
 source .venv/bin/activate
+ruff check .
 python -m pytest
 ```
 
@@ -205,7 +236,7 @@ The dashboard uses that image as the project thumbnail.
 
 ## Sharing Projects
 
-Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. `start.command` opens the dashboard on the Tailscale URL when a tailnet IP is available, and falls back to `localhost` otherwise. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. By default `start.command` binds to `localhost` only and opens the local dashboard; launch with `SYR_SHARE=1 ./start.command` to bind all interfaces so your tailnet IP is reachable, in which case it opens the dashboard on the Tailscale URL when one is available. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
 
 | Mode | When to use | Link format |
 |---|---|---|
@@ -245,6 +276,8 @@ Digest workflows turn that archive into new agent-readable projects:
 
 See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
+The checked-in CLI skill ports under `.antigravitycli/skills/`, `.codex/skills/`, and `.claude/skills/` are intentional adapters so Antigravity, Codex, and Claude can load the same Smart YouTube Reader workflows; canonical shared skills remain under `skills/`.
+
 ---
 
 ## Community & Governance
@@ -259,6 +292,6 @@ We welcome contributions and value our community's safety and security. Please r
 
 ## License
 
-Smart YouTube Reader's Ehukai Media code is licensed under the MIT License. Bundled third-party skill and vendor material carries its own license terms, including Apache-2.0 skill content under `skills/` and the vendored MIT `modern-screenshot` browser helper.
+Smart YouTube Reader's Ehukai Media code is licensed under the MIT License. Bundled third-party skill and vendor material carries its own license terms, including Apache-2.0 skill content under `skills/` and `.antigravitycli/skills/impeccable/`, plus the vendored MIT `modern-screenshot` browser helper.
 
 See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.

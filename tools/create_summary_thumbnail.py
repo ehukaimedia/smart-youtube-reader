@@ -11,9 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
-import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -392,7 +390,6 @@ def render_thumbnail(
     frame_y2 = s(453)
     gap = s(38)
     frame_w = (width - margin * 2 - gap * 2) // 3
-    frame_h = frame_y2 - frame_y1
     for index, item in enumerate(top_frames):
         x1 = margin + index * (frame_w + gap)
         x2 = x1 + frame_w

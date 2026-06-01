@@ -49,7 +49,7 @@ class DigestPromptTests(unittest.TestCase):
         self.assertIn("operator_image_note", prompt)
         self.assertIn("simple-infographic", prompt)
         self.assertIn("premium-infographic", prompt)
-        self.assertIn("GPT Image 2", prompt)
+        self.assertIn("GPT 5.5", prompt)
 
     def test_prompt_without_images_keeps_source_indices_instruction(self):
         prompt = build_digest_user_prompt(SOURCE)
