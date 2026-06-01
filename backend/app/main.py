@@ -29,14 +29,21 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Smart YouTube Reader", version="1.0.0")
 
-# Allow CORS for frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+# CORS — the dashboard/reader is served by the Next.js frontend on port 3001 and
+# calls this API on port 8001 (cross-origin by port). Allow only the local frontend
+# and, when sharing over a tailnet, the same host on the 100.x range — never a
+# wildcard origin. No cookie/credential flow exists, so credentials are disabled
+# (a wildcard origin with credentials would let any visited site read local data).
+_cors_kwargs = dict(
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1|\[::1\]|100\.\d{1,3}\.\d{1,3}\.\d{1,3}):3001$",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+_public_share_origin = os.environ.get("PUBLIC_SHARE_ORIGIN")
+if _public_share_origin:
+    _cors_kwargs["allow_origins"] = [_public_share_origin.rstrip("/")]
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 app.mount("/data/jobs", StaticFiles(directory=DATA_ROOT), name="jobs_data")
 

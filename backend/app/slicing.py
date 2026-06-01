@@ -13,6 +13,22 @@ def _slice_id_from_image_path(image_path: str) -> str | None:
     return None
 
 
+def _resolve_preview_file(preview_dir: Path, filename: str) -> Path:
+    """Resolve a caller-supplied preview filename safely, rejecting path traversal.
+
+    Selected frame files are always bare basenames like "0001.jpg" (produced by the
+    "%04d.jpg" ffmpeg pattern). Anything with a directory component, an absolute path,
+    or a name that escapes ``preview_dir`` is rejected so a malicious ``selected_files``
+    entry (e.g. "../../../etc/passwd") cannot be read into a slice or zip.
+    """
+    if not filename or filename != os.path.basename(filename):
+        raise ValueError(f"Invalid frame filename: {filename!r}")
+    candidate = (preview_dir / filename).resolve()
+    if not candidate.is_relative_to(preview_dir.resolve()):
+        raise ValueError(f"Frame path escapes the preview directory: {filename!r}")
+    return candidate
+
+
 def _append_unique(values: list[str], value: str | None) -> None:
     if value and value not in values:
         values.append(value)
@@ -128,7 +144,7 @@ def finalize_sequence(job_id: str, preview_id: str, selected_files: list[str], j
     
     with zipfile.ZipFile(zip_path, 'w') as zf:
         for filename in selected_files:
-            file_path = preview_dir / filename
+            file_path = _resolve_preview_file(preview_dir, filename)
             if file_path.exists():
                 zf.write(file_path, filename)
     
@@ -205,7 +221,7 @@ def save_slice_to_project(
     image_paths = []  # relative paths for archive.json
 
     for filename in selected_files:
-        src = preview_dir / filename
+        src = _resolve_preview_file(preview_dir, filename)
         if src.exists():
             shutil.copy(src, frames_dir / filename)
             try:
