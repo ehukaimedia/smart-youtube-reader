@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import shutil
 import time
@@ -8,6 +9,8 @@ from typing import Dict
 from urllib.parse import parse_qs, urlparse
 
 from .schemas import JobCreateRequest, JobResponse, JobStatus
+
+logger = logging.getLogger(__name__)
 
 class Job:
     def __init__(self, job_id: str, payload: JobCreateRequest):
@@ -148,27 +151,23 @@ class JobStore:
                     if not job_id:
                         continue
                         
-                    # Reconstruct Job object
-                    # We might not have original payload request, but we have url
-                    from .schemas import JobCreateRequest 
-                    payload = JobCreateRequest(
-                        video_url=data.get('url', ''),
-                        min_width=640, # defaults
-                        interval_sec=1 
-                    )
-                    
+                    # Reconstruct a minimal request payload. Only the source URL is
+                    # known; the sampling params aren't persisted, so fall back to the
+                    # schema defaults rather than inventing mismatched values.
+                    payload = JobCreateRequest(video_url=data.get('url', ''))
+
                     job = Job(job_id, payload)
-                    job.status = JobStatus.complete if data.get('archive_chapters') else JobStatus.failed # rough guess/restore
-                    # A better way is to store 'status' in manifest or a separate state file.
-                    # For now, let's assume if manifest exists, it's at least partially done. 
-                    # Actually, manifest is written at the END of pipeline.
-                    job.status = JobStatus.complete
-                    
+                    # The manifest is written only when the pipeline finishes, with an
+                    # explicit "status" field. Read it; default to complete for older
+                    # manifests that predate the field.
+                    status_value = data.get('status')
+                    try:
+                        job.status = JobStatus(status_value) if status_value else JobStatus.complete
+                    except ValueError:
+                        job.status = JobStatus.complete
+
                     job.data_dir = job_dir
-                    job.package_path = job_dir # simplified
-                    
-                    # Try to get title from transcript or inferred
-                    # Ideally manifest should store title. We will update pipeline to store it.
+                    job.package_path = job_dir
                     job.title = data.get('title')
                     job.created_at = data.get('created_at', job.created_at)
                     job.video_ext = data.get('video_ext', 'mp4')
@@ -179,8 +178,8 @@ class JobStore:
                     job.media_policy = data.get('media_policy')
 
                     self._jobs[job_id] = job
-                except Exception as e:
-                    print(f"Failed to load job from {job_dir}: {e}")
+                except Exception:
+                    logger.exception("Failed to load job from %s", job_dir)
 
     def create_job(self, payload: JobCreateRequest) -> Job:
         job_id = str(uuid.uuid4())
@@ -279,8 +278,8 @@ class JobStore:
             if job.data_dir and job.data_dir.exists():
                 try:
                     shutil.rmtree(job.data_dir)
-                except Exception as e:
-                    print(f"Error deleting job directory {job.data_dir}: {e}")
+                except Exception:
+                    logger.exception("Error deleting job directory %s", job.data_dir)
             
             del self._jobs[job_id]
 

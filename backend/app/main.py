@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import logging
 import socket
 import subprocess
 import tempfile
@@ -26,6 +27,8 @@ from .mlx_runtime import AVAILABLE_MODELS, DEFAULT_MODEL, list_loaded_models
 # parents[2] = project_root
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Smart YouTube Reader", version="1.0.0")
 
@@ -419,8 +422,8 @@ async def create_new_slice(job_id: str, request: SliceRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"Slice error: {e}")
+    except Exception:
+        logger.exception("Slice error")
         raise HTTPException(status_code=500, detail="Slicing failed")
 
 
@@ -436,16 +439,18 @@ async def create_preview(job_id: str, request: PreviewRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        print(f"Preview error: {e}")
+    except Exception:
+        logger.exception("Preview error")
         raise HTTPException(status_code=500, detail="Preview generation failed")
 
 @app.post("/jobs/{job_id}/slicer/finalize")
 async def finalize_slice(job_id: str, request: FinalizeRequest):
     try:
         return finalize_sequence(job_id, request.preview_id, request.selected_files, job_store)
-    except Exception as e:
-        print(f"Finalize error: {e}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Finalize error")
         raise HTTPException(status_code=500, detail="Finalization failed")
 
 @app.post("/jobs/{job_id}/slicer/save")
@@ -463,8 +468,8 @@ async def save_slicer_to_project(job_id: str, request: SaveSliceRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"Save error: {e}")
+    except Exception:
+        logger.exception("Save error")
         raise HTTPException(status_code=500, detail="Save failed")
 
 @app.get("/jobs/{job_id}/slices")
@@ -474,8 +479,8 @@ async def get_job_slices(job_id: str):
         return list_slices(job_id, job_store)
     except KeyError:
          raise HTTPException(status_code=404, detail="Job not found")
-    except Exception as e:
-        print(f"List slices error: {e}")
+    except Exception:
+        logger.exception("List slices error")
         raise HTTPException(status_code=500, detail="Failed to list slices")
 
 @app.delete("/jobs/{job_id}/slices/{slice_id}", status_code=204)

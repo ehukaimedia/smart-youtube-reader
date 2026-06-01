@@ -1,10 +1,14 @@
 import ffmpeg
 from pathlib import Path
 import os
+import json
+import logging
 import uuid
 import zipfile
 import shutil
 from .jobs import JobStore
+
+logger = logging.getLogger(__name__)
 
 def _slice_id_from_image_path(image_path: str) -> str | None:
     parts = image_path.split("/")
@@ -81,24 +85,23 @@ def generate_preview(job_id: str, start: float, end: float, fps: int, job_store:
         )
     except ffmpeg.Error as e:
         detail = e.stderr.decode(errors="replace") if e.stderr else str(e)
-        print(detail)
+        logger.error("FFmpeg frame extraction failed: %s", detail)
         raise RuntimeError(f"FFmpeg frame extraction failed: {detail[-500:]}")
 
     # List generated files
     frames = sorted([f.name for f in preview_dir.glob("*.jpg")])
     if not frames:
         raise ValueError("No preview frames were generated for that time range")
-    
+
     # Save metadata for later timestamp calculation
-    import json
     with open(preview_dir / "preview_meta.json", "w") as f:
         json.dump({"start": start, "end": end, "fps": fps}, f)
-    
+
     # Cleanup old previews (Aggressive: delete ALL old previews)
     try:
         cleanup_old_previews(job.data_dir / "previews", keep=0, exclude=preview_id)
     except Exception as e:
-        print(f"Cleanup warning: {e}")
+        logger.warning("Preview cleanup warning: %s", e)
 
     return {
         "preview_id": preview_id,
@@ -196,8 +199,6 @@ def save_slice_to_project(
     Saves selected frames into the job's archive.json, updating the matching chapter's images.
     The operator uses this to curate the visual evidence shown to agents and readers.
     """
-    import json
-
     job = job_store.get(job_id)
     preview_dir = job.data_dir / "previews" / preview_id
 
@@ -233,7 +234,8 @@ def save_slice_to_project(
                     "timestamp": round(absolute_time, 3),
                     "relative_time": round(time_offset, 3)
                 })
-            except:
+            except (ValueError, ZeroDivisionError):
+                # Non-numeric frame name or zero fps — keep the image, skip timing.
                 pass
             image_paths.append(f"slices/{slice_id}/frames/{filename}")
 
@@ -327,8 +329,6 @@ def list_slices(job_id: str, job_store: JobStore):
     """
     Lists all saved slices for a job.
     """
-    import json
-    
     job = job_store.get(job_id)
     slices_dir = job.data_dir / "slices"
     if not slices_dir.exists():
@@ -344,6 +344,6 @@ def list_slices(job_id: str, job_store: JobStore):
                     with open(manifest_path, 'r') as f:
                         data = json.load(f)
                         slices.append(data)
-                except:
-                    pass
+                except (OSError, json.JSONDecodeError):
+                    logger.warning("Skipping unreadable slice manifest: %s", manifest_path)
     return slices
