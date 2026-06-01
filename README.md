@@ -1,5 +1,7 @@
 # Smart YouTube Reader
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![CI](https://github.com/ehukaimedia/smart-youtube-reader/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ehukaimedia/smart-youtube-reader/actions/workflows/ci.yml)
+
 **Smart YouTube Reader** is an official Ehukai Media open-source project. It turns any YouTube URL into a structured, AI-readable archive — transcript, de-duplicated visual frames, and semantic chapters — that you or an AI agent can search, read, and learn from.
 
 > **Why this exists:** Videos are great for watching, but terrible for referencing. This tool makes video content as accessible and searchable as a book.
@@ -38,12 +40,39 @@ Smart YouTube Reader is built on a **local-first** architecture.
 * **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local MLX-VLM server management.
 * **Frontend**: A Next.js (React) application provides a visual dashboard, an interactive reader with timestamp-linked transcript search, and a clip-slicer.
 
+### System Flow
+
+```mermaid
+flowchart LR
+    Launch["start.command / start.sh<br/>localhost by default<br/>SYR_SHARE=1 for tailnet"] --> FE["Next.js app<br/>:3001"]
+    Launch --> API["FastAPI backend<br/>:8001"]
+    FE -->|"REST + static media<br/>localhost/tailnet CORS"| API
+    API --> Jobs["Local filesystem<br/>data/jobs/&lt;project&gt;"]
+    API -->|"download + metadata"| YTDLP["yt-dlp<br/>Node on PATH"]
+    YTDLP --> YouTube["YouTube"]
+    API --> FFmpeg["FFmpeg<br/>frames + clips"]
+    FFmpeg --> Jobs
+    API --> MLX["MLX-VLM local server<br/>Gemma 4 on Apple Silicon"]
+    MLX --> Jobs
+    FE --> Reader["Dashboard / Reader / Slicer<br/>copy digest tasks"]
+    Reader --> Jobs
+    Tools["External agent CLIs<br/>tools/create_*_digest_version.py"] --> Jobs
+```
+
 ### Local AI Model Expectations
 For semantic chaptering and visual summary generation, Smart YouTube Reader uses Apple's **MLX-VLM** framework to execute models locally.
 * **Hardware Requirement**: Running the local AI model requires **Apple Silicon macOS** (M1/M2/M3/M4 chipsets). This is because the underlying `mlx` library is optimized exclusively for Apple Silicon GPU acceleration.
 * **Default Model**: The application defaults to `mlx-community/gemma-4-e4b-it-4bit`, a highly optimized quantized visual model from the Gemma 4 family.
 * **First-run download**: The first archive run downloads the model (~5.25 GB, 4-bit) into `data/mlx` and needs roughly **8 GB+ unified memory**. Allow several minutes on first run — the download happens lazily on the first chaptering request and there is no progress bar yet. The model is public (no Hugging Face token required).
 * **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported. The `mlx-vlm` dependency carries a platform marker, so `pip install -r requirements.txt` simply skips it on those systems rather than failing.
+
+### Why This Over yt-dlp + Whisper or Cloud Tools?
+
+| Option | Best at | Smart YouTube Reader adds |
+|---|---|---|
+| `yt-dlp` + transcript tooling | Raw media, captions, and one-off extraction. | A durable archive folder with transcript, visual frames, semantic chapters, reader UI, slicer workflow, and agent-ready JSON. |
+| Cloud video AI tools | Hosted summaries and fast collaboration. | Local-first storage and processing for the initial archive, no required AI subscription, and inspectable files you can keep, script, or hand to external agents. |
+| Manual notes from a video | Human judgment and selective attention. | Timestamp-linked context, de-duplicated evidence frames, search, reusable digest workflows, and repeatable project exports. |
 
 ---
 
@@ -247,6 +276,8 @@ Digest workflows turn that archive into new agent-readable projects:
 
 See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
+The checked-in CLI skill ports under `.antigravitycli/skills/`, `.codex/skills/`, and `.claude/skills/` are intentional adapters so Antigravity, Codex, and Claude can load the same Smart YouTube Reader workflows; canonical shared skills remain under `skills/`.
+
 ---
 
 ## Community & Governance
@@ -261,6 +292,6 @@ We welcome contributions and value our community's safety and security. Please r
 
 ## License
 
-Smart YouTube Reader's Ehukai Media code is licensed under the MIT License. Bundled third-party skill and vendor material carries its own license terms, including Apache-2.0 skill content under `skills/` and the vendored MIT `modern-screenshot` browser helper.
+Smart YouTube Reader's Ehukai Media code is licensed under the MIT License. Bundled third-party skill and vendor material carries its own license terms, including Apache-2.0 skill content under `skills/` and `.antigravitycli/skills/impeccable/`, plus the vendored MIT `modern-screenshot` browser helper.
 
 See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.

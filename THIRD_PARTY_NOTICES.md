@@ -4,7 +4,10 @@ Smart YouTube Reader is licensed under the MIT License except where third-party 
 
 ## Impeccable Skill Material
 
-**Path:** `skills/impeccable/**`
+**Paths:**
+- `skills/impeccable/**`
+- `.antigravitycli/skills/impeccable/**`
+
 **Source:** https://github.com/pbakaus/impeccable
 **License:** Apache License 2.0
 
@@ -27,6 +30,8 @@ Copies of the Apache License 2.0 and NOTICE files for the bundled Impeccable-der
 
 - `skills/impeccable/LICENSE`
 - `skills/impeccable/NOTICE.md`
+- `.antigravitycli/skills/impeccable/LICENSE`
+- `.antigravitycli/skills/impeccable/NOTICE.md`
 
 ## Anthropic Playground Plugin
 
@@ -38,7 +43,10 @@ The bundled playground plugin includes its upstream Apache License 2.0 file at `
 
 ## modern-screenshot
 
-**Path:** `skills/impeccable/scripts/modern-screenshot.umd.js`
+**Paths:**
+- `skills/impeccable/scripts/modern-screenshot.umd.js`
+- `.antigravitycli/skills/impeccable/scripts/modern-screenshot.umd.js`
+
 **Source:** https://github.com/qq15725/modern-screenshot
 **Package:** `modern-screenshot@4.7.0`
 **License:** MIT
