@@ -35,6 +35,16 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
+# Local-first by default: bind loopback only. Opt in to network/tailnet sharing
+# with SYR_SHARE=1, which binds all interfaces (so your tailnet IP is reachable).
+BIND_HOST="127.0.0.1"
+if [ "${SYR_SHARE:-0}" = "1" ]; then
+    BIND_HOST="0.0.0.0"
+    echo "--> SYR_SHARE=1: binding to all interfaces (0.0.0.0)."
+    echo "    The app will be reachable by other devices on your network/tailnet."
+    echo "    Press Ctrl+C now if that is not what you intended."
+fi
+
 # Clear stale processes on required ports
 for PORT in 8001 3001; do
     PIDS=$(lsof -Pi :$PORT -sTCP:LISTEN -t 2>/dev/null)
@@ -48,30 +58,59 @@ done
 # Start Backend
 echo "--> Starting Backend (Port 8001)..."
 cd backend
-if [ -d ".venv" ]; then
+if [ ! -d ".venv" ]; then
+    echo "--> No backend virtualenv found. Creating one and installing dependencies (first run only)..."
+    if ! python3 -m venv .venv; then
+        echo "Error: could not create the Python virtualenv. Install Python 3.11+ and re-run ./start.command"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
     source .venv/bin/activate
+    if ! pip install -r requirements.txt; then
+        echo "Error: backend dependency install failed. Fix the error above, then re-run ./start.command"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
 else
-    echo "Warning: No .venv found in backend. Using system python."
+    source .venv/bin/activate
 fi
 
 # Verify MLX runtime is available before the first archive request starts the local server.
 if ! python -c "import mlx_vlm" &> /dev/null; then
-    echo "Warning: mlx-vlm not found in the backend environment. Run: pip install -r requirements.txt"
-    echo "Archive generation will fail until mlx-vlm is installed."
+    echo "Note: mlx-vlm is not installed (expected on non-Apple-Silicon systems)."
+    echo "      Download, transcript, frames, slicing, and the UI all work; local archive"
+    echo "      chaptering requires Apple Silicon. On Apple Silicon, run: pip install -r requirements.txt"
 fi
 
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001 &
+uvicorn app.main:app --reload --host "$BIND_HOST" --port 8001 &
 BACKEND_PID=$!
 
 # Start Frontend
 echo "--> Starting Frontend (Port 3001)..."
 cd ../frontend
-npm run dev -- -H 0.0.0.0 --port 3001 &
+if [ ! -d "node_modules" ]; then
+    echo "--> Installing frontend dependencies (first run only)..."
+    if [ -f "package-lock.json" ]; then
+        FRONTEND_INSTALL="npm ci"
+    else
+        FRONTEND_INSTALL="npm install"
+    fi
+    if ! $FRONTEND_INSTALL; then
+        echo "Error: frontend dependency install failed. Run 'npm install' in ./frontend, then re-run ./start.command"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+fi
+npm run dev -- -H "$BIND_HOST" --port 3001 &
 FRONTEND_PID=$!
 
-TAILSCALE_IP="$(detect_tailscale_ip)"
-if [ -n "$TAILSCALE_IP" ]; then
-    APP_URL="http://${TAILSCALE_IP}:3001/dashboard"
+if [ "$BIND_HOST" = "0.0.0.0" ]; then
+    TAILSCALE_IP="$(detect_tailscale_ip)"
+    if [ -n "$TAILSCALE_IP" ]; then
+        APP_URL="http://${TAILSCALE_IP}:3001/dashboard"
+    else
+        APP_URL="http://localhost:3001/dashboard"
+    fi
 else
     APP_URL="http://localhost:3001/dashboard"
 fi

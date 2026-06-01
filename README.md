@@ -92,7 +92,7 @@ To run Smart YouTube Reader locally, you need the following:
 ```bash
 ./start.command
 ```
-This automatically starts both the backend and frontend.
+This starts both the backend and frontend. On first run it creates the backend virtualenv, installs Python and Node dependencies, and then launches — so the first launch takes a few minutes; later launches are fast. By default it binds to `localhost` only; set `SYR_SHARE=1 ./start.command` to also expose the app on your network/tailnet.
 
 ### Manual setup
 
@@ -206,7 +206,7 @@ The dashboard uses that image as the project thumbnail.
 
 ## Sharing Projects
 
-Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. `start.command` opens the dashboard on the Tailscale URL when a tailnet IP is available, and falls back to `localhost` otherwise. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. By default `start.command` binds to `localhost` only and opens the local dashboard; launch with `SYR_SHARE=1 ./start.command` to bind all interfaces so your tailnet IP is reachable, in which case it opens the dashboard on the Tailscale URL when one is available. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
 
 | Mode | When to use | Link format |
 |---|---|---|
