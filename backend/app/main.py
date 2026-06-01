@@ -34,10 +34,13 @@ app = FastAPI(title="Smart YouTube Reader", version="1.0.0")
 # and, when sharing over a tailnet, the same host on the 100.x range — never a
 # wildcard origin. No cookie/credential flow exists, so credentials are disabled
 # (a wildcard origin with credentials would let any visited site read local data).
+# The origin regex + credentials=False is the actual fix; once origins are locked
+# to :3001 a method allowlist buys nothing, so methods stay open to avoid silently
+# breaking the preflight of a future PUT/PATCH route.
 _cors_kwargs = dict(
     allow_origin_regex=r"^http://(localhost|127\.0\.0\.1|\[::1\]|100\.\d{1,3}\.\d{1,3}\.\d{1,3}):3001$",
     allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 _public_share_origin = os.environ.get("PUBLIC_SHARE_ORIGIN")

@@ -68,6 +68,8 @@ if [ ! -d ".venv" ]; then
     source .venv/bin/activate
     if ! pip install -r requirements.txt; then
         echo "Error: backend dependency install failed. Fix the error above, then re-run ./start.command"
+        deactivate 2>/dev/null
+        rm -rf .venv   # don't leave a half-built venv that the next run would treat as ready
         read -p "Press Enter to exit..."
         exit 1
     fi
