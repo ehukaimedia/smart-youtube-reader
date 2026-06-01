@@ -55,9 +55,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Filter out mlx-vlm since mlx requires Apple Silicon (macOS) and cannot run/install on Linux.
-          grep -v "mlx-vlm" requirements.txt > requirements-ci.txt
-          pip install -r requirements-ci.txt
+          # mlx-vlm carries a platform marker (arm64/darwin only), so pip skips it on Linux automatically.
+          pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
       - name: Run backend tests

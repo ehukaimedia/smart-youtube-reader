@@ -42,7 +42,8 @@ Smart YouTube Reader is built on a **local-first** architecture.
 For semantic chaptering and visual summary generation, Smart YouTube Reader uses Apple's **MLX-VLM** framework to execute models locally.
 * **Hardware Requirement**: Running the local AI model requires **Apple Silicon macOS** (M1/M2/M3/M4 chipsets). This is because the underlying `mlx` library is optimized exclusively for Apple Silicon GPU acceleration.
 * **Default Model**: The application defaults to `mlx-community/gemma-4-e4b-it-4bit`, a highly optimized quantized visual model from the Gemma 4 family.
-* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported.
+* **First-run download**: The first archive run downloads the model (~5.25 GB, 4-bit) into `data/mlx` and needs roughly **8 GB+ unified memory**. Allow several minutes on first run — the download happens lazily on the first chaptering request and there is no progress bar yet. The model is public (no Hugging Face token required).
+* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported. The `mlx-vlm` dependency carries a platform marker, so `pip install -r requirements.txt` simply skips it on those systems rather than failing.
 
 ---
 
@@ -78,8 +79,10 @@ To run Smart YouTube Reader locally, you need the following:
 
 - **macOS (Apple Silicon)** — Required for local model generation.
 - **FFmpeg** — Used for frame extraction and video slicing (`brew install ffmpeg`).
-- **Python 3.10+**
-- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc))
+- **Python 3.11+** — The version CI verifies.
+- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc)) — Required by **both** the frontend **and** the backend. `yt-dlp` invokes Node at download time to solve YouTube's challenge, so Node must be on the `PATH` the backend process inherits (the backend also searches `~/.nvm`, `~/.volta/bin`, and `/opt/homebrew/bin`).
+
+> **Optional — private/age-restricted videos:** set `YDL_COOKIES_BROWSER=chrome` (or `firefox`) before launching so `yt-dlp` reads cookies from that browser. It is unset by default; cookies are sent only to YouTube via `yt-dlp`.
 
 ---
 
@@ -98,9 +101,7 @@ This automatically starts both the backend and frontend.
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-# To run tests, also install development dependencies:
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
@@ -111,13 +112,13 @@ npm install
 npm run dev -- --port 3001
 ```
 
-Then open `http://localhost:3001` in your browser.
+Then open `http://localhost:3001` in your browser. For the full contributor walkthrough (and code-style guidelines), see [CONTRIBUTING.md](CONTRIBUTING.md), the canonical setup reference.
 
 ---
 
 ## Verification & Testing
 
-We maintain a rigorous test and linting suite to ensure codebase health.
+Backend unit tests (pytest) cover the digest prompt, archive parsing, share-info, and MLX-runtime helpers. The frontend is gated in CI by ESLint and a production build. The download → frame-extraction → de-duplication → slicing pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
 
 ### Backend Verification
 Verify the backend using `pytest`:
