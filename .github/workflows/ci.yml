@@ -48,16 +48,13 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-          cache-dependency-path: |
-            backend/requirements.txt
-            backend/requirements-dev.txt
+          cache-dependency-path: backend/requirements.lock
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # mlx-vlm carries a platform marker (arm64/darwin only), so pip skips it on Linux automatically.
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          # requirements.txt stays loose for maintainers; CI installs the verified lock.
+          pip install -r requirements.lock
 
       - name: Lint (ruff)
         run: ruff check . ../tools
