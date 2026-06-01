@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
     getApiBase,
     getShareInfo,
-    readStoredShareMode,
+    inferShareModeFromLocation,
     resolveShareOrigin,
     type ShareInfo,
     type ShareMode,
@@ -70,7 +70,7 @@ export default function DashboardPage() {
         }
     });
     const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
-    const [shareMode] = useState<ShareMode>(() => readStoredShareMode());
+    const [shareMode] = useState<ShareMode>(() => inferShareModeFromLocation());
     const toast = useToast();
 
     const fetchJobs = () => {

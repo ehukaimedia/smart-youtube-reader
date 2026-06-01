@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getApiBase, getShareInfo, readStoredShareMode, resolveShareOrigin } from '@/lib/api';
+import { getApiBase, getShareInfo, inferShareModeFromLocation, resolveShareOrigin } from '@/lib/api';
 import { copyText } from '@/lib/clipboard';
 import { useToast } from '../../components/ToastProvider';
 import DemoProviderTabs from '../../components/DemoProviderTabs';
@@ -109,7 +109,7 @@ What would you like to know about this video?`;
 
     const copyProjectLink = async () => {
         const info = await getShareInfo();
-        const mode = readStoredShareMode();
+        const mode = inferShareModeFromLocation();
         const origin = resolveShareOrigin(info, mode);
         if (!origin) {
             const reason = info.modes.tailscale.status;

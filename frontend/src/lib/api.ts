@@ -21,23 +21,14 @@ export type ShareInfo = {
   configured_override: boolean;
 };
 
-const SHARE_MODE_STORAGE_KEY = 'smart-reader-share-mode';
-
-function inferShareModeFromLocation(): ShareMode {
+// The effective share mode is derived from where the app is actually served:
+// switching modes redirects to the other origin, so the served host is the source
+// of truth (a localStorage preference would only ever be written, never read).
+export function inferShareModeFromLocation(): ShareMode {
   if (typeof window === 'undefined') return 'local';
   const host = window.location.hostname;
   if (host.startsWith('100.') || host.endsWith('.tailscale.net')) return 'tailscale';
   return 'local';
-}
-
-export function readStoredShareMode(): ShareMode {
-  if (typeof window === 'undefined') return 'local';
-  return inferShareModeFromLocation();
-}
-
-export function writeStoredShareMode(mode: ShareMode): void {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(SHARE_MODE_STORAGE_KEY, mode);
 }
 
 function fallbackShareInfo(): ShareInfo {
