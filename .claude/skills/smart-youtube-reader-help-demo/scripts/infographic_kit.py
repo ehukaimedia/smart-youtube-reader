@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Reusable HTML/CSS kit for brand-spec AI-digest teaching cards (Claude image path).
 
-Bakes in the docs/impeccable/DESIGN.md Section 7 art direction so generated cards
-pass the acceptance checklist by construction: Inter type, Operator Blue (#3b82f6)
-as the only accent, committed light (simple) or dark (premium) theme, generous
-whitespace, no decorative shadows, no rainbow, no fake UI controls.
+Bakes in core docs/impeccable/DESIGN.md Section 7 craft: Inter type,
+stable safe zones, strong contrast, generous whitespace, no decorative shadows,
+and no fake UI controls. Treat the kit as a fast production base, not a
+creative ceiling: premium digest visuals may extend it with concept-led full
+color, richer focal imagery, and custom structure when that teaches the chapter
+better.
 
 Use it to author content fast, then render with render_to_webp.py:
 

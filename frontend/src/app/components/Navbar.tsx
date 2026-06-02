@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ShareModeToggle from './ShareModeToggle';
-import { DEFAULT_DEMO_JOB_ID, DEMO_JOB_IDS } from './demoProviders';
+import { DEMO_JOB_IDS } from './demoProviders';
 
 export default function Navbar() {
     const pathname = usePathname();
-    const helpActive = DEMO_JOB_IDS.some((jobId) => pathname === `/reader/${jobId}`);
+    const isDemoRoute = pathname === '/demo'
+        || DEMO_JOB_IDS.some((jobId) => pathname === `/reader/${jobId}`);
 
     return (
         <nav className="navbar">
@@ -17,7 +18,7 @@ export default function Navbar() {
                 </Link>
                 <div className="nav-actions">
                     <ShareModeToggle />
-                    <Link href={`/reader/${DEFAULT_DEMO_JOB_ID}`} className={`nav-link ${helpActive ? 'active' : ''}`} title="Open the Smart YouTube Reader demo digest">
+                    <Link href="/demo" className={`nav-link ${isDemoRoute ? 'active' : ''}`} title="Choose a Smart YouTube Reader demo digest">
                         Help
                     </Link>
                     <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>

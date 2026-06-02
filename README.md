@@ -1,5 +1,7 @@
 # Smart YouTube Reader
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![CI](https://github.com/ehukaimedia/smart-youtube-reader/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ehukaimedia/smart-youtube-reader/actions/workflows/ci.yml)
+
 **Smart YouTube Reader** is an official Ehukai Media open-source project. It turns any YouTube URL into a structured, AI-readable archive — transcript, de-duplicated visual frames, and semantic chapters — that you or an AI agent can search, read, and learn from.
 
 > **Why this exists:** Videos are great for watching, but terrible for referencing. This tool makes video content as accessible and searchable as a book.
@@ -8,13 +10,17 @@
 
 ## Proof: Demo AI Digest
 
-The repository ships with a bundled **Smart YouTube Reader Demo Digest** so the first dashboard already contains a finished deliverable. It teaches how to use the system and shows the viral edge: structured context becomes a concise, visual, shareable learning artifact.
+The repository ships with bundled **Smart YouTube Reader Demo Digest** examples so the first dashboard already contains finished deliverables. They teach how to use the system and show the viral edge: structured context becomes a concise, visual, shareable learning artifact.
 
-[Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation.
+[Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation. The demo reader includes a provider switcher for the **Claude Opus 4.8**, **Codex GPT 5.5**, and **Gemini 3.5 Flash High** versions.
 
-The demo ships in three image-generation variants so you can compare provider output side by side. A **Demo image versions** selector on the demo reader switches between the **Codex** (GPT Image 2 photographic), **Gemini** (image-model illustration), and **Claude** (HTML/CSS editorial cards rendered to WebP) versions of the same five teaching chapters.
+No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally on Apple Silicon using Gemma 4 through MLX-VLM; the external-agent demos are optional examples for generating polished follow-up digest images. When you want tighter visual evidence, the slicer lets you manually select the exact video frames that best match the chapter content.
 
-![Default AI digest workflow: archive evidence to agent to WebP teaching images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+![Default AI digest workflow: archive evidence to Codex agent to GPT 5.5 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+
+| Claude Opus 4.8 premium | Codex GPT 5.5 premium | Gemini 3.5 Flash High premium |
+|---|---|---|
+| ![Claude premium demo digest image](examples/demo-jobs/smart-youtube-reader-claude/generated/chapter-03-default-ai-digest-premium.webp) | ![Codex premium demo digest image](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest-premium.webp) | ![Gemini premium demo digest image](examples/demo-jobs/smart-youtube-reader-gemini/generated/chapter-04-group-digest-premium.webp) |
 
 | Capture | Reader context | Group synthesis |
 |---|---|---|
@@ -30,14 +36,43 @@ The demo ships in three image-generation variants so you can compare provider ou
 Smart YouTube Reader is built on a **local-first** architecture.
 * **No Database**: It uses the local filesystem for all storage. Jobs, transcripts, and frames are kept under the `data/` directory.
 * **Privacy & Control**: All processing is performed on your machine.
+* **No AI subscription for the initial digest**: The first structured video archive is generated locally; paid cloud AI tools are optional for later external-agent digest variants.
 * **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local MLX-VLM server management.
 * **Frontend**: A Next.js (React) application provides a visual dashboard, an interactive reader with timestamp-linked transcript search, and a clip-slicer.
+
+### System Flow
+
+```mermaid
+flowchart LR
+    Launch["start.command / start.sh<br/>localhost by default<br/>SYR_SHARE=1 for tailnet"] --> FE["Next.js app<br/>:3001"]
+    Launch --> API["FastAPI backend<br/>:8001"]
+    FE -->|"REST + static media<br/>localhost/tailnet CORS"| API
+    API --> Jobs["Local filesystem<br/>data/jobs/&lt;project&gt;"]
+    API -->|"download + metadata"| YTDLP["yt-dlp<br/>Node on PATH"]
+    YTDLP --> YouTube["YouTube"]
+    API --> FFmpeg["FFmpeg<br/>frames + clips"]
+    FFmpeg --> Jobs
+    API --> MLX["MLX-VLM local server<br/>Gemma 4 on Apple Silicon"]
+    MLX --> Jobs
+    FE --> Reader["Dashboard / Reader / Slicer<br/>copy digest tasks"]
+    Reader --> Jobs
+    Tools["External agent CLIs<br/>tools/create_*_digest_version.py"] --> Jobs
+```
 
 ### Local AI Model Expectations
 For semantic chaptering and visual summary generation, Smart YouTube Reader uses Apple's **MLX-VLM** framework to execute models locally.
 * **Hardware Requirement**: Running the local AI model requires **Apple Silicon macOS** (M1/M2/M3/M4 chipsets). This is because the underlying `mlx` library is optimized exclusively for Apple Silicon GPU acceleration.
 * **Default Model**: The application defaults to `mlx-community/gemma-4-e4b-it-4bit`, a highly optimized quantized visual model from the Gemma 4 family.
-* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported.
+* **First-run download**: The first archive run downloads the model (~5.25 GB, 4-bit) into `data/mlx` and needs roughly **8 GB+ unified memory**. Allow several minutes on first run — the download happens lazily on the first chaptering request and there is no progress bar yet. The model is public (no Hugging Face token required).
+* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported. The `mlx-vlm` dependency carries a platform marker, so `pip install -r requirements.txt` simply skips it on those systems rather than failing.
+
+### Why This Over yt-dlp + Whisper or Cloud Tools?
+
+| Option | Best at | Smart YouTube Reader adds |
+|---|---|---|
+| `yt-dlp` + transcript tooling | Raw media, captions, and one-off extraction. | A durable archive folder with transcript, visual frames, semantic chapters, reader UI, slicer workflow, and agent-ready JSON. |
+| Cloud video AI tools | Hosted summaries and fast collaboration. | Local-first storage and processing for the initial archive, no required AI subscription, and inspectable files you can keep, script, or hand to external agents. |
+| Manual notes from a video | Human judgment and selective attention. | Timestamp-linked context, de-duplicated evidence frames, search, reusable digest workflows, and repeatable project exports. |
 
 ---
 
@@ -58,11 +93,11 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 - **Visual matching** — Each chapter is paired with high-signal frames from the video using local frame metadata
 - **Local model** — Archive generation uses Gemma 4 models through MLX-VLM
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
-- **Video Slicer** — Cut precise clips from any job and export them with full metadata
+- **Video Slicer** — Cut precise clips and manually select the frames that best match the chapter content
 - **Large image inspection** — Click any Reader summary or chapter image to open a focused larger view with the original file link
 - **Agent-ready** — The `archive.json` output is designed to be read by AI agents; image URLs are fully resolved
-- **External-agent AI Digests** — Copy a CLI task for Codex, Claude, or another LLM to create a shorter learning-focused digest without modifying the source project
-- **AI Digest with Images** — Default digest workflow: Codex paired with GPT 2.0 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence
+- **External-agent AI Digests** — Copy a CLI task for Codex or another LLM to create a shorter learning-focused digest without modifying the source project
+- **AI Digest with Images** — Default digest workflow: Codex paired with GPT 5.5 image generation creates novel WebP teaching images after inspecting the archive text and real frame evidence; premium mode is full-color and concept-adaptive for inspired visual learning
 - **Group AI Digests** — Combine multiple completed projects into a novel cross-video lesson with durable facts, theory, hypotheses, and generated WebP teaching images
 
 ---
@@ -73,8 +108,10 @@ To run Smart YouTube Reader locally, you need the following:
 
 - **macOS (Apple Silicon)** — Required for local model generation.
 - **FFmpeg** — Used for frame extraction and video slicing (`brew install ffmpeg`).
-- **Python 3.10+**
-- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc))
+- **Python 3.11+** — The version CI verifies.
+- **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc)) — Required by **both** the frontend **and** the backend. `yt-dlp` invokes Node at download time to solve YouTube's challenge, so Node must be on the `PATH` the backend process inherits (the backend also searches `~/.nvm`, `~/.volta/bin`, and `/opt/homebrew/bin`).
+
+> **Optional — private/age-restricted videos:** set `YDL_COOKIES_BROWSER=chrome` (or `firefox`) before launching so `yt-dlp` reads cookies from that browser. It is unset by default; cookies are sent only to YouTube via `yt-dlp`.
 
 ---
 
@@ -84,7 +121,7 @@ To run Smart YouTube Reader locally, you need the following:
 ```bash
 ./start.command
 ```
-This automatically starts both the backend and frontend.
+This starts both the backend and frontend. On first run it creates the backend virtualenv, installs Python and Node dependencies, and then launches — so the first launch takes a few minutes; later launches are fast. By default it binds to `localhost` only; set `SYR_SHARE=1 ./start.command` to also expose the app on your network/tailnet.
 
 ### Manual setup
 
@@ -93,9 +130,7 @@ This automatically starts both the backend and frontend.
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-# To run tests, also install development dependencies:
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
@@ -106,19 +141,20 @@ npm install
 npm run dev -- --port 3001
 ```
 
-Then open `http://localhost:3001` in your browser.
+Then open `http://localhost:3001` in your browser. For the full contributor walkthrough (and code-style guidelines), see [CONTRIBUTING.md](CONTRIBUTING.md), the canonical setup reference.
 
 ---
 
 ## Verification & Testing
 
-We maintain a rigorous test and linting suite to ensure codebase health.
+Backend unit tests (pytest) cover the digest prompt, archive parsing, share-info, MLX-runtime, and slicer-security helpers, and the backend is linted with [ruff](https://docs.astral.sh/ruff/). The frontend is gated in CI by ESLint (`--max-warnings 0`) and a production build. The download → frame-extraction → de-duplication pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
 
 ### Backend Verification
-Verify the backend using `pytest`:
+Verify the backend with `ruff` and `pytest`:
 ```bash
 cd backend
 source .venv/bin/activate
+ruff check .
 python -m pytest
 ```
 
@@ -138,9 +174,9 @@ npm run build
 ## CLIs & Tooling
 
 ### AI Digest CLI
-AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex, Claude, or another capable LLM. The copied task lets the operator choose `simple` text-led infographics or `premium` GPT Image 2 / GPT 2.0 image-led infographics before generation. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
+AI digest creation is handled by external agents through a local CLI. The app does not run a local digest model or deterministic fallback in the backend. In the Reader, `Copy AI Digest CLI Task` is the default image-rich WebP workflow for Codex or another capable LLM. The copied task lets the operator choose `simple` text-led infographics or `premium` full-color, concept-adaptive visual-learning infographics before generation. `Copy Text-Only AI Digest Task` remains available when you want to preserve source image references instead of generating new teaching images.
 
-The recommended default workflow is Codex paired with GPT 2.0 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
+The recommended default workflow is Codex paired with GPT 5.5 image generation: Codex reads the archive text, inspects the source frame images as evidence, writes the digest draft, creates novel WebP teaching images, and then runs the materialization command. The CLI remains provider-agnostic; the requirement is that the agent actually inspect the project evidence before writing text or creating images.
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>"
@@ -152,13 +188,13 @@ The command above prints the default image-rich WebP digest task. For the explic
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --text-only
 ```
 
-Both commands print the exact task for Codex, Claude, or another agent. The agent writes a JSON draft, then materializes the digest project:
+Both commands print the exact task for Codex or another agent. The agent writes a JSON draft, then materializes the digest project:
 
 ```bash
 python3 tools/create_ai_digest_version.py "data/jobs/<project-folder>" --draft "data/jobs/<project-folder>/generated/ai-digest-draft.json"
 ```
 
-The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Text-only AI digests preserve image references from kept source chapters so humans can curate images later. Default AI digests create one novel generated WebP teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project. Premium infographic mode requires GPT Image 2 / GPT 2.0 image generation for the bitmap visual rather than local vector-only placeholders.
+The CLI creates a separate `kind: ai_digest` project under `data/jobs/`; the original project is not modified. Text-only AI digests preserve image references from kept source chapters so humans can curate images later. Default AI digests create one novel generated WebP teaching image per digest chapter, up to six images total, and reference only safe `generated/` paths in the derived project. Premium infographic mode requires GPT 5.5 image generation for the bitmap visual rather than local vector-only placeholders, but its creative structure is adaptive: the agent reverse-engineers the chapter concept and chooses the full-color composition that best improves understanding and recall.
 
 Every digest task includes `preservation_items` extracted from the archive and transcript slices. Treat them as a checklist for names, metrics, benchmarks, examples, and claim direction so the digest is shorter without losing the facts that make the video useful.
 
@@ -167,13 +203,13 @@ Group digest creation combines two or more completed projects into one new learn
 
 Unlike a single-video digest, a group digest is not a playlist export and does not preserve original frame paths. The agent reads every source `archive.json`, inspects frame images as evidence, and writes a novel combined transcript rather than concatenating source transcripts. Each chapter must teach digestible facts, theory, and a testable hypothesis, and the CLI rejects drafts that are too extractive from the source wording.
 
-The materialized group project contains exactly three newly generated WebP teaching images. Codex with GPT 2.0 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
+The materialized group project contains exactly three newly generated WebP teaching images. Codex GPT 5.5 image generation is the recommended pairing for this step because the images should be created from the new combined lesson plus the inspected visual evidence, not from prompt-only guesses.
 
 ```bash
 python3 tools/create_group_ai_digest_version.py "data/jobs/<project-one>" "data/jobs/<project-two>" --title "Combined Learning Digest"
 ```
 
-That prints the exact task for Codex, Claude, or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge. The source projects stay untouched.
+That prints the exact task for Codex or another agent. The agent writes the group draft and creates the three image files in the printed staging folder, then runs the materialization command printed by the CLI. The result is a separate `kind: group_ai_digest` project under `data/jobs/` with a `Group AI Digest` dashboard badge. The source projects stay untouched.
 
 ### Summary Thumbnail CLI
 Create a project thumbnail from the archive text and attached frame images:
@@ -200,7 +236,7 @@ The dashboard uses that image as the project thumbnail.
 
 ## Sharing Projects
 
-Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. `start.command` opens the dashboard on the Tailscale URL when a tailnet IP is available, and falls back to `localhost` otherwise. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. By default `start.command` binds to `localhost` only and opens the local dashboard; launch with `SYR_SHARE=1 ./start.command` to bind all interfaces so your tailnet IP is reachable, in which case it opens the dashboard on the Tailscale URL when one is available. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
 
 | Mode | When to use | Link format |
 |---|---|---|
@@ -240,6 +276,8 @@ Digest workflows turn that archive into new agent-readable projects:
 
 See [`skills/smart-youtube-reader/SKILL.md`](./skills/smart-youtube-reader/SKILL.md) for the full agent skill definition.
 
+The checked-in CLI skill ports under `.antigravitycli/skills/`, `.codex/skills/`, and `.claude/skills/` are intentional adapters so Antigravity, Codex, and Claude can load the same Smart YouTube Reader workflows; canonical shared skills remain under `skills/`.
+
 ---
 
 ## Community & Governance
@@ -254,4 +292,6 @@ We welcome contributions and value our community's safety and security. Please r
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Smart YouTube Reader's Ehukai Media code is licensed under the MIT License. Bundled third-party skill and vendor material carries its own license terms, including Apache-2.0 skill content under `skills/` and `.antigravitycli/skills/impeccable/`, plus the vendored MIT `modern-screenshot` browser helper.
+
+See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.

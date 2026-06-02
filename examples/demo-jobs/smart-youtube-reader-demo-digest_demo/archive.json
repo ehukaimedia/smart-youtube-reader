@@ -2,12 +2,12 @@
   "job_id": "demo-smart-youtube-reader-digest",
   "folder": "smart-youtube-reader-demo-digest_demo",
   "url": "https://github.com/ehukaimedia/smart-youtube-reader",
-  "title": "Smart YouTube Reader Demo Digest",
+  "title": "Smart YouTube Reader Demo Digest (Codex)",
   "created_at": 1779935400,
   "kind": "ai_digest",
   "source_job_id": null,
   "source_folder": null,
-  "digest_model": "Codex + GPT 5.5 images",
+  "digest_model": "Codex GPT 5.5 images",
   "digest_agent_status": "bundled_demo",
   "digest_created_at": 1779935400,
   "changes_summary": [
@@ -72,7 +72,7 @@
     {
       "concept": "Default AI Digest With GPT 5.5 Images",
       "summary": "The default digest workflow asks an external agent such as Codex to read the archive, create a concise lesson, and generate novel WebP teaching images.",
-      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex, Claude, or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Codex and GPT 5.5 image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
+      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. With Codex GPT 5.5 image generation, the deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
       "timestamp_start": 190,
       "timestamp_end": 315,
       "images": [
@@ -85,7 +85,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visuals showing Codex plus GPT 5.5 images creating the default digest deliverable in simple and premium styles."
+        "note": "Generated demo visuals showing Codex GPT 5.5 images creating the default digest deliverable in simple and premium styles."
       }
     },
     {

@@ -1,15 +1,16 @@
 import os
-import traceback
-import yt_dlp
-import ffmpeg
 import json
 import re
+import logging
+import yt_dlp
+import ffmpeg
 from pathlib import Path
 from youtube_transcript_api import YouTubeTranscriptApi
 from .jobs import JobStore, JobStatus
-# from .intelligence import deduplicate_frames REMOVED
-from .frames import FrameManager # [NEW]
+from .frames import FrameManager
 from .schemas import JobCreateRequest
+
+logger = logging.getLogger(__name__)
 
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 
@@ -90,7 +91,7 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
              job.transcript_preview = preview_text
 
         except Exception as e:
-             print(f"Transcript API failed: {e}. Trying yt-dlp subs...")
+             logger.warning("Transcript API failed: %s. Trying yt-dlp subs...", e)
              try:
                  with yt_dlp.YoutubeDL(ydl_opts_subs) as ydl:
                      ydl.download([payload.video_url])
@@ -161,11 +162,11 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
 
         # Scan and Hash (Compute Once)
         new_hashed = frame_manager.scan_and_hash(interval_sec=payload.interval_sec)
-        print(f"Hashed {new_hashed} new frames.")
+        logger.info("Hashed %s new frames.", new_hashed)
 
         # Deduplicate
         removed = frame_manager.deduplicate(threshold=5)
-        print(f"Removed {removed} duplicate frames.")
+        logger.info("Removed %s duplicate frames.", removed)
 
         # 5. Create AI Archive (Intelligence Step)
         job.current_step = "Generating AI Archive (Thinking)..."
@@ -188,14 +189,13 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
 
              if archive_result.get('archive'):
                  archive_stats = len(archive_result['archive'])
-                 print(f"Generated AI Archive with {archive_stats} chapters.")
+                 logger.info("Generated AI Archive with %s chapters.", archive_stats)
              else:
                  raise RuntimeError("Archive generation returned no chapters")
              # archive.json is written after rename below, once the final folder name is known
 
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Archive generation failed: {e}")
+        except Exception:
+            logger.exception("Archive generation failed")
             raise
 
         # 6. Rename Directory to readable slug (must happen before writing archive.json)
@@ -211,9 +211,9 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
                job.data_dir = new_job_dir
                job.package_path = new_job_dir
                job_dir = new_job_dir
-               print(f"Renamed job directory to: {new_job_dir}")
+               logger.info("Renamed job directory to: %s", new_job_dir)
         except Exception as e:
-            print(f"Could not rename directory: {e}")
+            logger.warning("Could not rename directory: %s", e)
 
         # 7. Write archive.json now that final folder name is known
         # Images stored as relative paths (frames/<filename>) so they work regardless of host/port
@@ -252,6 +252,6 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
         job.current_step = "Complete"
 
     except Exception as e:
-        traceback.print_exc()
+        logger.exception("Pipeline failed for job %s", job_id)
         job.status = JobStatus.failed
         job.error = str(e)

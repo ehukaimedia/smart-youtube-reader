@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+# Put the backend root on sys.path so `from app import ...` resolves regardless of
+# the directory pytest is invoked from (CI no longer has to pin working-directory).
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint.per-file-ignores]
+# These modules intentionally run setup before importing (load_dotenv must run
+# before importing app modules that read env at import time; the benchmark scripts
+# adjust sys.path first), which trips E402 (import-not-at-top). That ordering is
+# required, so ignore E402 for them specifically rather than globally.
+"app/main.py" = ["E402"]
+"benchmark_model.py" = ["E402"]
+"benchmarks/digest_prompt.py" = ["E402"]

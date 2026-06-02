@@ -14,9 +14,11 @@ Use this skill to turn dense information into a scannable card system with restr
 When the task asks for one of the two house infographic styles, prefer the dedicated skills:
 
 - `simple-infographic` for quiet text-led benefit cards with simple support visuals.
-- `premium-infographic` for immersive image-led discovery cards with varied focal imagery.
+- `premium-infographic` for immersive, full-color, image-led visual-learning systems with varied focal imagery.
 
 For generated AI digest images, a "single idea" can be expressed as one cohesive card strip. Do not collapse every digest image into a lone icon or node diagram when the stronger teaching form is a polished row of subcards that together explain one workflow, benefit set, or decision path.
+
+For premium generated digest images, do not hard-gate the structure to this shared card grammar. Reverse-engineer the source evidence and let the final visual adapt to the digest concept. A premium output may be a rich card strip, a single hero diagram, a cinematic metaphor, a layered data scene, or another full-color teaching composition when that better promotes inspired visual learning.
 
 ## Visual Recipe
 
@@ -32,6 +34,7 @@ Build from these reusable visual patterns:
 - Carousel controls: use only when implementing an actual carousel UI, never as decoration inside an infographic image.
 - Image treatment: product renders, lifestyle crops, simple line illustrations, maps/status graphics, or icon systems that fill the lower card area.
 - Color: mostly neutral surfaces with selective saturated accents for icons, status graphics, buttons, or product highlights.
+- Premium exception: full color is welcome when it improves teaching, memory, and visual reward. Keep it coherent and concept-led rather than arbitrary.
 
 ## Content Model
 
@@ -139,7 +142,7 @@ Use for generated AI digest images when one chapter teaches a workflow or capabi
 When the deliverable is a generated static image rather than live UI, produce it with the path the harness supports:
 
 - If the harness has a native image model, use the image-generation prompt below.
-- On current Claude Code (no native image model): author the card system as a complete HTML/CSS/SVG document at the exact output size, render it with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP), and convert to WebP with `cwebp -q 82`. Browser-rendered type stays crisp and never truncates.
+- On the Claude Opus 4.8 path (no native image model): author the card system as a complete HTML/CSS/SVG document at the exact output size, render it with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP), and convert to WebP with `cwebp -q 82`. Browser-rendered type stays crisp and never truncates.
 
 Do not ask the user to install image APIs or external tooling. If no rendering path is available, say so in one line and proceed.
 

@@ -10,7 +10,7 @@
     "duration": 95
   },
   {
-    "text": "The default AI digest workflow uses an external agent such as Codex to inspect the archive and source frames, then produce a concise learning project with novel generated WebP teaching images. Codex with GPT 2.0 image generation is the recommended showcase path.",
+    "text": "The default AI digest workflow can use an external agent with Gemini 3.5 Flash High image generation to inspect the archive and source frames, then produce a concise learning project with novel generated WebP teaching images. This bundled version gives users a Gemini comparison path beside the Codex GPT 5.5 showcase.",
     "start": 190,
     "duration": 125
   },

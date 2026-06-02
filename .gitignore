@@ -4,16 +4,16 @@
 .vscode/
 *.swp
 
-# Agent local worktrees and local skills (kept local by default)
+# Agent tool homes
+.antigravitycli/*
+!.antigravitycli/skills/
+!.antigravitycli/skills/**
 .claude/*
-# Track the ported Claude skills (parallel to the tracked .codex/skills)
 !.claude/skills/
-.claude/skills/*
-!.claude/skills/agnostic-infographic/
-!.claude/skills/simple-infographic/
-!.claude/skills/premium-infographic/
-!.claude/skills/reverse-engineer-images/
-!.claude/skills/smart-youtube-reader-help-demo/
+!.claude/skills/**
+.codex/*
+!.codex/skills/
+!.codex/skills/**
 
 # Python Backend
 __pycache__/

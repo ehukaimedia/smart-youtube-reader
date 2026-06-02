@@ -94,7 +94,7 @@ Use transferable categories such as:
 Simple cards are crisp by nature, so Claude can author them directly as code and render them to a pixel-exact raster image — no diffusion model required.
 
 - If the harness has a native image model, you may use the image-prompt template below.
-- Otherwise (current Claude Code has no native image model): author the whole strip as a complete HTML/CSS/SVG document sized to the target canvas, render it with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP) at the exact output dimensions (for Smart YouTube Reader digests: 1280x720), then convert to WebP with `cwebp -q 82`.
+- Otherwise (the Claude Opus 4.8 path has no native image model): author the whole strip as a complete HTML/CSS/SVG document sized to the target canvas, render it with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP) at the exact output dimensions (for Smart YouTube Reader digests: 1280x720), then convert to WebP with `cwebp -q 82`.
 - Do not ask the user to install image APIs or external tooling. If no rendering path is available at all, state that the image step is skipped and proceed.
 - Keep crisp text: real fonts rendered in the browser stay sharp and never truncate, which is the whole advantage of this path over diffusion output.
 

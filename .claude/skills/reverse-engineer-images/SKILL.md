@@ -11,6 +11,8 @@ Turn source images into transferable visual evidence for novel AI digest teachin
 
 For Smart YouTube Reader, this skill is not about recreating source frames. It is about inspecting original video slices, extracting the lesson-bearing visual structure, and translating that evidence into an agnostic prompt brief for a new generated image.
 
+For premium digest visuals, the reverse-engineering step should lead to a custom visual-learning concept, not a fixed template. Extract what the source is trying to teach, then choose a novel full-color composition that makes the idea pleasing, memorable, and easier to understand for humans and downstream AI systems.
+
 ## Core Rule
 
 Source frames are evidence only. Output images for generated AI digests must be new teaching visuals saved under `generated/*.webp`.
@@ -44,12 +46,15 @@ Do not copy, crop, trace, screenshot, restyle, or directly reproduce original fr
    - List the visual evidence to preserve.
    - Name the transformed visual metaphor.
    - Specify the output as a novel generated teaching image, not a recreated source frame.
+   - For premium images, define the visual-learning goal: what should the viewer feel, notice, and understand faster because of the image?
+   - Let the structure adapt to the concept: hero diagram, rich card strip, layered data scene, cinematic metaphor, map/status surface, or comparison tableau.
    - If this repo's `agnostic-infographic` skill applies, use its card grammar for carousel/card-system visuals.
    - If this repo's Impeccable design context applies, follow `docs/impeccable/DESIGN.md` "Generated Image Art Direction".
 
 5. Generate and validate.
    - Keep one idea per image.
-   - Use a consistent theme, type scale, and accent across the digest image set.
+   - Use a coherent theme, type scale, and color logic across the digest image set.
+   - For premium images, full color is encouraged when it improves teaching, delight, recall, or inspired understanding.
    - Validate against both source evidence and output novelty: the image should preserve the lesson while clearly not being a copied frame.
 
 ## Production Path
@@ -57,7 +62,7 @@ Do not copy, crop, trace, screenshot, restyle, or directly reproduce original fr
 Produce the novel image with the path the harness supports:
 
 - If the harness has a native image model, render the brief below with it.
-- On current Claude Code (no native image model): build the teaching image as a complete HTML/CSS/SVG composition following `simple-infographic` (text-led) or `premium-infographic` (image-led), render it with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP) at the exact output size (1280x720 for digests), and convert to WebP with `cwebp -q 82`.
+- On the Claude Opus 4.8 path (no native image model): build the teaching image as a complete HTML/CSS/SVG composition following `simple-infographic` (text-led) or `premium-infographic` (image-led), render it with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP) at the exact output size (1280x720 for digests), and convert to WebP with `cwebp -q 82`.
 
 Either way the output is a novel teaching visual under `generated/*.webp`, never a source frame, screenshot, or trace. Do not ask the user to install image APIs; if no path exists, say so and proceed.
 
@@ -80,6 +85,9 @@ Source identity to remove:
 
 Transformed teaching visual:
 - [diagram, data figure, line-art card, abstract UI flow, comparison card, checklist, etc.]
+
+Visual-learning goal:
+- [what the viewer should understand faster, and what emotional/curiosity reward should help it stick]
 ```
 
 ## Digest Image Prompt Pattern
@@ -94,9 +102,9 @@ Source evidence: [specific facts, numbers, relationships, or visual claims learn
 
 Show: [one transformed teaching idea, not the source frame]. Use [diagram/data figure/line-art/card system/workflow/comparison] to explain [lesson].
 
-Layout: [theme and composition]. Use a small eyebrow label, one bold readable headline, optional one-line body, and one focal visual element. The focal element may be a polished row of subcards when the chapter teaches one workflow through several supporting parts. Keep generous margins, precise alignment, and clear hierarchy.
+Layout: [theme and composition]. Use the structure that best teaches the concept: a hero diagram, full-color editorial card strip, data scene, map/status visual, process flow, comparison tableau, or abstract metaphor. Use a small eyebrow label, one bold readable headline, optional one-line body, and one focal visual system. The focal element may be a polished row of subcards when the chapter teaches one workflow through several supporting parts. Keep generous margins, precise alignment, and clear hierarchy.
 
-Style: clean premium product-marketing infographic, restrained color, modern neutral sans-serif, no clutter.
+Style: clean premium visual-learning infographic, concept-led full color, modern neutral sans-serif, emotionally rewarding but not cluttered. The image should be pleasing to the mind and eye, helping the viewer feel inspired while understanding the lesson.
 
 Do not include: copied source frames, screenshots, logos, presenter faces, source-specific UI chrome, protected product names unless authorized, watermarks, dense text walls, decorative effects, fake plus buttons, carousel arrows, pagination controls, or any visual that looks like a crop or trace of the original video.
 ```
@@ -131,6 +139,7 @@ Validation:
 - Logos, exact UI, presenter faces, copied layouts, and protected trade dress are removed unless the user owns or explicitly authorizes them.
 - The image can stand alone as a teaching card at thumbnail size.
 - The prompt has one clear focal idea and does not ask for a collage of every source detail. If it uses subcards, they all support the same chapter idea and avoid nonfunctional controls.
+- Premium prompts are not hard-gated to one layout or one accent color; they adapt structure and palette to the digest concept while remaining coherent, polished, and source-agnostic.
 
 ## Safety And Rights
 

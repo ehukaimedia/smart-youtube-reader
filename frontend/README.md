@@ -29,4 +29,3 @@ The frontend will run on `http://localhost:3001` and connects to the FastAPI bac
 * **Next.js & React**: App Router structure.
 * **Styling**: Vanilla CSS.
 * **Components**: Organized inside `src/app/` under specific route groups (`dashboard`, `reader/[jobId]`, `slicer/[jobId]`).
-* **Icons**: Uses Lucide React.

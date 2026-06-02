@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react';
 import {
     getShareInfo,
-    readStoredShareMode,
+    inferShareModeFromLocation,
     resolveShareOrigin,
-    writeStoredShareMode,
     type ShareInfo,
     type ShareMode,
 } from '@/lib/api';
@@ -21,7 +20,7 @@ function isModeMatchingLocation(mode: ShareMode): boolean {
 
 export default function ShareModeToggle() {
     const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
-    const [shareMode, setShareMode] = useState<ShareMode>(() => readStoredShareMode());
+    const [shareMode, setShareMode] = useState<ShareMode>(() => inferShareModeFromLocation());
     const toast = useToast();
 
     useEffect(() => {
@@ -52,7 +51,6 @@ export default function ShareModeToggle() {
         }
 
         setShareMode(mode);
-        writeStoredShareMode(mode);
         if (window.location.origin !== origin) {
             window.location.assign(`${origin}${window.location.pathname}${window.location.search}${window.location.hash}`);
         }

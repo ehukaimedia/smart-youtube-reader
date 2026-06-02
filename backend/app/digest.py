@@ -246,7 +246,7 @@ def build_digest_user_prompt(
             '"simple" via .codex/skills/simple-infographic or "premium" via '
             ".codex/skills/premium-infographic. If the human gave a preference, obey it; "
             "otherwise choose the style that best fits the material and mention the choice "
-            "in operator_image_note. Premium style must use GPT Image 2 / GPT 2.0 image "
+            "in operator_image_note. Premium style must use GPT 5.5 image "
             "generation for the bitmap visual, not local vector-only placeholders. Static "
             "infographics must not include fake plus buttons, carousel arrows, pagination "
             "dots, or navigation controls. "

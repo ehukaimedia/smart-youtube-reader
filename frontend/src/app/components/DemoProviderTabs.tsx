@@ -10,7 +10,12 @@ export default function DemoProviderTabs({ jobId }: { jobId: string }) {
 
     return (
         <section className="demo-provider-tabs" aria-label="Compare demo image versions">
-            <span className="demo-provider-label" id="demo-provider-label">Demo image versions</span>
+            <div className="demo-provider-copy">
+                <span className="demo-provider-label" id="demo-provider-label">Demo image versions</span>
+                <span className="demo-provider-note">
+                    Initial archives run locally with Gemma 4 and need no AI subscription. Use the slicer on source archives to manually pick matching frames.
+                </span>
+            </div>
             <div className="filter-pills" role="group" aria-labelledby="demo-provider-label">
                 {DEMO_PROVIDERS.map((provider) => {
                     const active = provider.jobId === jobId;

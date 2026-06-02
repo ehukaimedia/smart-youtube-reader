@@ -7,12 +7,12 @@
   "kind": "ai_digest",
   "source_job_id": null,
   "source_folder": null,
-  "digest_model": "Claude-generated images",
+  "digest_model": "Claude Opus 4.8 images",
   "digest_agent_status": "bundled_demo",
   "digest_created_at": 1779935400,
   "changes_summary": [
     "This bundled digest is a proof deliverable for first-time users.",
-    "It teaches how to use the app and shows both simple and premium Claude-rendered generated-image digest styles."
+    "It teaches how to use the app and shows both simple and premium Claude Opus 4.8 generated-image digest styles."
   ],
   "transcript_policy": "digest_transcript_only",
   "generated_images": [
@@ -28,7 +28,7 @@
     "generated/chapter-05-tailscale-sharing-premium.webp"
   ],
   "media_policy": "lightweight_generated_images_only",
-  "image_policy": "Bundled demo digest images are novel generated WebP teaching visuals. Each chapter includes a simple infographic and a premium Claude-rendered editorial infographic. They are examples of the default external-agent digest deliverable and are not copied from source videos.",
+  "image_policy": "Bundled demo digest images are novel generated WebP teaching visuals. Each chapter includes a simple infographic and a premium Claude Opus 4.8 editorial infographic. They are examples of the default external-agent digest deliverable and are not copied from source videos.",
   "summary_image": "generated/chapter-03-default-ai-digest-premium.webp",
   "archive": [
     {
@@ -47,7 +47,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visuals showing source video to local archive in simple and premium Claude-rendered styles."
+        "note": "Generated demo visuals showing source video to local archive in simple and premium Claude Opus 4.8 styles."
       }
     },
     {
@@ -66,13 +66,13 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visuals showing the reader as structured AI context in simple and premium Claude-rendered styles."
+        "note": "Generated demo visuals showing the reader as structured AI context in simple and premium Claude Opus 4.8 styles."
       }
     },
     {
       "concept": "Default AI Digest With Generated Images",
       "summary": "The default digest workflow asks an external agent to read the archive, create a concise lesson, and generate novel WebP teaching images.",
-      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex, Claude, or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. The deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. In this demo the images are Claude-rendered editorial infographics, authored as HTML and CSS and rendered to WebP. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
+      "content": "A default AI digest is a new project, not a destructive edit of the original archive. Use the AI Digest action or the CLI task to ask Codex or another capable agent to inspect archive.json and the source frames, preserve the durable ideas, remove filler, and create a shorter learning version. The deliverable includes one novel WebP teaching image per digest chapter, up to six images. The source frames are evidence. The output images are new teaching visuals saved under generated/. In this demo the images are Claude Opus 4.8 editorial infographics, authored as HTML and CSS and rendered to WebP. That makes the digest easy to read, lightweight to store, and compelling enough to share.",
       "timestamp_start": 190,
       "timestamp_end": 315,
       "images": [
@@ -85,7 +85,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visuals showing an agent creating the default digest deliverable in simple and premium Claude-rendered styles."
+        "note": "Generated demo visuals showing an agent creating the default digest deliverable in simple and premium Claude Opus 4.8 styles."
       }
     },
     {
@@ -104,7 +104,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visuals showing multi-project synthesis into one lesson in simple and premium Claude-rendered styles."
+        "note": "Generated demo visuals showing multi-project synthesis into one lesson in simple and premium Claude Opus 4.8 styles."
       }
     },
     {
@@ -123,7 +123,7 @@
       "image_review": {
         "mode": "agent_generated",
         "kept": 1,
-        "note": "Generated demo visuals showing global Local/Tailscale app mode in simple and premium Claude-rendered styles."
+        "note": "Generated demo visuals showing global Local/Tailscale app mode in simple and premium Claude Opus 4.8 styles."
       }
     }
   ]

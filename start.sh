@@ -15,21 +15,57 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
+# Local-first by default: bind loopback only. Opt in to network/tailnet sharing
+# with SYR_SHARE=1, which binds all interfaces.
+BIND_HOST="127.0.0.1"
+if [ "${SYR_SHARE:-0}" = "1" ]; then
+    BIND_HOST="0.0.0.0"
+    echo "SYR_SHARE=1: binding to all interfaces (0.0.0.0); reachable by other devices on your network."
+fi
+
 # Start Backend
 echo "Starting Backend on port 8001..."
 cd backend
-if [ -d ".venv" ]; then
+if [ ! -d ".venv" ]; then
+    echo "No backend virtualenv found. Creating one and installing dependencies (first run only)..."
+    if ! python3 -m venv .venv; then
+        echo "Error: could not create the Python virtualenv. Install Python 3.11+ and re-run ./start.sh"
+        exit 1
+    fi
     source .venv/bin/activate
+    if ! pip install -r requirements.txt; then
+        echo "Error: backend dependency install failed. Fix the error above, then re-run ./start.sh"
+        deactivate 2>/dev/null
+        rm -rf .venv   # don't leave a half-built venv that the next run would treat as ready
+        exit 1
+    fi
 else
-    echo "Warning: No .venv found in backend. running without activation."
+    source .venv/bin/activate
 fi
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001 &
+
+if ! python -c "import mlx_vlm" &> /dev/null; then
+    echo "Note: mlx-vlm is not installed (expected on non-Apple-Silicon). Local archive chaptering requires Apple Silicon."
+fi
+
+uvicorn app.main:app --reload --host "$BIND_HOST" --port 8001 &
 BACKEND_PID=$!
 
 # Start Frontend
 echo "Starting Frontend on port 3001..."
 cd ../frontend
-npm run dev -- -H 0.0.0.0 --port 3001 &
+if [ ! -d "node_modules" ]; then
+    echo "Installing frontend dependencies (first run only)..."
+    if [ -f "package-lock.json" ]; then
+        FRONTEND_INSTALL="npm ci"
+    else
+        FRONTEND_INSTALL="npm install"
+    fi
+    if ! $FRONTEND_INSTALL; then
+        echo "Error: frontend dependency install failed. Run 'npm install' in ./frontend, then re-run ./start.sh"
+        exit 1
+    fi
+fi
+npm run dev -- -H "$BIND_HOST" --port 3001 &
 FRONTEND_PID=$!
 
 echo "App running!"

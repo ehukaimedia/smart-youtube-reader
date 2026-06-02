@@ -1,13 +1,15 @@
 ---
 name: premium-infographic
-description: Use when you need an immersive, image-led infographic card strip from product, feature, capability, workflow, or digest content — cinematic discovery cards, editorial feature explainers, or a premium high-definition Smart YouTube Reader digest chapter with rich focal imagery, strong type, and no copied source branding or navigation controls.
+description: Use when you need an immersive, image-led visual-learning infographic from product, feature, capability, workflow, or digest content — cinematic discovery cards, editorial feature explainers, or a premium high-definition Smart YouTube Reader digest chapter with rich full-color focal imagery, strong type, and no copied source branding or navigation controls.
 ---
 
 # Premium Infographic
 
 ## Overview
 
-Create an image-led infographic strip where each card feels like a polished editorial feature card. This style is best for capability discovery, feature education, lifestyle outcomes, data moments, product-like storytelling, and digest chapters that benefit from a strong visual metaphor.
+Create an image-led infographic system where each image feels like a polished editorial teaching artifact. This style is best for capability discovery, feature education, lifestyle outcomes, data moments, product-like storytelling, and digest chapters that benefit from a strong visual metaphor.
+
+Premium is not a rigid card-strip template. The structure adapts to the concept: a cinematic card row, a single hero diagram, a layered data scene, a map-like teaching surface, a process flow, or a rich abstract metaphor are all valid when they explain the digest better. The end goal is inspired visual learning: the image should be pleasing to the mind and the eye, create curiosity, and make the human feel rewarded for understanding the idea.
 
 Use reference images to reverse-engineer composition, hierarchy, and pacing only. The output must be novel and brand-neutral: no copied logos, product names, slogans, proprietary UI, people from the source, protected device shapes, or source trade dress unless the user owns and explicitly requests them.
 
@@ -20,7 +22,17 @@ Use reference images to reverse-engineer composition, hierarchy, and pacing only
 - Surfaces vary deliberately: dark data card, photographic card, map/status card, pale tint card, object-detail card, abstract illustration card.
 - Each card has one vivid focal metaphor and one emotional or functional promise.
 - Typography is modern neutral sans-serif, bold and compact.
-- Color is disciplined per card; the set may have varied scenes, but avoid rainbow category tiles.
+- Color is full and concept-led. Use a rich palette when it teaches and inspires, but compose it deliberately; avoid arbitrary rainbow category tiles.
+
+## Inspired Visual Learning
+
+Premium infographics should increase understanding by increasing desire to look. They should do more than summarize text: they should create a mental model.
+
+- Teach first: every visual decision should clarify a relationship, sequence, contrast, mechanism, consequence, or memorable example from the digest.
+- Reward the eye: use full color, depth, texture, atmosphere, and cinematic composition when they make the idea easier and more pleasurable to grasp.
+- Customize to the concept: reverse-engineer the digest evidence, then choose the visual language that fits that concept rather than forcing a house layout.
+- Balance emotion and precision: visual reward comes from beauty, novelty, and recognition, but the factual lesson must remain correct.
+- Keep the output brand-neutral and rights-safe: full color never means copied trade dress, logos, source screenshots, or identifiable source people.
 
 ## Static Image Rule
 
@@ -32,12 +44,14 @@ A premium infographic is a **complete, high-craft editorial composition** — ne
 
 Pick the path the harness actually supports:
 
-- **Harness with a native image model:** generate the focal bitmap with the native image tool (e.g. GPT Image 2 / GPT 2.0 image generation as specified by `docs/impeccable/DESIGN.md`). Local post-processing is allowed for exact text overlay, cropping, WebP conversion, compression, and repo placement, but the focal imagery comes from the image model.
+- **Harness with a native image model:** generate the focal bitmap with the native image tool (e.g. GPT 5.5 image generation as specified by `docs/impeccable/DESIGN.md`). Local post-processing is allowed for exact text overlay, cropping, WebP conversion, compression, and repo placement, but the focal imagery comes from the image model.
 - **Current Claude Code (no native image model):** author the entire card as a complete HTML/CSS/SVG editorial composition — layered flat surfaces, real depth, a confident focal metaphor, disciplined per-card color, and crisp type — then render it to raster at the exact output size (for Smart YouTube Reader digests: 1280x720) with headless Chrome (Playwright `channel="chrome"`, or the chrome-devtools MCP), and convert to WebP with `cwebp -q 82`. This fully realized render **is** the genuine designed artifact; browser-rendered type stays sharp and never truncates.
 
 Do not ask the user to install image APIs or external tooling just to do this. If no image path and no rendering path is available, state in one line that the premium image step is skipped because the harness has neither, then proceed.
 
 **Anti-slop bar (non-negotiable):** Do not ship a thin, templated, vector-stub, or unfinished card to fill a slot. A complete editorial HTML/CSS/SVG render that meets the quality bar below is a premium asset; an icon-on-white SVG stub is not. If a card cannot meet the editorial bar, cut it and note the gap rather than shipping an off-brand image.
+
+This production rule is not a creative hard gate. Do not reject a premium concept because it is not a carousel, not restrained enough, not blue-only, or not a prewritten template. Judge premium images by teaching impact, novelty, visual pleasure, evidence fidelity, rights safety, and polish.
 
 ## Content Model
 
@@ -100,7 +114,8 @@ Choose the strongest metaphor for the content:
 
 3. Build visual variety.
    - Assign a distinct visual type to each card.
-   - Keep the set coherent through geometry, type, and restrained color.
+   - Keep the set coherent through intentional palette, type, composition, and recurring visual logic.
+   - Let color adapt to the concept: energetic learning may need full color; calm explanation may need quieter color.
 
 4. Produce the output.
    - For a web UI, build the row as real cards with accessible content.
@@ -111,7 +126,8 @@ Choose the strongest metaphor for the content:
    - Text has safe contrast and does not sit over noisy detail.
    - No copied brand, protected UI, or source person.
    - No navigation controls in static output.
-   - The result feels sharp, cinematic, and intentional.
+   - The result feels sharp, cinematic, intentional, and mentally rewarding.
+   - The image teaches something a reader can remember without rereading the paragraph.
 
 ## Design Brief Template
 
@@ -129,13 +145,14 @@ Brand handling: remove source identity; keep only user-authorized names
 ## Image Prompt Template
 
 ```text
-Create a brand-neutral premium image-led infographic strip, 16:9, on a clean light page stage. Use one large compact headline above a single row of tall rounded editorial cards. Each card has a short upper-left eyebrow and bold title, with optional minimal body copy. Make the visuals dominant and varied across the row: dark metric card, cinematic crop, map/status graphic, pale object-detail card, abstract illustration, or neutral screen scene as appropriate. Keep consistent card geometry, spacing, radius, and modern sans-serif typography. Ensure text has strong contrast and safe clear space. Do not include logos, copied product names, source-site wording, identifiable source people, fake plus buttons, expand links, carousel arrows, pagination dots, navigation controls, gradient text, neon effects, mascots, or decorative shadows.
+Create a brand-neutral premium visual-learning infographic, 16:9. Reverse-engineer the digest concept and choose the composition that teaches it best: cinematic card strip, single hero diagram, layered data scene, map/status surface, process flow, or abstract metaphor. Use full color intentionally to make the idea pleasing, memorable, and inspiring while preserving factual clarity. Include a compact headline, short labels where useful, strong contrast, safe text zones, high-definition detail, and modern sans-serif typography. Make the visual concept custom to the digest rather than a generic template. Do not include logos, copied product names, source-site wording, identifiable source people, fake plus buttons, expand links, carousel arrows, pagination dots, navigation controls, gradient text that reduces legibility, mascots, or copied source trade dress.
 ```
 
 ## Quality Bar
 
 - Feels like a high-end editorial product page, not a grid of utility tiles.
 - Each card has a memorable visual concept.
-- The row has variety without becoming a rainbow or collage.
+- The palette is full-color and concept-led without becoming arbitrary, noisy, or collage-like.
 - Text remains crisp, short, and readable over the imagery.
 - The set is sharp, high-definition, brand-neutral, and complete without UI controls.
+- The image induces curiosity and inspired understanding: the viewer should feel the concept, not just read it.
