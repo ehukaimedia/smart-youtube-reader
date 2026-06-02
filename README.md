@@ -16,17 +16,15 @@ The repository ships with bundled **Smart YouTube Reader Demo Digest** examples 
 
 No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally on Apple Silicon using Gemma 4 through MLX-VLM; the external-agent demos are optional examples for generating polished follow-up digest images. When you want tighter visual evidence, the slicer lets you manually select the exact video frames that best match the chapter content.
 
-![Default AI digest workflow: archive evidence to Codex agent to GPT 5.5 WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest.webp)
+![Default AI digest workflow: archive evidence to Codex GPT 5.5 generated WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-default-digest-premium.webp)
 
-| Claude Opus 4.8 premium | Codex GPT 5.5 premium | Gemini 3.5 Flash High premium |
-|---|---|---|
-| ![Claude premium demo digest image](examples/demo-jobs/smart-youtube-reader-claude/generated/chapter-03-default-ai-digest-premium.webp) | ![Codex premium demo digest image](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-03-default-ai-digest-premium.webp) | ![Gemini premium demo digest image](examples/demo-jobs/smart-youtube-reader-gemini/generated/chapter-04-group-digest-premium.webp) |
+| Capture | Reader context |
+|---|---|
+| ![Source video becomes a local Smart Archive](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-capture-premium.webp) | ![Reader turns chapters, transcript, and evidence into AI-ready context](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-reader-context-premium.webp) |
 
-| Capture | Reader context | Group synthesis |
-|---|---|---|
-| ![Source video becomes a local Smart Archive](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-01-capture-to-archive.webp) | ![Reader turns chapters, transcript, and evidence into AI-ready context](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-02-reader-context.webp) | ![Multiple archives merge into one new group lesson](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-04-group-digest.webp) |
-
-![Global Local and Tailscale dashboard mode for private-network sharing](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/chapter-05-tailscale-sharing.webp)
+| Group synthesis | Local/Tailscale sharing |
+|---|---|
+| ![Multiple archives merge into one new group lesson](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-group-digest-premium.webp) | ![Global Local and Tailscale dashboard mode for private-network sharing](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-tailscale-sharing-premium.webp) |
 
 ---
 
