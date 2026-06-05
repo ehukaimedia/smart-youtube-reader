@@ -38,7 +38,12 @@ try {
     Require-Command "python" "Install Python 3.11+ and make sure it is on PATH."
     Require-Command "node" "Install Node.js 20+ and make sure it is on PATH."
     Require-Command "npm" "Install npm with Node.js."
-    $NpmExe = (Get-Command "npm").Source
+    # Prefer npm.cmd on Windows; npm.ps1 can misparse scriptblock invocations.
+    $NpmCommand = Get-Command "npm.cmd" -ErrorAction SilentlyContinue
+    if (-not $NpmCommand) {
+        $NpmCommand = Get-Command "npm"
+    }
+    $NpmExe = $NpmCommand.Source
 
     $Model = if ($env:SMART_READER_MODEL) { $env:SMART_READER_MODEL } else { "gemma4:12b" }
     ollama list *> $null
