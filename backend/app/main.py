@@ -11,7 +11,7 @@ from ipaddress import ip_address, ip_network
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .jobs import JobStore
@@ -54,6 +54,22 @@ app.add_middleware(CORSMiddleware, **_cors_kwargs)
 app.mount("/data/jobs", StaticFiles(directory=DATA_ROOT), name="jobs_data")
 
 job_store = JobStore()
+
+
+@app.get("/")
+async def api_root():
+    return {
+        "name": "Smart YouTube Reader API",
+        "status": "ok",
+        "frontend": "http://localhost:3001",
+        "docs": "/docs",
+        "models": "/models",
+    }
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 TAILSCALE_NETWORK = ip_network("100.64.0.0/10")
