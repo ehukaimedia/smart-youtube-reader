@@ -42,7 +42,7 @@ Smart YouTube Reader is built on a **local-first** architecture.
 
 ```mermaid
 flowchart LR
-    Launch["start.command / start.sh<br/>localhost by default<br/>SYR_SHARE=1 for tailnet"] --> FE["Next.js app<br/>:3001"]
+    Launch["start.command / start.sh / start.bat<br/>localhost by default<br/>-Share or SYR_SHARE=1 for tailnet"] --> FE["Next.js app<br/>:3001"]
     Launch --> API["FastAPI backend<br/>:8001"]
     FE -->|"REST + static media<br/>localhost/tailnet CORS"| API
     API --> Jobs["Local filesystem<br/>data/jobs/&lt;project&gt;"]
@@ -124,9 +124,9 @@ This starts both the backend and frontend. On first run it creates the backend v
 
 ### Windows launch
 ```powershell
-.\start.ps1
+.\start.bat
 ```
-Use `.\start.ps1 -Share` to bind to all interfaces.
+Use `.\start.bat -Share` to bind to all interfaces and open the app on your Tailscale URL when Tailscale is connected. `.\start.ps1 -Share` is also supported.
 
 ### Manual setup
 
@@ -253,7 +253,7 @@ The dashboard uses that image as the project thumbnail.
 
 ## Sharing Projects
 
-Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. By default `start.command` binds to `localhost` only and opens the local dashboard; launch with `SYR_SHARE=1 ./start.command` to bind all interfaces so your tailnet IP is reachable, in which case it opens the dashboard on the Tailscale URL when one is available. The choice persists per browser in `localStorage` (`smart-reader-share-mode`).
+Smart YouTube Reader is local-first, so the app can run on either `localhost` or your Tailscale tailnet IP. The global **Local / Tailscale** toggle in the top navigation switches the current app session and copied project links to the selected origin. By default launchers bind to `localhost` only and open the local app; launch with `SYR_SHARE=1 ./start.command` on macOS/Linux or `.\start.bat -Share` on Windows to bind all interfaces so your tailnet IP is reachable. In share mode, the launcher opens the Tailscale URL when one is available. The active mode is derived from the host currently serving the app.
 
 | Mode | When to use | Link format |
 |---|---|---|
@@ -271,6 +271,7 @@ tailscale up                    # sign in and join your tailnet
 
 When you flip the global toggle to Tailscale, the app redirects to the Tailscale origin when available. If it is unavailable, the app keeps you on Local and reports the current state:
 
+- **Smart Reader was started in Local mode** — Tailscale may be connected, but ports 3001 and 8001 are only listening on `localhost`; restart with `.\start.bat -Share` on Windows or `SYR_SHARE=1 ./start.command` on macOS.
 - **Tailscale is not installed** — install the client (link or Homebrew command above), then run `tailscale up`.
 - **No tailnet IP yet** — the CLI is installed but `tailscale up` has not produced a `100.64.0.0/10` address yet; sign in and try again.
 - **Tailscale is not running** — start the Tailscale menu-bar app or run `tailscale up`.

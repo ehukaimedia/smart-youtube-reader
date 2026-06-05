@@ -160,6 +160,24 @@ def _tailscale_status() -> dict[str, str | None]:
     return {"ip": None, "status": "no_tailnet_ip"}
 
 
+def _tailnet_host(host: str | None) -> bool:
+    if not host:
+        return False
+    if host.endswith(".tailscale.net"):
+        return True
+    try:
+        return ip_address(host) in TAILSCALE_NETWORK
+    except ValueError:
+        return False
+
+
+def _share_binding_enabled(request: Request) -> bool:
+    if _tailnet_host(request.url.hostname):
+        return True
+    bind_host = os.environ.get("SYR_BIND_HOST", "")
+    return os.environ.get("SYR_SHARE") == "1" or bind_host in {"0.0.0.0", "::", "[::]"}
+
+
 def _build_job_zip(job_dir: Path, zip_path: Path) -> None:
     top_level = job_dir.name
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
@@ -240,7 +258,10 @@ async def get_share_info(request: Request):
         }
 
     status = _tailscale_status()
-    tailscale_available = status["status"] == "available" and bool(status["ip"])
+    share_enabled = _share_binding_enabled(request)
+    tailscale_ready = status["status"] == "available" and bool(status["ip"])
+    tailscale_available = tailscale_ready and share_enabled
+    tailscale_status = "not_share_enabled" if tailscale_ready and not share_enabled else status["status"]
     tailscale_origin = (
         f"{scheme}://{status['ip']}:{frontend_port}" if tailscale_available else None
     )
@@ -252,7 +273,7 @@ async def get_share_info(request: Request):
             "tailscale": {
                 "share_origin": tailscale_origin,
                 "available": tailscale_available,
-                "status": status["status"],
+                "status": tailscale_status,
                 "install_url": TAILSCALE_INSTALL_URL,
             },
         },

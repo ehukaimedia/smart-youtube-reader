@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
+    describeTailscaleUnavailable,
     getApiBase,
     getShareInfo,
     inferShareModeFromLocation,
@@ -115,13 +116,7 @@ export default function DashboardPage() {
         if (!shareInfo) setShareInfo(info);
         const origin = resolveShareOrigin(info, shareMode);
         if (!origin) {
-            const reason = info.modes.tailscale.status;
-            const message = reason === 'not_installed'
-                ? 'Tailscale is not installed. Switch to Local or install Tailscale.'
-                : reason === 'no_tailnet_ip'
-                    ? 'Tailscale is installed but no tailnet IP is available. Run `tailscale up` and retry.'
-                    : 'Tailscale is not running. Start the Tailscale app or run `tailscale up`.';
-            toast.error(message);
+            toast.error(describeTailscaleUnavailable(info));
             return;
         }
         const url = `${origin}/reader/${id}`;

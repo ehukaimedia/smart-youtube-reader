@@ -99,6 +99,24 @@ function Join-OptionalPath($Base, $Child) {
     return $null
 }
 
+function Get-TailscaleIp {
+    $TailscaleCommand = Get-Command "tailscale" -ErrorAction SilentlyContinue
+    if (-not $TailscaleCommand) {
+        return $null
+    }
+
+    try {
+        $Ip = & $TailscaleCommand.Source ip -4 2>$null | Select-Object -First 1
+        if ($Ip -and $Ip.Trim().StartsWith("100.")) {
+            return $Ip.Trim()
+        }
+    } catch {
+        return $null
+    }
+
+    return $null
+}
+
 function Open-IsolatedBrowser($Url) {
     $Candidates = @(
         @{
@@ -185,12 +203,23 @@ try {
     }
     $env:SMART_READER_MODEL = $Model
 
+    $ShareEnabled = $Share -or $env:SYR_SHARE -eq "1"
     $BindHost = "127.0.0.1"
-    if ($Share -or $env:SYR_SHARE -eq "1") {
+    if ($ShareEnabled) {
         $BindHost = "0.0.0.0"
         Write-Host "SYR_SHARE enabled: binding to all interfaces."
     }
+    $env:SYR_SHARE = if ($ShareEnabled) { "1" } else { "0" }
+    $env:SYR_BIND_HOST = $BindHost
+    $env:FRONTEND_PORT = "3001"
+
     $AppUrl = "http://localhost:3001"
+    if ($ShareEnabled) {
+        $TailscaleIp = Get-TailscaleIp
+        if ($TailscaleIp) {
+            $AppUrl = "http://${TailscaleIp}:3001"
+        }
+    }
     $LogDir = Join-Path ([System.IO.Path]::GetTempPath()) "smart-youtube-reader"
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
     $BackendOutLog = Join-Path $LogDir "backend.out.log"

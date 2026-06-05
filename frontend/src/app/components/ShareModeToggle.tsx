@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+    describeTailscaleUnavailable,
     getShareInfo,
     inferShareModeFromLocation,
     resolveShareOrigin,
@@ -40,13 +41,7 @@ export default function ShareModeToggle() {
         if (!shareInfo) setShareInfo(info);
         const origin = resolveShareOrigin(info, mode);
         if (!origin) {
-            const reason = info.modes.tailscale.status;
-            const message = reason === 'not_installed'
-                ? 'Tailscale is not installed. Install Tailscale or stay on Local.'
-                : reason === 'no_tailnet_ip'
-                    ? 'Tailscale is installed but no tailnet IP is available. Run `tailscale up` and retry.'
-                    : 'Tailscale is not running. Start the Tailscale app or run `tailscale up`.';
-            toast.error(message);
+            toast.error(describeTailscaleUnavailable(info));
             return;
         }
 
@@ -75,7 +70,7 @@ export default function ShareModeToggle() {
                 aria-checked={shareMode === 'tailscale'}
                 className={`pill-button ${shareMode === 'tailscale' ? 'active' : ''}`}
                 onClick={() => updateShareMode('tailscale')}
-                title={shareInfo.modes.tailscale.available ? 'Open the app through your tailnet IP' : 'Tailscale is not currently available on this machine'}
+                title={shareInfo.modes.tailscale.available ? 'Open the app through your tailnet IP' : describeTailscaleUnavailable(shareInfo)}
             >
                 Tailscale{!shareInfo.modes.tailscale.available && ' (unavailable)'}
             </button>
