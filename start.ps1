@@ -260,9 +260,10 @@ try {
         -PassThru
 
     Write-Host "Starting frontend on http://localhost:3001"
+    $FrontendCommand = '"' + $NpmExe + '" run dev -- -H ' + $BindHost + ' --port 3001'
     $script:FrontendProcess = Start-Process `
-        -FilePath $NpmExe `
-        -ArgumentList @("run", "dev", "--", "-H", $BindHost, "--port", "3001") `
+        -FilePath $env:ComSpec `
+        -ArgumentList @("/d", "/c", $FrontendCommand) `
         -WorkingDirectory $FrontendDir `
         -RedirectStandardOutput $FrontendOutLog `
         -RedirectStandardError $FrontendErrLog `
