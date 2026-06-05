@@ -6,6 +6,7 @@ Usage:
     python3 backend/benchmark_model.py
     python3 backend/benchmark_model.py data/jobs/<project-folder>
     python3 backend/benchmark_model.py data/jobs/<project-folder> --runs 2
+    SMART_READER_MODEL=gemma4:12b python3 backend/benchmark_model.py --first-chunk-only --formats xml
 """
 
 from __future__ import annotations
@@ -28,13 +29,12 @@ from app.frames import FrameManager
 from app.intelligence import (
     CHUNK_DURATION,
     _archive_system_prompt,
-    _choose_representative_frames,
+    _choose_vision_representative_frames,
     _extract_archive_chapters,
     _transcript_prompt_chunks,
 )
-from app.mlx_runtime import DEFAULT_MODEL, chat as mlx_chat
+from app.model_runtime import DEFAULT_MODEL, chat as model_chat
 
-MODEL = DEFAULT_MODEL
 REQUIRED_KEYS = {"title", "summary", "content", "start_time", "end_time"}
 FLUFF_RE = re.compile(
     r"\b(insane|secret|ultimate|never|always|guaranteed|massive|crazy|best|shocking|profits?|millionaire)\b",
@@ -161,6 +161,7 @@ def transcript_chunks(transcript: list[dict], chunk_duration: int = CHUNK_DURATI
 
 def benchmark_text(
     transcript: list[dict],
+    model: str,
     runs: int,
     timeout: int,
     full: bool = True,
@@ -184,8 +185,8 @@ def benchmark_text(
                 start = time.time()
                 signal.alarm(timeout)
                 try:
-                    raw = mlx_chat(
-                        model=MODEL,
+                    raw = model_chat(
+                        model=model,
                         messages=[
                             {"role": "system", "content": _archive_system_prompt(response_format)},
                             {"role": "user", "content": user_prompt},
@@ -241,7 +242,7 @@ def summarize_by_format(results: list[dict]) -> dict:
     return summary
 
 
-def benchmark_images(job_dir: Path | None) -> list[dict]:
+def benchmark_images(job_dir: Path | None, model: str) -> list[dict]:
     if not job_dir:
         return []
     archive_path = job_dir / "archive.json"
@@ -259,8 +260,23 @@ def benchmark_images(job_dir: Path | None) -> list[dict]:
         start = float(chapter.get("timestamp_start", 0))
         end = float(chapter.get("timestamp_end", start + 60))
         candidates = frame_manager.get_context_frames(max(0, start - 20), end + 20)
-        selected = _choose_representative_frames(candidates, all_frames, start, end, used)
+        selected, image_selection = _choose_vision_representative_frames(
+            model,
+            chapter,
+            candidates,
+            all_frames,
+            frame_manager.frames_dir,
+            start,
+            end,
+            used,
+        )
         selected_meta = [frame for frame in candidates if frame.get("filename") in selected]
+        selected_names = {frame.get("filename") for frame in selected_meta}
+        if len(selected_meta) < len(selected):
+            selected_meta.extend(
+                frame for frame in all_frames
+                if frame.get("filename") in set(selected) - selected_names
+            )
         avg_score = 0
         if selected_meta:
             avg_score = sum(float(frame.get("visual_score", 0)) for frame in selected_meta) / len(selected_meta)
@@ -268,6 +284,7 @@ def benchmark_images(job_dir: Path | None) -> list[dict]:
             "chapter": index + 1,
             "selected": selected,
             "candidate_count": len(candidates),
+            "selection": image_selection,
             "avg_visual_score": round(avg_score, 3),
         })
     return rows
@@ -276,6 +293,7 @@ def benchmark_images(job_dir: Path | None) -> list[dict]:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("job", nargs="?", help="Optional data/jobs project folder or folder name")
+    parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--max-tokens", type=int, default=2048)
@@ -294,7 +312,8 @@ def main():
     args = parser.parse_args()
 
     transcript, job_dir = load_transcript(args.job)
-    print(f"Model: {MODEL}")
+    print("Runtime: Ollama")
+    print(f"Model: {args.model}")
     print(f"Transcript items: {len(transcript)}")
     if job_dir:
         print(f"Project: {job_dir}")
@@ -302,6 +321,7 @@ def main():
     print("\nText archive benchmark")
     text_results = benchmark_text(
         transcript,
+        args.model,
         args.runs,
         args.timeout,
         full=not args.first_chunk_only,
@@ -315,7 +335,7 @@ def main():
     print("Text benchmark summary by format")
     print(json.dumps(summarize_by_format(text_results), indent=2))
 
-    image_results = benchmark_images(job_dir)
+    image_results = benchmark_images(job_dir, args.model)
     if image_results:
         print("\nImage selection benchmark")
         for result in image_results:

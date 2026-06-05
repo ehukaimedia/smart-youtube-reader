@@ -51,3 +51,12 @@ docs/code-reviews/
 docs/plans/
 docs/playgrounds/
 docs/specs/
+
+# Tracked architecture/review artifacts for the Ollama vision runtime change.
+!docs/code-reviews/
+!docs/code-reviews/codex-ollama-vision-runtime-audit-2026-06-05.md
+!docs/playgrounds/
+!docs/playgrounds/architecture/
+!docs/playgrounds/architecture/ollama-vision-runtime.html
+!docs/specs/
+!docs/specs/ollama-vision-runtime.md

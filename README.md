@@ -14,7 +14,7 @@ The repository ships with bundled **Smart YouTube Reader Demo Digest** examples 
 
 [Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation. The demo reader includes a provider switcher for the **Claude Opus 4.8**, **Codex GPT 5.5**, and **Gemini 3.5 Flash High** versions.
 
-No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally on Apple Silicon using Gemma 4 through MLX-VLM; the external-agent demos are optional examples for generating polished follow-up digest images. When you want tighter visual evidence, the slicer lets you manually select the exact video frames that best match the chapter content.
+No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally through Ollama with regular `gemma4:12b`; the external-agent demos are optional examples for generating polished follow-up digest images. Gemma 4 reads the transcript for chaptering and uses vision to rank candidate video frames for each chapter. When you want tighter visual evidence, the slicer lets you replace or refine the selected frames.
 
 ![Default AI digest workflow: archive evidence to Codex GPT 5.5 generated WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-default-digest-premium.webp)
 
@@ -35,7 +35,7 @@ Smart YouTube Reader is built on a **local-first** architecture.
 * **No Database**: It uses the local filesystem for all storage. Jobs, transcripts, and frames are kept under the `data/` directory.
 * **Privacy & Control**: All processing is performed on your machine.
 * **No AI subscription for the initial digest**: The first structured video archive is generated locally; paid cloud AI tools are optional for later external-agent digest variants.
-* **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local MLX-VLM server management.
+* **Backend**: A FastAPI (Python) server handles the orchestration, yt-dlp downloading, FFmpeg frame slicing, image de-duplication (using image hashes), and local Ollama model calls.
 * **Frontend**: A Next.js (React) application provides a visual dashboard, an interactive reader with timestamp-linked transcript search, and a clip-slicer.
 
 ### System Flow
@@ -50,19 +50,20 @@ flowchart LR
     YTDLP --> YouTube["YouTube"]
     API --> FFmpeg["FFmpeg<br/>frames + clips"]
     FFmpeg --> Jobs
-    API --> MLX["MLX-VLM local server<br/>Gemma 4 on Apple Silicon"]
-    MLX --> Jobs
+    API --> Ollama["Ollama local model<br/>Gemma 4 12B text + vision"]
+    Ollama --> Jobs
     FE --> Reader["Dashboard / Reader / Slicer<br/>copy digest tasks"]
     Reader --> Jobs
     Tools["External agent CLIs<br/>tools/create_*_digest_version.py"] --> Jobs
 ```
 
 ### Local AI Model Expectations
-For semantic chaptering and visual summary generation, Smart YouTube Reader uses Apple's **MLX-VLM** framework to execute models locally.
-* **Hardware Requirement**: Running the local AI model requires **Apple Silicon macOS** (M1/M2/M3/M4 chipsets). This is because the underlying `mlx` library is optimized exclusively for Apple Silicon GPU acceleration.
-* **Default Model**: The application defaults to `mlx-community/gemma-4-e4b-it-4bit`, a highly optimized quantized visual model from the Gemma 4 family.
-* **First-run download**: The first archive run downloads the model (~5.25 GB, 4-bit) into `data/mlx` and needs roughly **8 GB+ unified memory**. Allow several minutes on first run — the download happens lazily on the first chaptering request and there is no progress bar yet. The model is public (no Hugging Face token required).
-* **Non-Apple Silicon Systems**: On Linux or Intel-based Windows/macOS, the app's downloader, transcript extraction, and frontend UI will function, but local AI model execution (archive chaptering) is not supported. The `mlx-vlm` dependency carries a platform marker, so `pip install -r requirements.txt` simply skips it on those systems rather than failing.
+For semantic chaptering and vision-assisted frame selection, Smart YouTube Reader uses **Ollama** to run regular Gemma 4 locally.
+* **Runtime Requirement**: Install Ollama and keep it running on Windows, macOS, or Linux.
+* **Default Model**: The application defaults to `gemma4:12b`, the regular Ollama Gemma 4 12B model with text and image support.
+* **First-run download**: The launch scripts check for `gemma4:12b` and run `ollama pull gemma4:12b` when it is missing. The model is about 7.6 GB, so the first launch can take several minutes.
+* **Image selection**: The backend first narrows frame candidates with local frame metadata, then sends a small candidate set to Gemma 4 vision and accepts only returned filenames from that set. If the vision call fails or returns invalid JSON, the deterministic frame scorer is used as a fallback.
+* **Audio**: Some Gemma 4 model metadata may report audio capability, but Smart YouTube Reader does not send raw audio to the model. The app extracts transcript text first.
 
 ### Why This Over yt-dlp + Whisper or Cloud Tools?
 
@@ -88,8 +89,8 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 ## Features
 
 - **Semantic chapters** — AI reads the transcript and groups it into logical sections with titles and summaries
-- **Visual matching** — Each chapter is paired with high-signal frames from the video using local frame metadata
-- **Local model** — Archive generation uses Gemma 4 models through MLX-VLM
+- **Visual matching** — Each chapter is paired with high-signal frames from the video using Gemma 4 vision plus local frame metadata
+- **Local model** — Archive generation uses regular Gemma 4 through Ollama
 - **YouTube timestamp links** — Every chapter and transcript line links directly to that moment in the video
 - **Video Slicer** — Cut precise clips and manually select the frames that best match the chapter content
 - **Large image inspection** — Click any Reader summary or chapter image to open a focused larger view with the original file link
@@ -104,8 +105,8 @@ For semantic chaptering and visual summary generation, Smart YouTube Reader uses
 
 To run Smart YouTube Reader locally, you need the following:
 
-- **macOS (Apple Silicon)** — Required for local model generation.
-- **FFmpeg** — Used for frame extraction and video slicing (`brew install ffmpeg`).
+- **Ollama** — Required for local model generation (`ollama pull gemma4:12b`).
+- **FFmpeg** — Used for frame extraction and video slicing. Install it with your platform package manager.
 - **Python 3.11+** — The version CI verifies.
 - **Node.js 20+** (pinned in [frontend/.nvmrc](frontend/.nvmrc)) — Required by **both** the frontend **and** the backend. `yt-dlp` invokes Node at download time to solve YouTube's challenge, so Node must be on the `PATH` the backend process inherits (the backend also searches `~/.nvm`, `~/.volta/bin`, and `/opt/homebrew/bin`).
 
@@ -121,9 +122,22 @@ To run Smart YouTube Reader locally, you need the following:
 ```
 This starts both the backend and frontend. On first run it creates the backend virtualenv, installs Python and Node dependencies, and then launches — so the first launch takes a few minutes; later launches are fast. By default it binds to `localhost` only; set `SYR_SHARE=1 ./start.command` to also expose the app on your network/tailnet.
 
+### Windows launch
+```powershell
+.\start.ps1
+```
+Use `.\start.ps1 -Share` to bind to all interfaces.
+
 ### Manual setup
 
-**1. Backend**
+**1. Local model**
+```bash
+ollama pull gemma4:12b
+```
+
+Keep the Ollama app or `ollama serve` running while the backend is active.
+
+**2. Backend**
 ```bash
 cd backend
 python3 -m venv .venv
@@ -132,7 +146,12 @@ pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
-**2. Frontend**
+On Windows PowerShell, activate the backend environment with:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+**3. Frontend**
 ```bash
 cd frontend
 npm install
@@ -145,7 +164,7 @@ Then open `http://localhost:3001` in your browser. For the full contributor walk
 
 ## Verification & Testing
 
-Backend unit tests (pytest) cover the digest prompt, archive parsing, share-info, MLX-runtime, and slicer-security helpers, and the backend is linted with [ruff](https://docs.astral.sh/ruff/). The frontend is gated in CI by ESLint (`--max-warnings 0`) and a production build. The download → frame-extraction → de-duplication pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
+Backend unit tests (pytest) cover the digest prompt, archive parsing, Ollama runtime helpers, share-info, and slicer-security helpers, and the backend is linted with [ruff](https://docs.astral.sh/ruff/). The frontend is gated in CI by ESLint (`--max-warnings 0`) and a production build. The download → frame-extraction → de-duplication pipeline currently relies on manual testing; contributions that add coverage there are especially welcome.
 
 ### Backend Verification
 Verify the backend with `ruff` and `pytest`:

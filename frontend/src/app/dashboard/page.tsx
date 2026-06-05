@@ -342,27 +342,26 @@ export default function DashboardPage() {
                                 </p>
                             </div>
 
-                            <div className={`project-actions ${canCreateAiDigest ? 'has-digest-action' : ''}`}>
+                            <div className="project-actions">
                                 <Link href={`/reader/${job.id}`} className="btn btn-primary btn-compact">
                                     Open Project
                                 </Link>
-                                {canCreateAiDigest && (
-                                    <button
-                                        onClick={() => copyAiDigestWithImagesTask(job)}
-                                        className="btn btn-success btn-compact"
-                                        title="Copy the default generated-WebP AI digest task"
-                                    >
-                                        {digestTaskCopiedJobId === job.id ? 'Copied Digest' : 'AI Digest'}
-                                    </button>
-                                )}
-                                {job.video_url && (
-                                    <a href={job.video_url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
-                                        {isYouTubeUrl ? 'Open YouTube' : 'Open Source'}
-                                    </a>
-                                )}
                                 <details className="overflow-menu">
-                                    <summary aria-label="Project actions">⋯</summary>
+                                    <summary aria-label="Project actions" title="Project actions">⋯</summary>
                                     <div className="overflow-content">
+                                        {canCreateAiDigest && (
+                                            <button
+                                                onClick={() => copyAiDigestWithImagesTask(job)}
+                                                title="Copy the default generated-WebP AI digest task"
+                                            >
+                                                {digestTaskCopiedJobId === job.id ? 'Copied Digest' : 'AI Digest'}
+                                            </button>
+                                        )}
+                                        {job.video_url && (
+                                            <a href={job.video_url} target="_blank" rel="noopener noreferrer">
+                                                {isYouTubeUrl ? 'Open YouTube' : 'Open Source'}
+                                            </a>
+                                        )}
                                         <button onClick={() => copyProjectLink(job.id)}>
                                             {copiedJobId === job.id ? 'Copied Link' : 'Copy Project Link'}
                                         </button>

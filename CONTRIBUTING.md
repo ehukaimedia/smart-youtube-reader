@@ -30,8 +30,8 @@ We welcome ideas for new features or improvements. Please check existing issues/
 Smart YouTube Reader consists of a FastAPI backend and a Next.js frontend.
 
 ### Prerequisites
-* **macOS** (Apple Silicon recommended for `mlx-vlm` local model execution).
-* **FFmpeg** (installed via `brew install ffmpeg`).
+* **Ollama** with `gemma4:12b` pulled for local archive generation and vision-assisted frame selection.
+* **FFmpeg** installed with your platform package manager.
 * **Python 3.11+** (the version CI verifies) and **Node.js 20+** (see [frontend/.nvmrc](frontend/.nvmrc)). Node must also be on the backend's `PATH` — `yt-dlp` uses it at download time.
 
 ### Backend Setup

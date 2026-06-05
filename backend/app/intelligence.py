@@ -1,15 +1,19 @@
 import imagehash
 from PIL import Image
 from pathlib import Path
+import base64
+import io
 import logging
 import json
 import re
 from html import unescape
-from .mlx_runtime import DEFAULT_MODEL, chat as mlx_chat, list_loaded_models
+from .model_runtime import DEFAULT_MODEL, chat as model_chat, check_model
 
 logger = logging.getLogger(__name__)
 MAX_PROMPT_CHARS = 14000
 MAX_IMAGES_PER_CHAPTER = 2
+VISION_FRAME_CANDIDATES = 6
+VISION_IMAGE_MAX_SIDE = 768
 CHUNK_DURATION = 300
 ARCHIVE_RESPONSE_FORMAT = "xml"
 ARCHIVE_XML_ATTEMPTS = 2
@@ -35,10 +39,10 @@ def _to_float(value, default: float) -> float:
 
 def _chat(model: str, messages: list) -> str:
     """
-    Local MLX chat call.
+    Local Ollama chat call.
     Returns the response content string.
     """
-    return mlx_chat(model=model, messages=messages)
+    return model_chat(model=model, messages=messages)
 
 def _clean_transcript_text(text: str) -> str:
     stripped = _CAPTION_NOISE_RE.sub(" ", text or "")
@@ -797,6 +801,179 @@ def _choose_representative_frames(
         used_frames.add(frame["filename"])
     return [frame["filename"] for frame in selected]
 
+
+def _vision_candidate_targets(chapter_start: float, chapter_end: float) -> list[float]:
+    duration = max(chapter_end - chapter_start, 1.0)
+    if duration >= 45:
+        return [chapter_start + duration * 0.35, chapter_start + duration * 0.72]
+    return [chapter_start + duration * 0.5]
+
+
+def _vision_candidate_pool(
+    candidates: list[dict],
+    all_frames: list[dict],
+    chapter_start: float,
+    chapter_end: float,
+    used_frames: set[str],
+    max_candidates: int = VISION_FRAME_CANDIDATES,
+) -> list[dict]:
+    pool = candidates or all_frames
+    if not pool:
+        return []
+
+    has_unused = any(frame.get("filename") and frame.get("filename") not in used_frames for frame in pool)
+    targets = _vision_candidate_targets(chapter_start, chapter_end)
+    ranked = []
+    for frame in pool:
+        name = frame.get("filename")
+        if not name:
+            continue
+        if name in used_frames and has_unused:
+            continue
+        score = max(
+            _candidate_score(frame, target, chapter_start, chapter_end)
+            for target in targets
+        )
+        ranked.append((score, frame))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    selected: list[dict] = []
+    for _, frame in ranked:
+        too_similar = False
+        for item in selected:
+            distance = _hash_distance(frame.get("phash"), item.get("phash"))
+            if distance is not None and distance < 8:
+                too_similar = True
+                break
+        if too_similar:
+            continue
+        selected.append(frame)
+        if len(selected) >= max_candidates:
+            break
+    return selected
+
+
+def _frame_image_base64(frames_dir: Path, frame: dict) -> str | None:
+    name = frame.get("filename")
+    if not name or Path(name).name != name:
+        return None
+    path = (frames_dir / name).resolve()
+    try:
+        if not path.is_file() or frames_dir.resolve() not in path.parents:
+            return None
+        with Image.open(path) as image:
+            image = image.convert("RGB")
+            image.thumbnail((VISION_IMAGE_MAX_SIDE, VISION_IMAGE_MAX_SIDE))
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=82, optimize=True)
+        return base64.b64encode(buffer.getvalue()).decode("ascii")
+    except Exception as exc:
+        logger.warning("Could not prepare frame %s for vision selection: %s", name, exc)
+        return None
+
+
+def _vision_selection_prompt(chapter: dict, frames: list[dict], max_images: int) -> str:
+    frame_lines = "\n".join(
+        f"{index}. {frame['filename']} at {float(frame.get('timestamp', 0.0)):.1f}s"
+        for index, frame in enumerate(frames, start=1)
+    )
+    return (
+        "Select the best video frames for this Smart YouTube Reader chapter.\n"
+        "Choose frames that visibly teach, evidence, or clarify the chapter. Prefer charts, slides, UI, objects, "
+        "or visual states over generic talking-head frames. Avoid dark, blurry, duplicate, transition, intro, "
+        "or low-information frames.\n\n"
+        f"Chapter title: {chapter.get('title') or chapter.get('concept') or ''}\n"
+        f"Summary: {chapter.get('summary') or ''}\n"
+        f"Content evidence: {chapter.get('content') or ''}\n\n"
+        "Images are attached in this exact order:\n"
+        f"{frame_lines}\n\n"
+        f"Return ONLY JSON in this shape: {{\"selected\": [\"filename.png\"]}}. "
+        f"Select 1-{max_images} filenames from the list above. Do not include explanations."
+    )
+
+
+def _extract_vision_selected_filenames(raw: str, allowed: set[str], max_images: int) -> list[str]:
+    cleaned = raw.strip()
+    if "```json" in cleaned:
+        cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in cleaned:
+        cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+
+    parsed = json.loads(cleaned)
+    if isinstance(parsed, dict):
+        values = parsed.get("selected") or parsed.get("images") or parsed.get("filenames") or []
+    else:
+        values = parsed
+    if not isinstance(values, list):
+        raise ValueError("Vision response selected field is not a list")
+
+    selected: list[str] = []
+    for value in values:
+        name = str(value)
+        if name in allowed and name not in selected:
+            selected.append(name)
+        if len(selected) >= max_images:
+            break
+    if not selected:
+        raise ValueError("Vision response did not select any allowed filenames")
+    return selected
+
+
+def _choose_vision_representative_frames(
+    model: str,
+    chapter: dict,
+    candidates: list[dict],
+    all_frames: list[dict],
+    frames_dir: Path,
+    chapter_start: float,
+    chapter_end: float,
+    used_frames: set[str],
+    max_images: int = MAX_IMAGES_PER_CHAPTER,
+) -> tuple[list[str], dict]:
+    vision_pool = _vision_candidate_pool(
+        candidates,
+        all_frames,
+        chapter_start,
+        chapter_end,
+        used_frames,
+    )
+    image_payloads = []
+    image_frames = []
+    for frame in vision_pool:
+        image_payload = _frame_image_base64(frames_dir, frame)
+        if image_payload:
+            image_payloads.append(image_payload)
+            image_frames.append(frame)
+
+    if not image_frames:
+        selected = _choose_representative_frames(candidates, all_frames, chapter_start, chapter_end, used_frames, max_images)
+        return selected, {
+            "method": "deterministic",
+            "fallback_reason": "no_vision_candidate_images",
+            "vision_candidates": 0,
+        }
+
+    allowed = {frame["filename"] for frame in image_frames}
+    try:
+        raw = _chat(model, [
+            {"role": "user", "content": _vision_selection_prompt(chapter, image_frames, max_images), "images": image_payloads},
+        ]).strip()
+        selected = _extract_vision_selected_filenames(raw, allowed, max_images)
+        for name in selected:
+            used_frames.add(name)
+        return selected, {
+            "method": "ollama_vision",
+            "vision_candidates": len(image_frames),
+        }
+    except Exception as exc:
+        logger.warning("Vision frame selection failed; using deterministic selector: %s", exc)
+        selected = _choose_representative_frames(candidates, all_frames, chapter_start, chapter_end, used_frames, max_images)
+        return selected, {
+            "method": "deterministic",
+            "fallback_reason": str(exc),
+            "vision_candidates": len(image_frames),
+        }
+
 def _image_context_for_frames(frames: list[dict]) -> dict:
     context = {}
     for frame in frames:
@@ -845,11 +1022,11 @@ def deduplicate_frames(frames_dir: Path, threshold: int = 5) -> int:
             
     return removed_count
 
-def check_mlx_model(model_name: str = DEFAULT_MODEL) -> bool:
+def check_local_model(model_name: str = DEFAULT_MODEL) -> bool:
     try:
-        return model_name in list_loaded_models()
+        return check_model(model_name)
     except Exception as e:
-        logger.error(f"Failed to connect to MLX: {e}")
+        logger.error(f"Failed to connect to Ollama: {e}")
         return False
 
 def create_ai_archive(
@@ -1022,9 +1199,12 @@ def create_ai_archive(
         c_end = _to_float(chapter.get('end_time'), c_start + 60.0)
 
         candidates = frame_manager.get_context_frames(max(0, c_start - 20), c_end + 20)
-        selected_images = _choose_representative_frames(
+        selected_images, image_selection = _choose_vision_representative_frames(
+            model,
+            chapter,
             candidates,
             all_frames,
+            frame_manager.frames_dir,
             c_start,
             c_end,
             used_frames,
@@ -1043,6 +1223,7 @@ def create_ai_archive(
             "timestamp_end": c_end,
             "images": selected_images,
             "_image_context": _image_context_for_frames(context_pool),
+            "_image_selection": image_selection,
             **({"_fallback": chapter.get("_fallback")} if chapter.get("_fallback") else {}),
         })
         

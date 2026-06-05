@@ -13,7 +13,7 @@ export default function DemoProviderTabs({ jobId }: { jobId: string }) {
             <div className="demo-provider-copy">
                 <span className="demo-provider-label" id="demo-provider-label">Demo image versions</span>
                 <span className="demo-provider-note">
-                    Initial archives run locally with Gemma 4 and need no AI subscription. Use the slicer on source archives to manually pick matching frames.
+                    Initial archives run locally with Gemma 4 through Ollama and need no AI subscription. Use the slicer on source archives to refine vision-selected frames.
                 </span>
             </div>
             <div className="filter-pills" role="group" aria-labelledby="demo-provider-label">
