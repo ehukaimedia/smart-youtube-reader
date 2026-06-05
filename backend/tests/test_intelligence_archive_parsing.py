@@ -1,5 +1,9 @@
 import unittest
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
+
+from PIL import Image
 
 from app import intelligence
 
@@ -218,6 +222,70 @@ class ArchiveParsingTests(unittest.TestCase):
         self.assertEqual(expanded[1]["end_time"], 80)
         self.assertEqual(expanded[1]["_fallback"], "transcript_gap")
         self.assertTrue(any(repair["action"] == "added_transcript_gap_chapter" for repair in repairs))
+
+    def test_extract_vision_selected_filenames_accepts_strict_json(self):
+        selected = intelligence._extract_vision_selected_filenames(
+            '{"selected": ["0002.png", "0001.png", "not-real.png"]}',
+            {"0001.png", "0002.png"},
+            1,
+        )
+
+        self.assertEqual(selected, ["0002.png"])
+
+    def test_choose_vision_representative_frames_sends_candidate_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            frames_dir = Path(tmp)
+            Image.new("RGB", (32, 24), "white").save(frames_dir / "0001.png")
+            Image.new("RGB", (32, 24), "black").save(frames_dir / "0002.png")
+            frames = [
+                {"filename": "0001.png", "timestamp": 0.0, "visual_score": 0.7},
+                {"filename": "0002.png", "timestamp": 10.0, "visual_score": 0.8},
+            ]
+            chapter = {
+                "title": "Visual Evidence",
+                "summary": "Choose the clearest frame.",
+                "content": "The video shows a clear contrast between states.",
+            }
+
+            with patch.object(intelligence, "_chat", return_value='{"selected": ["0002.png"]}') as chat:
+                selected, meta = intelligence._choose_vision_representative_frames(
+                    "gemma4:12b",
+                    chapter,
+                    frames,
+                    frames,
+                    frames_dir,
+                    0.0,
+                    20.0,
+                    set(),
+                )
+
+        self.assertEqual(selected, ["0002.png"])
+        self.assertEqual(meta["method"], "ollama_vision")
+        sent_message = chat.call_args.args[1][0]
+        self.assertEqual(len(sent_message["images"]), 2)
+        self.assertIn("0002.png", sent_message["content"])
+
+    def test_choose_vision_representative_frames_falls_back_on_bad_response(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            frames_dir = Path(tmp)
+            Image.new("RGB", (32, 24), "white").save(frames_dir / "0001.png")
+            frames = [{"filename": "0001.png", "timestamp": 0.0, "visual_score": 0.7}]
+
+            with patch.object(intelligence, "_chat", return_value="not json"):
+                selected, meta = intelligence._choose_vision_representative_frames(
+                    "gemma4:12b",
+                    {"title": "Fallback", "summary": "Fallback", "content": "Fallback"},
+                    frames,
+                    frames,
+                    frames_dir,
+                    0.0,
+                    20.0,
+                    set(),
+                )
+
+        self.assertEqual(selected, ["0001.png"])
+        self.assertEqual(meta["method"], "deterministic")
+        self.assertIn("fallback_reason", meta)
 
     def test_clean_transcript_text_strips_caption_noise_markers(self):
         cleaned = intelligence._clean_transcript_text(

@@ -17,10 +17,10 @@ export default function DemoPage() {
                     <h1 className="page-title">Demo digest</h1>
                     <p className="muted">Choose the image-generation version you want to inspect.</p>
                     <p className="muted" style={{ marginTop: '0.5rem', maxWidth: '64ch' }}>
-                        The initial video digest runs locally with Gemma 4 through MLX-VLM, so no AI subscription is needed to capture and read a structured archive. These demos compare optional external-agent image digest styles.
+                        The initial video digest runs locally with Gemma 4 through Ollama, so no AI subscription is needed to capture and read a structured archive. These demos compare optional external-agent image digest styles.
                     </p>
                     <p className="muted" style={{ marginTop: '0.5rem', maxWidth: '64ch' }}>
-                        For source archives, the slicer lets you manually select the exact video frames that best match the chapter content before sharing or sending the archive to an agent.
+                        Source archives use Gemma 4 vision to pick chapter frames first; the slicer remains available when you want to refine or replace them before sharing.
                     </p>
                 </div>
                 <Link href="/dashboard" className="btn btn-secondary btn-compact">

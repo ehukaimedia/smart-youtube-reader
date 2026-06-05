@@ -15,6 +15,25 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
+if ! command -v ollama &> /dev/null; then
+    echo "Error: Ollama is not installed. Install it from https://ollama.com/download"
+    exit 1
+fi
+
+SMART_READER_MODEL="${SMART_READER_MODEL:-gemma4:12b}"
+if ! ollama list &> /dev/null; then
+    echo "Error: Ollama is not running. Start Ollama, then re-run ./start.sh"
+    exit 1
+fi
+if ! ollama list | awk 'NR > 1 { print $1 }' | grep -Fxq "$SMART_READER_MODEL"; then
+    echo "Pulling local model $SMART_READER_MODEL with Ollama..."
+    if ! ollama pull "$SMART_READER_MODEL"; then
+        echo "Error: could not pull $SMART_READER_MODEL"
+        exit 1
+    fi
+fi
+export SMART_READER_MODEL
+
 # Local-first by default: bind loopback only. Opt in to network/tailnet sharing
 # with SYR_SHARE=1, which binds all interfaces.
 BIND_HOST="127.0.0.1"
@@ -41,10 +60,6 @@ if [ ! -d ".venv" ]; then
     fi
 else
     source .venv/bin/activate
-fi
-
-if ! python -c "import mlx_vlm" &> /dev/null; then
-    echo "Note: mlx-vlm is not installed (expected on non-Apple-Silicon). Local archive chaptering requires Apple Silicon."
 fi
 
 uvicorn app.main:app --reload --host "$BIND_HOST" --port 8001 &

@@ -18,7 +18,7 @@ from .jobs import JobStore
 from .schemas import JobCreateRequest, JobResponse, SliceRequest, PreviewRequest, FinalizeRequest, SaveSliceRequest, ArchiveImageUpdateRequest
 from .pipeline import run_pipeline
 from .slicing import create_slice, generate_preview, finalize_sequence
-from .mlx_runtime import AVAILABLE_MODELS, DEFAULT_MODEL, list_loaded_models
+from .model_runtime import AVAILABLE_MODELS, DEFAULT_MODEL, check_model, list_loaded_models, list_local_models
 
 # Adjust path to point to project_root/data/jobs
 # main.py is in backend/app/main.py
@@ -188,6 +188,11 @@ async def create_job(payload: JobCreateRequest, background_tasks: BackgroundTask
     existing = job_store.find_reusable_job(payload)
     if existing:
         return existing.to_response()
+
+    try:
+        check_model(payload.model)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     job = job_store.create_job(payload)
     background_tasks.add_task(run_pipeline, job.id, payload, job_store)
@@ -393,15 +398,18 @@ async def update_archive_image(job_id: str, request: ArchiveImageUpdateRequest):
 
 @app.get("/models")
 async def list_models():
+    local = set(list_local_models())
     loaded = set(list_loaded_models())
-    models = [model["name"] for model in AVAILABLE_MODELS]
+    details = [
+        {**model, "installed": model["name"] in local, "loaded": model["name"] in loaded}
+        for model in AVAILABLE_MODELS
+    ]
+    models = [model["name"] for model in details if model["installed"]]
+    default_model = DEFAULT_MODEL if DEFAULT_MODEL in models else (models[0] if models else "")
     return {
         "models": models,
-        "default_model": DEFAULT_MODEL,
-        "model_details": [
-            {**model, "loaded": model["name"] in loaded}
-            for model in AVAILABLE_MODELS
-        ],
+        "default_model": default_model,
+        "model_details": details,
     }
 
 @app.get("/health")

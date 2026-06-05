@@ -5,11 +5,18 @@ import { useRouter } from 'next/navigation';
 import { getApiBase } from '@/lib/api';
 import { useToast } from './components/ToastProvider';
 
+type ModelDetail = {
+  name: string;
+  label?: string;
+  size?: string;
+  recommended?: boolean;
+  installed?: boolean;
+};
+
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [models, setModels] = useState<string[]>([]);
-  const [modelLabels, setModelLabels] = useState<Record<string, string>>({});
+  const [models, setModels] = useState<ModelDetail[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const router = useRouter();
   const toast = useToast();
@@ -18,14 +25,13 @@ export default function Home() {
     fetch(`${getApiBase()}/models`)
       .then(r => r.json())
       .then(data => {
-        const list: string[] = data.models ?? [];
-        const labels: Record<string, string> = {};
-        (data.model_details ?? []).forEach((model: { name: string; label?: string; size?: string; recommended?: boolean }) => {
-          labels[model.name] = `${model.label ?? model.name}${model.size ? ` (${model.size})` : ''}${model.recommended ? ' - recommended' : ''}`;
-        });
+        const details: ModelDetail[] = data.model_details ?? [];
+        const list: ModelDetail[] = details.length
+          ? details
+          : (data.models ?? []).map((name: string) => ({ name, installed: true }));
+        const installed = list.filter(model => model.installed);
         setModels(list);
-        setModelLabels(labels);
-        if (list.length > 0) setSelectedModel(data.default_model ?? list[0]);
+        setSelectedModel(data.default_model || installed[0]?.name || '');
       })
       .catch(() => {});
   }, []);
@@ -45,17 +51,25 @@ export default function Home() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed to create job');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Failed to create job');
+      }
 
       const data = await res.json();
       router.push(`/reader/${data.id}`);
     } catch (err) {
       console.error(err);
-      toast.error('Error creating job');
+      toast.error(err instanceof Error ? err.message : 'Error creating job');
     } finally {
       setLoading(false);
     }
   };
+
+  const hasInstalledModel = models.some(model => model.installed);
+  const modelOptionLabel = (model: ModelDetail) => (
+    `${model.label ?? model.name}${model.size ? ` (${model.size})` : ''}${model.recommended ? ' - recommended' : ''}${model.installed ? '' : ' - pull first'}`
+  );
 
   return (
     <main className="container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
@@ -87,14 +101,20 @@ export default function Home() {
               className="input"
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              style={{ cursor: 'pointer' }}
+              disabled={!hasInstalledModel}
+              style={{ cursor: hasInstalledModel ? 'pointer' : 'not-allowed' }}
             >
-              {models.map(m => (
-                <option key={m} value={m}>{modelLabels[m] ?? m}</option>
+              {!hasInstalledModel && (
+                <option value="">No installed Ollama models</option>
+              )}
+              {models.map(model => (
+                <option key={model.name} value={model.name} disabled={!model.installed}>
+                  {modelOptionLabel(model)}
+                </option>
               ))}
             </select>
           )}
-          <button type="submit" className="btn" disabled={loading}>
+          <button type="submit" className="btn" disabled={loading || (models.length > 0 && !selectedModel)}>
             {loading ? 'Analyzing...' : 'Analyze'}
           </button>
         </form>

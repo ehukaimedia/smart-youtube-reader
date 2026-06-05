@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Benchmark a local MLX model on the text-only AI digest task.
+"""Benchmark the local Ollama model on the text-only AI digest task.
 
-Sends the explicit text-only CLI digest prompt to the running MLX server
-(default Gemma 4) and reports latency, whether the output is valid JSON in
+Sends the explicit text-only CLI digest prompt to Ollama and reports latency,
+whether the output is valid JSON in
 the expected shape, and a per-chapter summary. The default production digest
 workflow uses an external agent with generated WebP images.
 
@@ -26,7 +26,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "backend"))
 
-from app.mlx_runtime import chat as mlx_chat, DEFAULT_MODEL
+from app.model_runtime import chat as model_chat, DEFAULT_MODEL
 
 
 def get_prompt(project_folder: str) -> str:
@@ -84,7 +84,7 @@ def main() -> int:
     )
 
     t0 = time.time()
-    output = mlx_chat(
+    output = model_chat(
         model=args.model,
         messages=[{"role": "user", "content": user_msg}],
         temperature=args.temperature,

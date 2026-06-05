@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from enum import Enum
-from .mlx_runtime import DEFAULT_MODEL
+from .model_runtime import DEFAULT_MODEL
 
 class JobStatus(str, Enum):
     pending = "pending"

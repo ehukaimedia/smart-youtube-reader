@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ollama Vision Runtime Architecture</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0f1115; --panel: #171a21; --line: #303642; --text: #edf0f5; --muted: #a8b0bd; --accent: #58d68d; --warn: #f0b45b; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1, h2 { margin: 0; letter-spacing: 0; }
+    h1 { font-size: 32px; }
+    h2 { font-size: 18px; margin-top: 28px; }
+    p, li { color: var(--muted); line-height: 1.55; }
+    code { color: var(--text); background: #222733; padding: 2px 5px; border-radius: 4px; }
+    .intent, .spec, .flow { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 18px; margin-top: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+    .node { border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-height: 104px; background: #131720; }
+    .node strong { display: block; margin-bottom: 8px; }
+    .node small { color: var(--muted); line-height: 1.45; display: block; }
+    .node.primary { border-color: var(--accent); }
+    .node.warn { border-color: var(--warn); }
+    .edges { display: grid; gap: 8px; margin-top: 14px; }
+    .edge { border-left: 3px solid var(--accent); padding: 9px 12px; background: #131720; color: var(--muted); }
+    .edge b { color: var(--text); }
+    .anchors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .anchor { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #11151d; color: var(--muted); }
+    .anchor b { color: var(--text); }
+    @media (max-width: 800px) { .grid, .anchors { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- INTENT: Show the current Ollama-only text+vision runtime contract and prevent regressions to the retired local-model path. -->
+  <main>
+    <h1>Ollama Vision Runtime Architecture</h1>
+    <section class="intent">
+      <h2>Intent</h2>
+      <p>Smart YouTube Reader has one local model path: regular Ollama Gemma 4, defaulting to <code>gemma4:12b</code>. It uses text for transcript chaptering and image input for chapter frame selection. This playground prevents drift back to retired providers, text-only model tags, or Apple-only setup claims.</p>
+    </section>
+
+    <section class="flow">
+      <h2>Runtime Flow</h2>
+      <div class="grid">
+        <div class="node"><strong>Pipeline</strong><small>Downloads video, extracts transcript text, slices frames, hashes and scores frame metadata.</small></div>
+        <div class="node primary"><strong>Ollama Runtime</strong><small><code>model_runtime.chat()</code> calls <code>/api/chat</code> and preserves attached <code>images</code>.</small></div>
+        <div class="node primary"><strong>Chaptering</strong><small>Transcript chunks go to Gemma 4 as text and return XML/JSON chapter structure.</small></div>
+        <div class="node primary"><strong>Vision Selection</strong><small>A bounded candidate frame set goes to Gemma 4 vision; only returned candidate filenames are accepted.</small></div>
+      </div>
+      <div class="edges">
+        <div class="edge"><b>pipeline.py -> intelligence.py</b>: <code>create_ai_archive()</code> receives transcript and <code>FrameManager</code>.</div>
+        <div class="edge"><b>intelligence.py -> model_runtime.py</b>: <code>_chat()</code> is the only model call boundary.</div>
+        <div class="edge"><b>/models -> new project UI</b>: only installed Ollama tags are selectable; catalog-only tags stay metadata.</div>
+        <div class="edge"><b>FrameManager -> vision selector</b>: frame metadata narrows candidates before images are encoded.</div>
+        <div class="edge"><b>Vision selector -> archive.json</b>: writes <code>images</code>, <code>_image_context</code>, and <code>_image_selection</code>.</div>
+      </div>
+    </section>
+
+    <section class="spec">
+      <h2>Spec Seed</h2>
+      <p><b>Decision:</b> Use Ollama <code>gemma4:12b</code> for transcript chaptering and vision-assisted image selection. Deterministic image scoring remains only as a fallback when vision selection fails.</p>
+      <p><b>Model readiness:</b> <code>/models</code> returns only installed tags in <code>models</code>, while <code>model_details</code> keeps uninstalled catalog entries informational. <code>/jobs</code> checks the requested model before creating a background job.</p>
+      <p><b>Non-goals:</b> No raw audio ingestion, no cloud requirement for initial archive generation, no text-only Gemma 4 local-model tags, and no provider abstraction that preserves an obsolete runtime.</p>
+      <p><b>Acceptance:</b> backend tests and ruff pass; model benchmark prints Ollama runtime; active docs and code have no retired runtime claims; uninstalled catalog models are not normal selectable choices; real project image benchmark reports <code>ollama_vision</code> or an explicit deterministic fallback reason.</p>
+    </section>
+
+    <section class="spec">
+      <h2>Source Anchors</h2>
+      <div class="anchors">
+        <div class="anchor"><b>Runtime:</b> <code>backend/app/model_runtime.py</code> owns Ollama host, default model, model checks, and image-preserving chat payloads.</div>
+        <div class="anchor"><b>Model API:</b> <code>backend/app/main.py::list_models</code> separates installed selectable models from catalog metadata.</div>
+        <div class="anchor"><b>Chaptering:</b> <code>backend/app/intelligence.py::_generate_archive_chunk</code> sends transcript text through the runtime boundary.</div>
+        <div class="anchor"><b>Vision:</b> <code>backend/app/intelligence.py::_choose_vision_representative_frames</code> sends candidate frames to Gemma 4 and validates returned filenames.</div>
+        <div class="anchor"><b>Fallback:</b> <code>backend/app/intelligence.py::_choose_representative_frames</code> remains deterministic recovery behavior.</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
