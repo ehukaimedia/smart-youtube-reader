@@ -70,3 +70,17 @@ export function resolveShareOrigin(info: ShareInfo, mode: ShareMode): string | n
   // Caller decides how to handle unavailability; return null so they can react.
   return null;
 }
+
+export function describeTailscaleUnavailable(info: ShareInfo): string {
+  const reason = info.modes.tailscale.status;
+  if (reason === 'not_share_enabled') {
+    return 'Tailscale is connected, but Smart Reader was started in Local mode. Restart with `start.bat -Share`, then try Tailscale again.';
+  }
+  if (reason === 'not_installed') {
+    return 'Tailscale is not installed. Install Tailscale or stay on Local.';
+  }
+  if (reason === 'no_tailnet_ip') {
+    return 'Tailscale is installed but no tailnet IP is available. Run `tailscale up` and retry.';
+  }
+  return 'Tailscale is not running. Start the Tailscale app or run `tailscale up`.';
+}

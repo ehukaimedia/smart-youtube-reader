@@ -10,13 +10,20 @@ from app import main as app_main
 class ShareInfoTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app_main.app)
-        self._saved_origin = os.environ.pop("PUBLIC_SHARE_ORIGIN", None)
+        self._saved_env = {
+            key: os.environ.pop(key, None)
+            for key in ("PUBLIC_SHARE_ORIGIN", "SYR_SHARE", "SYR_BIND_HOST")
+        }
 
     def tearDown(self):
-        if self._saved_origin is not None:
-            os.environ["PUBLIC_SHARE_ORIGIN"] = self._saved_origin
+        for key, value in self._saved_env.items():
+            if value is not None:
+                os.environ[key] = value
+            else:
+                os.environ.pop(key, None)
 
     def test_modes_present_with_tailscale_available(self):
+        os.environ["SYR_SHARE"] = "1"
         with patch.object(
             app_main, "_tailscale_status",
             return_value={"ip": "100.64.1.2", "status": "available"},
@@ -36,7 +43,18 @@ class ShareInfoTests(unittest.TestCase):
             body["share_origin"], body["modes"]["local"]["share_origin"],
         )
 
+    def test_tailscale_requires_share_enabled_binding(self):
+        with patch.object(
+            app_main, "_tailscale_status",
+            return_value={"ip": "100.64.1.2", "status": "available"},
+        ):
+            body = self.client.get("/share-info").json()
+        self.assertFalse(body["modes"]["tailscale"]["available"])
+        self.assertIsNone(body["modes"]["tailscale"]["share_origin"])
+        self.assertEqual(body["modes"]["tailscale"]["status"], "not_share_enabled")
+
     def test_local_mode_stays_localhost_from_tailscale_host(self):
+        os.environ["SYR_SHARE"] = "1"
         with patch.object(
             app_main, "_tailscale_status",
             return_value={"ip": "100.64.1.2", "status": "available"},

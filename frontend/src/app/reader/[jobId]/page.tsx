@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getApiBase, getShareInfo, inferShareModeFromLocation, resolveShareOrigin } from '@/lib/api';
+import { describeTailscaleUnavailable, getApiBase, getShareInfo, inferShareModeFromLocation, resolveShareOrigin } from '@/lib/api';
 import {
     buildAiDigestTextOnlyTask,
     buildAiDigestWithImagesTask,
@@ -105,13 +105,7 @@ export default function ReaderPage() {
         const mode = inferShareModeFromLocation();
         const origin = resolveShareOrigin(info, mode);
         if (!origin) {
-            const reason = info.modes.tailscale.status;
-            const message = reason === 'not_installed'
-                ? 'Tailscale is not installed. Pick Local on the dashboard or install Tailscale.'
-                : reason === 'no_tailnet_ip'
-                    ? 'Tailscale is installed but no tailnet IP is available. Run `tailscale up` and retry.'
-                    : 'Tailscale is not running. Start the Tailscale app or run `tailscale up`.';
-            toast.error(message);
+            toast.error(describeTailscaleUnavailable(info));
             return;
         }
         const url = `${origin}/reader/${jobId}`;
