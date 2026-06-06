@@ -73,7 +73,7 @@ async def favicon():
 
 
 TAILSCALE_NETWORK = ip_network("100.64.0.0/10")
-TAILSCALE_INSTALL_URL = "https://tailscale.com/download"
+TAILSCALE_INSTALL_URL = "https://tailscale.com/download/macos"
 
 
 def _scan_ifconfig_for_tailnet_ip() -> str | None:
