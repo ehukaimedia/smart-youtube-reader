@@ -28,6 +28,31 @@ type Job = {
     summary_image?: string | null;
 };
 
+type OpenProjectMenu = {
+    jobId: string;
+    left: number;
+    top: number;
+};
+
+function getOverflowMenuPosition(button: HTMLButtonElement, itemCount: number): { left: number; top: number } {
+    const rect = button.getBoundingClientRect();
+    const viewportPadding = 8;
+    const menuWidth = 190;
+    const estimatedItemHeight = 36;
+    const estimatedMenuHeight = Math.max(1, itemCount) * estimatedItemHeight + 16;
+    const left = Math.max(
+        viewportPadding,
+        Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding),
+    );
+    const opensUp = rect.bottom + estimatedMenuHeight + viewportPadding > window.innerHeight
+        && rect.top > estimatedMenuHeight + viewportPadding;
+    const top = opensUp
+        ? rect.top - estimatedMenuHeight - 6
+        : rect.bottom + 6;
+
+    return { left, top };
+}
+
 function getYouTubeVideoId(videoUrl: string): string | null {
     try {
         const url = new URL(videoUrl);
@@ -73,6 +98,7 @@ export default function DashboardPage() {
     });
     const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
     const [shareMode] = useState<ShareMode>(() => inferShareModeFromLocation());
+    const [openMenu, setOpenMenu] = useState<OpenProjectMenu | null>(null);
     const toast = useToast();
 
     const fetchJobs = () => {
@@ -96,6 +122,32 @@ export default function DashboardPage() {
     useEffect(() => {
         window.localStorage.setItem('smart-reader-group-selection', JSON.stringify(selectedGroupIds));
     }, [selectedGroupIds]);
+
+    useEffect(() => {
+        if (!openMenu) return;
+
+        const closeMenu = () => setOpenMenu(null);
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (target instanceof Element && target.closest('[data-project-overflow]')) return;
+            closeMenu();
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') closeMenu();
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        document.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', closeMenu);
+        window.addEventListener('scroll', closeMenu, true);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+            document.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', closeMenu);
+            window.removeEventListener('scroll', closeMenu, true);
+        };
+    }, [openMenu]);
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.preventDefault();
@@ -285,6 +337,15 @@ export default function DashboardPage() {
                         const isSelectedForGroup = selectedGroupIds.includes(job.id);
                         const canGroup = job.status === 'complete' && Boolean(job.data_folder_name);
                         const canCreateAiDigest = job.status === 'complete' && Boolean(job.data_folder_name) && !job.kind;
+                        const menuItemCount = [
+                            canCreateAiDigest,
+                            Boolean(job.video_url),
+                            true,
+                            job.status === 'complete',
+                            canGroup,
+                            true,
+                        ].filter(Boolean).length;
+                        const isMenuOpen = openMenu?.jobId === job.id;
                         const kindLabel = job.kind === 'group_ai_digest'
                             ? 'Group AI Digest'
                             : job.kind === 'ai_digest'
@@ -341,43 +402,101 @@ export default function DashboardPage() {
                                 <Link href={`/reader/${job.id}`} className="btn btn-primary btn-compact">
                                     Open Project
                                 </Link>
-                                <details className="overflow-menu">
-                                    <summary aria-label="Project actions" title="Project actions">⋯</summary>
-                                    <div className="overflow-content">
+                                <div className="overflow-menu" data-project-overflow>
+                                    <button
+                                        type="button"
+                                        className="overflow-trigger"
+                                        aria-label="Project actions"
+                                        aria-haspopup="menu"
+                                        aria-expanded={isMenuOpen}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={(event) => {
+                                            const position = getOverflowMenuPosition(event.currentTarget, menuItemCount);
+                                            setOpenMenu(current => (
+                                                current?.jobId === job.id
+                                                    ? null
+                                                    : { jobId: job.id, ...position }
+                                            ));
+                                        }}
+                                    >
+                                        ⋯
+                                    </button>
+                                    {isMenuOpen && (
+                                    <div
+                                        className="overflow-content"
+                                        role="menu"
+                                        style={{ left: openMenu.left, top: openMenu.top }}
+                                    >
                                         {canCreateAiDigest && (
                                             <button
-                                                onClick={() => copyAiDigestWithImagesTask(job)}
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setOpenMenu(null);
+                                                    copyAiDigestWithImagesTask(job);
+                                                }}
                                                 title="Copy the default generated-WebP AI digest task"
                                             >
                                                 {digestTaskCopiedJobId === job.id ? 'Copied Digest' : 'AI Digest'}
                                             </button>
                                         )}
                                         {job.video_url && (
-                                            <a href={job.video_url} target="_blank" rel="noopener noreferrer">
+                                            <a
+                                                href={job.video_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                role="menuitem"
+                                                onClick={() => setOpenMenu(null)}
+                                            >
                                                 {isYouTubeUrl ? 'Open YouTube' : 'Open Source'}
                                             </a>
                                         )}
-                                        <button onClick={() => copyProjectLink(job.id)}>
+                                        <button
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={() => {
+                                                setOpenMenu(null);
+                                                copyProjectLink(job.id);
+                                            }}
+                                        >
                                             {copiedJobId === job.id ? 'Copied Link' : 'Copy Project Link'}
                                         </button>
                                         {job.status === 'complete' && (
                                             <a
                                                 href={`${getApiBase()}/jobs/${job.id}/download`}
                                                 download={`${job.data_folder_name || job.id}.zip`}
+                                                role="menuitem"
+                                                onClick={() => setOpenMenu(null)}
                                             >
                                                 Download ZIP
                                             </a>
                                         )}
                                         {canGroup && (
-                                            <button onClick={() => toggleGroupSelection(job)}>
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setOpenMenu(null);
+                                                    toggleGroupSelection(job);
+                                                }}
+                                            >
                                                 {isSelectedForGroup ? 'Remove from Group' : 'Add to Group'}
                                             </button>
                                         )}
-                                        <button className="danger-item" onClick={(e) => handleDelete(job.id, e)}>
+                                        <button
+                                            type="button"
+                                            role="menuitem"
+                                            className="danger-item"
+                                            onClick={(e) => {
+                                                setOpenMenu(null);
+                                                handleDelete(job.id, e);
+                                            }}
+                                        >
                                             Delete Project
                                         </button>
                                     </div>
-                                </details>
+                                    )}
+                                </div>
                             </div>
                         </article>
                     )})}
