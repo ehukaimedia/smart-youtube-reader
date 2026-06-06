@@ -12,15 +12,37 @@ from .provenance import app_metadata
 
 logger = logging.getLogger(__name__)
 PROVENANCE_SCHEMA_VERSION = 1
-ARCHIVE_PROMPT_VERSION = "archive-xml-v1"
+ARCHIVE_PROMPT_VERSION = "archive-schema-json-v1"
 VISION_PROMPT_VERSION = "vision-frame-selection-v1"
 MAX_PROMPT_CHARS = 14000
 MAX_IMAGES_PER_CHAPTER = 2
 VISION_FRAME_CANDIDATES = 6
 VISION_IMAGE_MAX_SIDE = 768
 CHUNK_DURATION = 300
-ARCHIVE_RESPONSE_FORMAT = "xml"
-ARCHIVE_XML_ATTEMPTS = 2
+ARCHIVE_RESPONSE_FORMAT = "schema_json"
+ARCHIVE_SCHEMA_ATTEMPTS = 2
+ARCHIVE_JSON_ATTEMPTS = 1
+ARCHIVE_XML_ATTEMPTS = 1
+ARCHIVE_CHAPTER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "chapters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "content": {"type": "string"},
+                    "start_time": {"type": "number"},
+                    "end_time": {"type": "number"},
+                },
+                "required": ["title", "summary", "content", "start_time", "end_time"],
+            },
+        },
+    },
+    "required": ["chapters"],
+}
 MIN_CHAPTER_DURATION = 3.0
 MIN_GAP_CHAPTER_DURATION = 12.0
 MIN_GAP_MEANINGFUL_WORDS = 30
@@ -41,12 +63,24 @@ def _to_float(value, default: float) -> float:
     except (TypeError, ValueError):
         return default
 
-def _chat(model: str, messages: list) -> str:
+def _chat(
+    model: str,
+    messages: list,
+    response_format: dict | str | None = None,
+    temperature: float = 0.2,
+    max_tokens: int = 8192,
+) -> str:
     """
     Local Ollama chat call.
     Returns the response content string.
     """
-    return model_chat(model=model, messages=messages)
+    return model_chat(
+        model=model,
+        messages=messages,
+        response_format=response_format,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
 
 def _clean_transcript_text(text: str) -> str:
     stripped = _CAPTION_NOISE_RE.sub(" ", text or "")
@@ -250,6 +284,82 @@ def _add_transcript_gap_chapters(
 
     return sorted(repaired + additions, key=lambda item: (item["start_time"], item["end_time"])), repairs
 
+
+def _fallback_archive_chapters_from_chunk(chunk: dict, max_chapters: int = 4) -> list[dict]:
+    chunk_start = _to_float(chunk.get("start"), 0.0)
+    chunk_end = _to_float(chunk.get("end"), chunk_start + MIN_CHAPTER_DURATION)
+    items = []
+    for item in sorted(chunk.get("items") or [], key=lambda row: _to_float(row.get("start"), chunk_start)):
+        text = _clean_transcript_text(str(item.get("text") or ""))
+        if not text:
+            continue
+        start, end = _item_start_end(item)
+        items.append({"text": text, "start": start, "end": end})
+
+    if not items:
+        text = re.sub(
+            r"\[\d+(?:\.\d+)?-\d+(?:\.\d+)?\]\s*",
+            " ",
+            str(chunk.get("text") or ""),
+        )
+        text = _clean_transcript_text(text)
+        if not text:
+            return []
+        content = _trim_to_sentence_boundary(_clip_text(text)) or _clip_text(text)
+        return [{
+            "title": _fallback_chapter_title(text),
+            "summary": _fallback_gap_summary(text) or _clip_text(text, max_chars=220),
+            "content": content,
+            "start_time": chunk_start,
+            "end_time": max(chunk_end, chunk_start + MIN_CHAPTER_DURATION),
+            "_fallback": "archive_chunk_parse",
+        }]
+
+    duration = max(chunk_end - chunk_start, MIN_CHAPTER_DURATION)
+    target_count = min(max_chapters, len(items), max(1, round(duration / 90)))
+    total_chars = sum(len(item["text"]) for item in items)
+    target_chars = max(450, total_chars // max(target_count, 1))
+    groups: list[list[dict]] = []
+    current: list[dict] = []
+    current_chars = 0
+
+    for index, item in enumerate(items):
+        current.append(item)
+        current_chars += len(item["text"])
+        remaining_items = len(items) - index - 1
+        remaining_groups = target_count - len(groups) - 1
+        if (
+            remaining_groups > 0
+            and current_chars >= target_chars
+            and remaining_items >= remaining_groups
+        ):
+            groups.append(current)
+            current = []
+            current_chars = 0
+    if current:
+        groups.append(current)
+
+    chapters = []
+    for group in groups:
+        text = _clean_transcript_text(" ".join(item["text"] for item in group))
+        if not text:
+            continue
+        start = min(item["start"] for item in group)
+        end = max(item["end"] for item in group)
+        if end <= start:
+            end = start + MIN_CHAPTER_DURATION
+        content = _trim_to_sentence_boundary(_clip_text(text)) or _clip_text(text)
+        chapters.append({
+            "title": _fallback_chapter_title(text),
+            "summary": _fallback_gap_summary(text) or _clip_text(text, max_chars=220),
+            "content": content,
+            "start_time": start,
+            "end_time": end,
+            "_fallback": "archive_chunk_parse",
+        })
+    return chapters
+
+
 def _transcript_line(item: dict) -> str:
     start = _to_float(item.get("start"), 0.0)
     duration = _to_float(item.get("duration"), 0.0)
@@ -417,6 +527,8 @@ def _extract_json_list(content: str) -> list:
         cleaned = cleaned[start:end]
 
     parsed = json.loads(cleaned)
+    if isinstance(parsed, dict) and isinstance(parsed.get("chapters"), list):
+        return parsed["chapters"]
     return parsed if isinstance(parsed, list) else [parsed]
 
 
@@ -470,7 +582,7 @@ def _extract_xml_chapters(content: str) -> list[dict]:
 def _extract_archive_chapters(content: str, response_format: str = ARCHIVE_RESPONSE_FORMAT) -> list[dict]:
     if response_format == "xml":
         return _extract_xml_chapters(content)
-    if response_format == "json":
+    if response_format in {"json", "schema_json"}:
         return _extract_json_list(content)
     raise ValueError(f"Unsupported archive response format: {response_format}")
 
@@ -490,6 +602,15 @@ def _archive_system_prompt(response_format: str = ARCHIVE_RESPONSE_FORMAT) -> st
         "Do not invent facts or add outside knowledge.\n"
         "Keep titles no-fluff: specific lesson names, no hype, no YouTube-style phrasing.\n"
     )
+    if response_format == "schema_json":
+        return (
+            base
+            + "Return ONLY a JSON object. No markdown, no prose.\n"
+            + "The object must match this shape: "
+            + '{"chapters":[{"title":"Specific lesson name","summary":"One compact summary sentence.",'
+            + '"content":"Grounded transcript evidence in chronological order.","start_time":0.0,'
+            + '"end_time":60.0}]}'
+        )
     if response_format == "xml":
         return (
             base
@@ -526,45 +647,86 @@ def _archive_user_prompt(chunk: dict, previous_error: str | None = None) -> str:
 def _generate_archive_chunk(model: str, chunk: dict) -> tuple[list[dict], dict]:
     attempts = []
 
-    for attempt in range(1, ARCHIVE_XML_ATTEMPTS + 1):
+    for attempt in range(1, ARCHIVE_SCHEMA_ATTEMPTS + 1):
         raw = _chat(model, [
-            {'role': 'system', 'content': _archive_system_prompt("xml")},
+            {'role': 'system', 'content': _archive_system_prompt("schema_json")},
             {'role': 'user', 'content': _archive_user_prompt(
                 chunk,
                 attempts[-1]["error"] if attempts else None,
             )},
-        ]).strip()
+        ], response_format=ARCHIVE_CHAPTER_SCHEMA, temperature=0.1).strip()
         try:
-            chapters = _extract_archive_chapters(raw, "xml")
-            return chapters, {"format": "xml", "attempts": attempt, "fallback": False}
+            chapters = _extract_archive_chapters(raw, "schema_json")
+            return chapters, {"format": "schema_json", "attempts": attempt, "fallback": False}
         except Exception as exc:
             error = str(exc)
             logger.error(
-                "Failed to parse LLM XML for chunk %.1f on attempt %s: %s. Content: %s...",
+                "Failed to parse LLM schema JSON for chunk %.1f on attempt %s: %s. Content: %s...",
                 chunk["start"],
                 attempt,
                 error,
                 raw[:100],
             )
+            attempts.append({"format": "schema_json", "attempt": attempt, "error": error})
+
+    for attempt in range(1, ARCHIVE_JSON_ATTEMPTS + 1):
+        raw = _chat(model, [
+            {'role': 'system', 'content': _archive_system_prompt("json")},
+            {'role': 'user', 'content': _archive_user_prompt(chunk, attempts[-1]["error"] if attempts else None)},
+        ], temperature=0.1).strip()
+        try:
+            chapters = _extract_archive_chapters(raw, "json")
+            return chapters, {
+                "format": "json",
+                "attempts": len(attempts) + attempt,
+                "fallback": True,
+                "fallback_reason": "schema_json_parse_failed",
+            }
+        except Exception as exc:
+            error = str(exc)
+            logger.error(
+                "Failed to parse LLM JSON fallback for chunk %.1f: %s. Content: %s...",
+                chunk["start"],
+                error,
+                raw[:100],
+            )
+            attempts.append({"format": "json", "attempt": attempt, "error": error})
+
+    for attempt in range(1, ARCHIVE_XML_ATTEMPTS + 1):
+        raw = _chat(model, [
+            {'role': 'system', 'content': _archive_system_prompt("xml")},
+            {'role': 'user', 'content': _archive_user_prompt(chunk, attempts[-1]["error"] if attempts else None)},
+        ], temperature=0.1).strip()
+        try:
+            chapters = _extract_archive_chapters(raw, "xml")
+            return chapters, {
+                "format": "xml",
+                "attempts": len(attempts) + attempt,
+                "fallback": True,
+                "fallback_reason": "json_parse_failed",
+            }
+        except Exception as exc:
+            error = str(exc)
+            logger.error(
+                "Failed to parse LLM XML fallback for chunk %.1f: %s. Content: %s...",
+                chunk["start"],
+                error,
+                raw[:100],
+            )
             attempts.append({"format": "xml", "attempt": attempt, "error": error})
 
-    raw = _chat(model, [
-        {'role': 'system', 'content': _archive_system_prompt("json")},
-        {'role': 'user', 'content': _archive_user_prompt(chunk, attempts[-1]["error"] if attempts else None)},
-    ]).strip()
-    try:
-        chapters = _extract_archive_chapters(raw, "json")
-        return chapters, {"format": "json", "attempts": len(attempts) + 1, "fallback": True}
-    except Exception as exc:
-        error = str(exc)
-        logger.error(
-            "Failed to parse LLM JSON fallback for chunk %.1f: %s. Content: %s...",
-            chunk["start"],
-            error,
-            raw[:100],
-        )
-        attempts.append({"format": "json", "attempt": 1, "error": error})
-        raise ValueError(f"Archive chunk parse failed after retries: {attempts}") from exc
+    logger.warning(
+        "Using deterministic transcript fallback for chunk %.1f after parse failures: %s",
+        chunk["start"],
+        attempts,
+    )
+    return _fallback_archive_chapters_from_chunk(chunk), {
+        "format": "deterministic",
+        "attempts": len(attempts),
+        "fallback": True,
+        "fallback_reason": "archive_chunk_parse_failed",
+        "parse_attempts": attempts,
+    }
 
 
 def _normalize_generated_chapters(
@@ -1103,6 +1265,8 @@ def _archive_provenance(model: str) -> dict:
         "generation": {
             "archive_prompt_version": ARCHIVE_PROMPT_VERSION,
             "archive_response_format": ARCHIVE_RESPONSE_FORMAT,
+            "archive_schema_attempts": ARCHIVE_SCHEMA_ATTEMPTS,
+            "archive_json_attempts": ARCHIVE_JSON_ATTEMPTS,
             "archive_xml_attempts": ARCHIVE_XML_ATTEMPTS,
             "vision_prompt_version": VISION_PROMPT_VERSION,
             "vision_frame_candidates": VISION_FRAME_CANDIDATES,

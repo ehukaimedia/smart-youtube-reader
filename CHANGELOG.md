@@ -12,6 +12,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 
 ### Fixed
 
+- Fixed archive generation resilience when Gemma 4 returns malformed chapter structure by using Ollama schema JSON first and falling back to transcript-grounded deterministic chapters instead of failing the full job.
 - Fixed Unix launcher Tailscale IP detection so share mode allows tailnet-origin Next.js dev assets without cross-origin warnings.
 - Fixed dashboard card overflow menus so opening `⋯` does not shift the page or show the native browser tooltip.
 - Prevented derived AI digest projects from inheriting source archive provenance as if it described the external-agent digest itself.

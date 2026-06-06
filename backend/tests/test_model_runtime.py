@@ -48,6 +48,31 @@ class ModelRuntimeTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["options"]["num_predict"], 128)
         self.assertEqual(captured["payload"]["messages"][0]["images"], ["abc123"])
 
+    def test_chat_posts_ollama_structured_output_format(self):
+        captured = {}
+        schema = {
+            "type": "object",
+            "properties": {"ok": {"type": "boolean"}},
+            "required": ["ok"],
+        }
+
+        def fake_request(path, payload=None, timeout=30):
+            captured["payload"] = payload
+            return {"message": {"content": '{"ok":true}'}}
+
+        with (
+            patch.object(model_runtime, "check_model", return_value=True),
+            patch.object(model_runtime, "_request_json", side_effect=fake_request),
+        ):
+            output = model_runtime.chat(
+                "gemma4:12b",
+                [{"role": "user", "content": "Return ok"}],
+                response_format=schema,
+            )
+
+        self.assertEqual(output, '{"ok":true}')
+        self.assertEqual(captured["payload"]["format"], schema)
+
     def test_runtime_metadata_includes_local_ollama_digest_when_available(self):
         def fake_request(path, payload=None, timeout=30):
             self.assertEqual(path, "/api/tags")

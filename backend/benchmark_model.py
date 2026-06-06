@@ -6,7 +6,7 @@ Usage:
     python3 backend/benchmark_model.py
     python3 backend/benchmark_model.py data/jobs/<project-folder>
     python3 backend/benchmark_model.py data/jobs/<project-folder> --runs 2
-    SMART_READER_MODEL=gemma4:12b python3 backend/benchmark_model.py --first-chunk-only --formats xml
+    SMART_READER_MODEL=gemma4:12b python3 backend/benchmark_model.py --first-chunk-only --formats schema_json
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ REPO_ROOT = ROOT.parent
 
 from app.frames import FrameManager
 from app.intelligence import (
+    ARCHIVE_CHAPTER_SCHEMA,
     CHUNK_DURATION,
     _archive_system_prompt,
     _choose_vision_representative_frames,
@@ -55,8 +56,21 @@ class Timeout(Exception):
     pass
 
 
+HAS_SIGNAL_ALARM = hasattr(signal, "SIGALRM") and hasattr(signal, "alarm")
+
+
 def _timeout_handler(signum, frame):
     raise Timeout("timed out")
+
+
+def _set_alarm(seconds: int) -> None:
+    if HAS_SIGNAL_ALARM:
+        signal.alarm(seconds)
+
+
+def _clear_alarm() -> None:
+    if HAS_SIGNAL_ALARM:
+        signal.alarm(0)
 
 
 def load_transcript(path: str | None) -> tuple[list[dict], Path | None]:
@@ -175,15 +189,16 @@ def benchmark_text(
         chunks = chunks[:1]
 
     results = []
-    formats = formats or ["xml", "json"]
-    signal.signal(signal.SIGALRM, _timeout_handler)
+    formats = formats or ["schema_json", "json", "xml"]
+    if HAS_SIGNAL_ALARM:
+        signal.signal(signal.SIGALRM, _timeout_handler)
     for run in range(1, runs + 1):
         for chunk in chunks:
             for response_format in formats:
                 chunk_text = chunk["text"]
                 user_prompt = f"Transcript segment {chunk['start']:.1f}-{chunk['end']:.1f}s:\n{chunk_text}"
                 start = time.time()
-                signal.alarm(timeout)
+                _set_alarm(timeout)
                 try:
                     raw = model_chat(
                         model=model,
@@ -193,8 +208,10 @@ def benchmark_text(
                         ],
                         temperature=0.1,
                         max_tokens=max_tokens,
+                        timeout=timeout,
+                        response_format=ARCHIVE_CHAPTER_SCHEMA if response_format == "schema_json" else None,
                     )
-                    signal.alarm(0)
+                    _clear_alarm()
                     results.append({
                         "run": run,
                         "chunk": chunk["index"],
@@ -206,7 +223,7 @@ def benchmark_text(
                         **score_archive_response(raw, chunk_text, chunk["start"], chunk["end"], response_format),
                     })
                 except Exception as exc:
-                    signal.alarm(0)
+                    _clear_alarm()
                     results.append({
                         "run": run,
                         "chunk": chunk["index"],
@@ -300,9 +317,9 @@ def main():
     parser.add_argument(
         "--formats",
         nargs="+",
-        choices=["xml", "json"],
-        default=["xml", "json"],
-        help="Response formats to benchmark. Default compares XML and JSON.",
+        choices=["schema_json", "json", "xml"],
+        default=["schema_json", "json", "xml"],
+        help="Response formats to benchmark. Default compares schema JSON, prompt JSON, and XML.",
     )
     parser.add_argument(
         "--first-chunk-only",
