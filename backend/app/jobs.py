@@ -62,6 +62,10 @@ class Job:
 
         self._manifest_mtime = mtime
         self.title = data.get("title", self.title)
+        provenance_runtime = (data.get("provenance") or {}).get("runtime") or {}
+        model = data.get("model") or provenance_runtime.get("model")
+        if model:
+            self.payload.model = model
         self.kind = data.get("kind", self.kind)
         self.source_job_id = data.get("source_job_id", self.source_job_id)
         self.digest_model = data.get("digest_model", self.digest_model)
@@ -74,6 +78,7 @@ class Job:
             id=self.id,
             status=self.status,
             video_url=self.payload.video_url,
+            model=self.payload.model,
             title=self.title,
             created_at=self.created_at,
             error=self.error,
@@ -154,7 +159,12 @@ class JobStore:
                     # Reconstruct a minimal request payload. Only the source URL is
                     # known; the sampling params aren't persisted, so fall back to the
                     # schema defaults rather than inventing mismatched values.
-                    payload = JobCreateRequest(video_url=data.get('url', ''))
+                    provenance_runtime = (data.get("provenance") or {}).get("runtime") or {}
+                    payload_data = {"video_url": data.get('url', '')}
+                    model = data.get("model") or provenance_runtime.get("model")
+                    if model:
+                        payload_data["model"] = model
+                    payload = JobCreateRequest(**payload_data)
 
                     job = Job(job_id, payload)
                     # The manifest is written only when the pipeline finishes, with an

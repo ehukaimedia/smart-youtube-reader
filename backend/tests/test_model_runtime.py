@@ -73,6 +73,37 @@ class ModelRuntimeTests(unittest.TestCase):
         self.assertEqual(output, '{"ok":true}')
         self.assertEqual(captured["payload"]["format"], schema)
 
+    def test_runtime_metadata_includes_local_ollama_digest_when_available(self):
+        def fake_request(path, payload=None, timeout=30):
+            self.assertEqual(path, "/api/tags")
+            return {
+                "models": [
+                    {
+                        "name": "gemma4:12b",
+                        "digest": "sha256:abc123",
+                        "size": 7600000000,
+                        "modified_at": "2026-06-05T12:00:00Z",
+                        "details": {
+                            "family": "gemma4",
+                            "parameter_size": "12B",
+                            "quantization_level": "Q4_K_M",
+                            "unrelated": "ignored",
+                        },
+                    }
+                ]
+            }
+
+        with patch.object(model_runtime, "_request_json", side_effect=fake_request):
+            metadata = model_runtime.runtime_metadata("gemma4:12b")
+
+        self.assertEqual(metadata["provider"], "ollama")
+        self.assertEqual(metadata["model"], "gemma4:12b")
+        self.assertEqual(metadata["digest"], "sha256:abc123")
+        self.assertEqual(metadata["capabilities"], ["text", "image"])
+        self.assertTrue(metadata["installed"])
+        self.assertEqual(metadata["details"]["parameter_size"], "12B")
+        self.assertNotIn("unrelated", metadata["details"])
+
 
 if __name__ == "__main__":
     unittest.main()

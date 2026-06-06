@@ -76,12 +76,17 @@ def _model_names(data: dict) -> list[str]:
     ]
 
 
-def list_local_models() -> list[str]:
+def list_local_model_details() -> list[dict]:
     try:
-        return _model_names(_request_json("/api/tags", timeout=5))
+        data = _request_json("/api/tags", timeout=5)
     except Exception as exc:
         logger.warning("Could not list Ollama models: %s", exc)
         return []
+    return [item for item in data.get("models", []) if isinstance(item, dict)]
+
+
+def list_local_models() -> list[str]:
+    return _model_names({"models": list_local_model_details()})
 
 
 def list_loaded_models() -> list[str]:
@@ -94,6 +99,51 @@ def list_loaded_models() -> list[str]:
 
 def model_info(model: str = DEFAULT_MODEL) -> dict:
     return _request_json("/api/show", {"model": model}, timeout=15)
+
+
+def _catalog_entry(model: str) -> dict:
+    for item in AVAILABLE_MODELS:
+        if item["name"] == model:
+            return item
+    return {"name": model, "provider": "ollama", "capabilities": []}
+
+
+def _local_model_entry(model: str, details: list[dict] | None = None) -> dict | None:
+    for item in details if details is not None else list_local_model_details():
+        if item.get("name") == model or item.get("model") == model:
+            return item
+    return None
+
+
+def runtime_metadata(model: str = DEFAULT_MODEL) -> dict:
+    catalog = _catalog_entry(model)
+    local = _local_model_entry(model)
+    metadata = {
+        "provider": catalog.get("provider", "ollama"),
+        "model": model,
+        "host": OLLAMA_HOST,
+        "capabilities": list(catalog.get("capabilities", [])),
+        "installed": local is not None,
+    }
+    if not local:
+        return metadata
+
+    for key in ("digest", "size", "modified_at"):
+        value = local.get(key)
+        if value is not None:
+            metadata[key] = value
+
+    details = local.get("details")
+    if isinstance(details, dict):
+        model_details = {
+            key: details[key]
+            for key in ("family", "families", "parameter_size", "quantization_level")
+            if key in details
+        }
+        if model_details:
+            metadata["details"] = model_details
+
+    return metadata
 
 
 def check_model(model: str = DEFAULT_MODEL) -> bool:

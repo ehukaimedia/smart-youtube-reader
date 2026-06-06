@@ -20,6 +20,7 @@ class JobResponse(BaseModel):
     id: str
     status: JobStatus
     video_url: str
+    model: Optional[str] = None
     title: Optional[str] = None
     created_at: float
     error: Optional[str] = None

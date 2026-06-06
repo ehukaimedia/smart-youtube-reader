@@ -7,9 +7,13 @@ import logging
 import json
 import re
 from html import unescape
-from .model_runtime import DEFAULT_MODEL, chat as model_chat, check_model
+from .model_runtime import DEFAULT_MODEL, chat as model_chat, check_model, runtime_metadata
+from .provenance import app_metadata
 
 logger = logging.getLogger(__name__)
+PROVENANCE_SCHEMA_VERSION = 1
+ARCHIVE_PROMPT_VERSION = "archive-xml-v1"
+VISION_PROMPT_VERSION = "vision-frame-selection-v1"
 MAX_PROMPT_CHARS = 14000
 MAX_IMAGES_PER_CHAPTER = 2
 VISION_FRAME_CANDIDATES = 6
@@ -1034,6 +1038,58 @@ def _frame_image_base64(frames_dir: Path, frame: dict) -> str | None:
         return None
 
 
+def _frame_evidence(frame: dict) -> dict:
+    evidence = {}
+    filename = frame.get("filename")
+    if filename:
+        evidence["filename"] = str(filename)
+    for key in (
+        "timestamp",
+        "frame_idx",
+        "visual_score",
+        "brightness",
+        "contrast",
+        "edge_density",
+        "color_spread",
+        "dark_ratio",
+        "light_ratio",
+        "skin_ratio",
+        "phash",
+    ):
+        if key in frame and frame[key] is not None:
+            evidence[key] = frame[key]
+    return evidence
+
+
+def _image_selection_metadata(
+    *,
+    method: str,
+    selected_images: list[str],
+    candidates: list[dict],
+    max_images: int,
+    model: str | None = None,
+    fallback_reason: str | None = None,
+    attempted_method: str | None = None,
+) -> dict:
+    metadata = {
+        "schema_version": PROVENANCE_SCHEMA_VERSION,
+        "method": method,
+        "selected_images": list(selected_images),
+        "candidate_count": len(candidates),
+        "vision_candidates": len(candidates),
+        "max_images": max_images,
+        "candidates": [_frame_evidence(frame) for frame in candidates],
+    }
+    if model:
+        metadata["provider"] = "ollama"
+        metadata["model"] = model
+    if attempted_method:
+        metadata["attempted_method"] = attempted_method
+    if fallback_reason:
+        metadata["fallback_reason"] = fallback_reason
+    return metadata
+
+
 def _vision_selection_prompt(chapter: dict, frames: list[dict], max_images: int) -> str:
     frame_lines = "\n".join(
         f"{index}. {frame['filename']} at {float(frame.get('timestamp', 0.0)):.1f}s"
@@ -1109,11 +1165,13 @@ def _choose_vision_representative_frames(
 
     if not image_frames:
         selected = _choose_representative_frames(candidates, all_frames, chapter_start, chapter_end, used_frames, max_images)
-        return selected, {
-            "method": "deterministic",
-            "fallback_reason": "no_vision_candidate_images",
-            "vision_candidates": 0,
-        }
+        return selected, _image_selection_metadata(
+            method="deterministic",
+            selected_images=selected,
+            candidates=[],
+            max_images=max_images,
+            fallback_reason="no_vision_candidate_images",
+        )
 
     allowed = {frame["filename"] for frame in image_frames}
     try:
@@ -1123,18 +1181,25 @@ def _choose_vision_representative_frames(
         selected = _extract_vision_selected_filenames(raw, allowed, max_images)
         for name in selected:
             used_frames.add(name)
-        return selected, {
-            "method": "ollama_vision",
-            "vision_candidates": len(image_frames),
-        }
+        return selected, _image_selection_metadata(
+            method="ollama_vision",
+            selected_images=selected,
+            candidates=image_frames,
+            max_images=max_images,
+            model=model,
+        )
     except Exception as exc:
         logger.warning("Vision frame selection failed; using deterministic selector: %s", exc)
         selected = _choose_representative_frames(candidates, all_frames, chapter_start, chapter_end, used_frames, max_images)
-        return selected, {
-            "method": "deterministic",
-            "fallback_reason": str(exc),
-            "vision_candidates": len(image_frames),
-        }
+        return selected, _image_selection_metadata(
+            method="deterministic",
+            selected_images=selected,
+            candidates=image_frames,
+            max_images=max_images,
+            model=model,
+            attempted_method="ollama_vision",
+            fallback_reason=str(exc),
+        )
 
 def _image_context_for_frames(frames: list[dict]) -> dict:
     context = {}
@@ -1190,6 +1255,23 @@ def check_local_model(model_name: str = DEFAULT_MODEL) -> bool:
     except Exception as e:
         logger.error(f"Failed to connect to Ollama: {e}")
         return False
+
+
+def _archive_provenance(model: str) -> dict:
+    return {
+        "schema_version": PROVENANCE_SCHEMA_VERSION,
+        "app": app_metadata(),
+        "runtime": runtime_metadata(model),
+        "generation": {
+            "archive_prompt_version": ARCHIVE_PROMPT_VERSION,
+            "archive_response_format": ARCHIVE_RESPONSE_FORMAT,
+            "archive_xml_attempts": ARCHIVE_XML_ATTEMPTS,
+            "vision_prompt_version": VISION_PROMPT_VERSION,
+            "vision_frame_candidates": VISION_FRAME_CANDIDATES,
+            "max_images_per_chapter": MAX_IMAGES_PER_CHAPTER,
+        },
+    }
+
 
 def create_ai_archive(
     job_id: str,
@@ -1389,4 +1471,9 @@ def create_ai_archive(
             **({"_fallback": chapter.get("_fallback")} if chapter.get("_fallback") else {}),
         })
         
-    return {"job_id": job_id, "archive": archive_data, "transcript_integrity": transcript_integrity}
+    return {
+        "job_id": job_id,
+        "archive": archive_data,
+        "transcript_integrity": transcript_integrity,
+        "provenance": _archive_provenance(model),
+    }

@@ -359,6 +359,12 @@ class ArchiveParsingTests(unittest.TestCase):
 
         self.assertEqual(selected, ["0002.png"])
         self.assertEqual(meta["method"], "ollama_vision")
+        self.assertEqual(meta["provider"], "ollama")
+        self.assertEqual(meta["model"], "gemma4:12b")
+        self.assertEqual(meta["selected_images"], ["0002.png"])
+        self.assertEqual(meta["candidate_count"], 2)
+        candidate_by_name = {candidate["filename"]: candidate for candidate in meta["candidates"]}
+        self.assertEqual(candidate_by_name["0002.png"]["timestamp"], 10.0)
         sent_message = chat.call_args.args[1][0]
         self.assertEqual(len(sent_message["images"]), 2)
         self.assertIn("0002.png", sent_message["content"])
@@ -383,6 +389,9 @@ class ArchiveParsingTests(unittest.TestCase):
 
         self.assertEqual(selected, ["0001.png"])
         self.assertEqual(meta["method"], "deterministic")
+        self.assertEqual(meta["attempted_method"], "ollama_vision")
+        self.assertEqual(meta["selected_images"], ["0001.png"])
+        self.assertEqual(meta["candidate_count"], 1)
         self.assertIn("fallback_reason", meta)
 
     def test_clean_transcript_text_strips_caption_noise_markers(self):

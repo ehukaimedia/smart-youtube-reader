@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from .jobs import DATA_ROOT, JobStore, slugify
+from .provenance import app_metadata
 
 
 DIGEST_AGENT_TASK = (
@@ -95,6 +96,8 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
     shutil.copytree(source_dir, digest_dir, ignore=shutil.ignore_patterns("__pycache__"))
 
     source_job_id = source_manifest.get("job_id") or source_archive.get("job_id")
+    source_provenance = source_manifest.get("provenance") or source_archive.get("provenance")
+    provenance = _external_agent_provenance()
     created_at = time.time()
     archive_data = {
         "job_id": digest_id,
@@ -109,7 +112,10 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         "archive": digest_chapters,
         "changes_summary": changes_summary,
         "transcript_policy": "digest_transcript_only",
+        "provenance": provenance,
     }
+    if source_provenance:
+        archive_data["source_provenance"] = source_provenance
     generated_images = _collect_digest_generated_images(digest_chapters)
     operator_image_note = str(draft.get("operator_image_note") or "").strip()
     summary_image = generated_images[0] if generated_images else source_manifest.get("summary_image")
@@ -120,6 +126,7 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         "url": source_manifest.get("url", ""),
         "title": digest_title,
         "created_at": created_at,
+        "model": "external-agent-cli",
         "status": "complete",
         "kind": "ai_digest",
         "source_job_id": source_job_id,
@@ -131,7 +138,10 @@ def materialize_digest_project(source_dir: Path, draft: dict[str, Any]) -> tuple
         "changes_summary": changes_summary,
         "transcript_policy": "digest_transcript_only",
         "video_ext": source_manifest.get("video_ext", "mp4"),
+        "provenance": provenance,
     }
+    if source_provenance:
+        manifest["source_provenance"] = source_provenance
     if generated_images:
         _prune_generated_image_digest(digest_dir, generated_images)
         manifest["generated_images"] = generated_images
@@ -427,6 +437,21 @@ def _read_json(path: Path) -> dict[str, Any]:
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+
+
+def _external_agent_provenance() -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "app": app_metadata(),
+        "runtime": {
+            "provider": "external-agent-cli",
+            "model": "external-agent-cli",
+            "capabilities": ["text", "image"],
+        },
+        "generation": {
+            "digest_agent_status": "external_agent",
+        },
+    }
 
 
 def _unique_digest_dir(title: str, digest_id: str) -> Path:
