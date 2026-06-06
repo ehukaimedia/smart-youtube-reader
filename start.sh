@@ -7,6 +7,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+detect_tailscale_ip() {
+    if command -v tailscale &> /dev/null; then
+        TAILSCALE_CLI_IP="$(tailscale ip -4 2>/dev/null | head -n 1)"
+        if [ -n "$TAILSCALE_CLI_IP" ]; then
+            echo "$TAILSCALE_CLI_IP"
+            return
+        fi
+    fi
+
+    if command -v ifconfig &> /dev/null; then
+        ifconfig 2>/dev/null | awk '/inet 100\./ { print $2; exit }'
+    fi
+}
+
 echo "Starting Smart YouTube Reader..."
 
 # Check requirements
@@ -37,10 +51,13 @@ export SMART_READER_MODEL
 # Local-first by default: bind loopback only. Opt in to network/tailnet sharing
 # with SYR_SHARE=1, which binds all interfaces.
 BIND_HOST="127.0.0.1"
+TAILSCALE_IP=""
 if [ "${SYR_SHARE:-0}" = "1" ]; then
     BIND_HOST="0.0.0.0"
     echo "SYR_SHARE=1: binding to all interfaces (0.0.0.0); reachable by other devices on your network."
+    TAILSCALE_IP="$(detect_tailscale_ip)"
 fi
+export SYR_ALLOWED_DEV_ORIGINS="$TAILSCALE_IP"
 
 # Start Backend
 echo "Starting Backend on port 8001..."
@@ -86,6 +103,9 @@ FRONTEND_PID=$!
 echo "App running!"
 echo "Backend: http://localhost:8001"
 echo "Frontend: http://localhost:3001"
+if [ -n "$TAILSCALE_IP" ]; then
+    echo "Tailscale: http://${TAILSCALE_IP}:3001/dashboard"
+fi
 echo "Press Ctrl+C to stop."
 
 wait

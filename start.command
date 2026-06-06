@@ -13,7 +13,7 @@ detect_tailscale_ip() {
     fi
 
     if command -v ifconfig &> /dev/null; then
-        ifconfig 2>/dev/null | awk '/inet 100\\./ { print $2; exit }'
+        ifconfig 2>/dev/null | awk '/inet 100\./ { print $2; exit }'
     fi
 }
 

@@ -4,6 +4,12 @@ All notable changes to Smart YouTube Reader are documented here.
 
 This project follows the spirit of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning starts at the first public baseline, `0.1.0`.
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed Unix launcher Tailscale IP detection so share mode allows tailnet-origin Next.js dev assets without cross-origin warnings.
+
 ## [0.1.0] - 2026-06-01
 
 ### Added
