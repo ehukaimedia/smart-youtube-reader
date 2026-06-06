@@ -10,7 +10,7 @@ This spec exists to prevent runtime drift and to make the image-selection contra
 
 ## Current Contract
 
-- `backend/app/model_runtime.py` owns local model configuration, model listing, model checks, and chat calls.
+- `backend/app/model_runtime.py` owns local model configuration, model listing, model checks, runtime metadata, and chat calls.
 - `SMART_READER_MODEL` defaults to `gemma4:12b`.
 - `OLLAMA_HOST` defaults to `http://127.0.0.1:11434`.
 - Chat calls use Ollama `/api/chat` with `stream: false`.
@@ -29,7 +29,8 @@ This spec exists to prevent runtime drift and to make the image-selection contra
    - send the candidate images plus chapter title, summary, and content to Gemma 4;
    - accept only JSON-selected filenames that were in the candidate set;
    - fall back to deterministic frame scoring if the vision call fails or returns invalid output.
-4. `archive.json` records selected images, `_image_context`, and `_image_selection` metadata for transparency.
+4. `archive.json` records selected images, `_image_context`, `_image_selection`, and top-level `provenance` metadata for transparency.
+5. `manifest.json` records the requested model and the same top-level `provenance` object so restored jobs and downloaded packages can prove the runtime path.
 
 ## Non-Goals
 
@@ -37,6 +38,7 @@ This spec exists to prevent runtime drift and to make the image-selection contra
 - No text-only Gemma 4 local-model tags.
 - No raw audio ingestion path.
 - No cloud model requirement for initial archive generation.
+- No unaudited source-provenance inheritance for derived AI digest projects.
 
 ## Acceptance Gates
 
@@ -47,3 +49,4 @@ This spec exists to prevent runtime drift and to make the image-selection contra
 - `backend/.venv/bin/ruff check .` passes.
 - `backend/.venv/bin/python backend/benchmark_model.py --first-chunk-only --formats xml --runs 1` prints `Runtime: Ollama` and `Model: gemma4:12b`.
 - A real project benchmark with `archive.json` and `frames.json` emits image-selection rows whose `selection.method` is `ollama_vision` unless Ollama returns an invalid response, in which case `selection.method` is `deterministic` with a `fallback_reason`.
+- New archive-generation jobs persist `provenance.runtime.model`, `provenance.runtime.provider`, prompt version metadata, and portable `frames/...` image-selection evidence.
