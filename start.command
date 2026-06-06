@@ -60,12 +60,15 @@ export SMART_READER_MODEL
 # Local-first by default: bind loopback only. Opt in to network/tailnet sharing
 # with SYR_SHARE=1, which binds all interfaces (so your tailnet IP is reachable).
 BIND_HOST="127.0.0.1"
+TAILSCALE_IP=""
 if [ "${SYR_SHARE:-0}" = "1" ]; then
     BIND_HOST="0.0.0.0"
     echo "--> SYR_SHARE=1: binding to all interfaces (0.0.0.0)."
     echo "    The app will be reachable by other devices on your network/tailnet."
     echo "    Press Ctrl+C now if that is not what you intended."
+    TAILSCALE_IP="$(detect_tailscale_ip)"
 fi
+export SYR_ALLOWED_DEV_ORIGINS="$TAILSCALE_IP"
 
 # Clear stale processes on required ports
 for PORT in 8001 3001; do
@@ -122,7 +125,6 @@ npm run dev -- -H "$BIND_HOST" --port 3001 &
 FRONTEND_PID=$!
 
 if [ "$BIND_HOST" = "0.0.0.0" ]; then
-    TAILSCALE_IP="$(detect_tailscale_ip)"
     if [ -n "$TAILSCALE_IP" ]; then
         APP_URL="http://${TAILSCALE_IP}:3001/dashboard"
     else
