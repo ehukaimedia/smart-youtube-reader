@@ -14,7 +14,7 @@ The repository ships with bundled **Smart YouTube Reader Demo Digest** examples 
 
 [Open the demo digest from the app](http://localhost:3001/reader/demo-smart-youtube-reader-digest) after running `./start.command`, or use the **Help** link in the top navigation. The demo reader includes a provider switcher for the **Claude Opus 4.8**, **Codex GPT 5.5**, and **Gemini 3.5 Flash High** versions.
 
-No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally through Ollama with regular `gemma4:12b`; the external-agent demos are optional examples for generating polished follow-up digest images. Gemma 4 reads the transcript for chaptering and uses vision to rank candidate video frames for each chapter. When you want tighter visual evidence, the slicer lets you replace or refine the selected frames.
+No AI subscription is needed for the initial video digest. Capture, transcription, frame extraction, chaptering, and the first readable archive run locally through Ollama with regular `gemma4:12b`; the external-agent demos are optional examples for generating polished follow-up digest images. Gemma 4 reads the transcript through Ollama structured JSON output for chaptering and uses vision to rank candidate video frames for each chapter. When you want tighter visual evidence, the slicer lets you replace or refine the selected frames.
 
 ![Default AI digest workflow: archive evidence to Codex GPT 5.5 generated WebP images to digest project](examples/demo-jobs/smart-youtube-reader-demo-digest_demo/generated/readme-codex-gpt55-default-digest-premium.webp)
 
@@ -62,6 +62,7 @@ For semantic chaptering and vision-assisted frame selection, Smart YouTube Reade
 * **Runtime Requirement**: Install Ollama and keep it running on Windows, macOS, or Linux.
 * **Default Model**: The application defaults to `gemma4:12b`, the regular Ollama Gemma 4 12B model with text and image support.
 * **First-run download**: The launch scripts check for `gemma4:12b` and run `ollama pull gemma4:12b` when it is missing. The model is about 7.6 GB, so the first launch can take several minutes.
+* **Chaptering output**: Transcript chaptering requests Ollama JSON Schema output first, then falls back to prompt-only JSON/XML parsing, and finally creates transcript-grounded deterministic chapters if the model returns malformed structure.
 * **Image selection**: The backend first narrows frame candidates with local frame metadata, then sends a small candidate set to Gemma 4 vision and accepts only returned filenames from that set. If the vision call fails or returns invalid JSON, the deterministic frame scorer is used as a fallback.
 * **Audio**: Some Gemma 4 model metadata may report audio capability, but Smart YouTube Reader does not send raw audio to the model. The app extracts transcript text first.
 

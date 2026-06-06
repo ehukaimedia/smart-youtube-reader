@@ -32,13 +32,68 @@ class ArchiveParsingTests(unittest.TestCase):
         self.assertEqual(chapters[0]["start_time"], 0.0)
         self.assertEqual(chapters[0]["end_time"], 10.0)
 
-    def test_generate_archive_chunk_retries_xml_then_uses_json_fallback(self):
-        chunk = {"start": 0.0, "end": 12.0, "text": "[0.0-12.0] transcript evidence"}
-        malformed_xml = "<archive><chapter><title>Missing fields</title></chapter></archive>"
+    def test_extract_json_parser_unwraps_schema_chapters_object(self):
+        raw = """
+        {
+          "chapters": [
+            {
+              "title": "Schema Chapter",
+              "summary": "Summary",
+              "content": "Grounded content",
+              "start_time": 0,
+              "end_time": 10
+            }
+          ]
+        }
+        """
+
+        chapters = intelligence._extract_archive_chapters(raw, "schema_json")
+
+        self.assertEqual(len(chapters), 1)
+        self.assertEqual(chapters[0]["title"], "Schema Chapter")
+
+    def test_generate_archive_chunk_uses_schema_json_first(self):
+        chunk = {
+            "start": 0.0,
+            "end": 12.0,
+            "text": "[0.0-12.0] transcript evidence",
+            "items": [{"start": 0.0, "duration": 12.0, "text": "transcript evidence"}],
+        }
+        valid_schema_json = """
+        {
+          "chapters": [
+            {
+              "title": "Schema JSON",
+              "summary": "Schema summary",
+              "content": "transcript evidence",
+              "start_time": 0,
+              "end_time": 12
+            }
+          ]
+        }
+        """
+
+        with patch.object(intelligence, "_chat", return_value=valid_schema_json) as chat:
+            chapters, meta = intelligence._generate_archive_chunk("test-model", chunk)
+
+        self.assertEqual(chat.call_count, 1)
+        self.assertEqual(len(chapters), 1)
+        self.assertEqual(chapters[0]["title"], "Schema JSON")
+        self.assertEqual(meta["format"], "schema_json")
+        self.assertFalse(meta["fallback"])
+        self.assertEqual(chat.call_args.kwargs["response_format"], intelligence.ARCHIVE_CHAPTER_SCHEMA)
+
+    def test_generate_archive_chunk_uses_json_after_schema_parse_failures(self):
+        chunk = {
+            "start": 0.0,
+            "end": 12.0,
+            "text": "[0.0-12.0] transcript evidence",
+            "items": [{"start": 0.0, "duration": 12.0, "text": "transcript evidence"}],
+        }
         valid_json = """
         [
           {
-            "title": "JSON Fallback",
+            "title": "Prompt JSON Fallback",
             "summary": "Fallback summary",
             "content": "transcript evidence",
             "start_time": 0,
@@ -47,15 +102,58 @@ class ArchiveParsingTests(unittest.TestCase):
         ]
         """
 
-        with patch.object(intelligence, "_chat", side_effect=[malformed_xml, malformed_xml, valid_json]) as chat:
+        with patch.object(intelligence, "_chat", side_effect=["not json", "not json", valid_json]) as chat:
             chapters, meta = intelligence._generate_archive_chunk("test-model", chunk)
 
         self.assertEqual(chat.call_count, 3)
         self.assertEqual(len(chapters), 1)
-        self.assertEqual(chapters[0]["title"], "JSON Fallback")
+        self.assertEqual(chapters[0]["title"], "Prompt JSON Fallback")
         self.assertEqual(meta["format"], "json")
         self.assertTrue(meta["fallback"])
+        self.assertEqual(meta["fallback_reason"], "schema_json_parse_failed")
         self.assertEqual(meta["attempts"], 3)
+        self.assertEqual(chat.call_args_list[0].kwargs["response_format"], intelligence.ARCHIVE_CHAPTER_SCHEMA)
+        self.assertIsNone(chat.call_args_list[2].kwargs.get("response_format"))
+
+    def test_generate_archive_chunk_returns_deterministic_fallback_after_parse_failures(self):
+        chunk = {
+            "start": 0.0,
+            "end": 30.0,
+            "text": (
+                "[0.0-10.0] Harness engineering turns transcript evidence into durable chapters. "
+                "[10.0-20.0] Verification catches malformed model output without inventing new facts. "
+                "[20.0-30.0] Deterministic fallback keeps the archive readable from source text."
+            ),
+            "items": [
+                {
+                    "start": 0.0,
+                    "duration": 10.0,
+                    "text": "Harness engineering turns transcript evidence into durable chapters.",
+                },
+                {
+                    "start": 10.0,
+                    "duration": 10.0,
+                    "text": "Verification catches malformed model output without inventing new facts.",
+                },
+                {
+                    "start": 20.0,
+                    "duration": 10.0,
+                    "text": "Deterministic fallback keeps the archive readable from source text.",
+                },
+            ],
+        }
+
+        with patch.object(intelligence, "_chat", side_effect=["not json", "not json", "not json", "<archive />"]) as chat:
+            chapters, meta = intelligence._generate_archive_chunk("test-model", chunk)
+
+        self.assertEqual(chat.call_count, 4)
+        self.assertGreaterEqual(len(chapters), 1)
+        self.assertEqual(chapters[0]["_fallback"], "archive_chunk_parse")
+        self.assertEqual(chapters[0]["start_time"], 0.0)
+        self.assertEqual(meta["format"], "deterministic")
+        self.assertTrue(meta["fallback"])
+        self.assertEqual(meta["fallback_reason"], "archive_chunk_parse_failed")
+        self.assertEqual(len(meta["parse_attempts"]), 4)
 
     def test_normalize_generated_chapters_repairs_overlapping_ranges(self):
         chapters = [

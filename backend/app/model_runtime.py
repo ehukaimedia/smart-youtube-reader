@@ -121,6 +121,7 @@ def chat(
     temperature: float = 0.2,
     max_tokens: int = 8192,
     timeout: int = 900,
+    response_format: dict | str | None = None,
 ) -> str:
     check_model(model)
     payload = {
@@ -133,6 +134,8 @@ def chat(
             "num_predict": max_tokens,
         },
     }
+    if response_format is not None:
+        payload["format"] = response_format
     data = _request_json("/api/chat", payload, timeout=timeout)
     message = data.get("message") or {}
     return str(message.get("content") or "")

@@ -35,15 +35,15 @@
     <h1>Ollama Vision Runtime Architecture</h1>
     <section class="intent">
       <h2>Intent</h2>
-      <p>Smart YouTube Reader has one local model path: regular Ollama Gemma 4, defaulting to <code>gemma4:12b</code>. It uses text for transcript chaptering and image input for chapter frame selection. This playground prevents drift back to retired providers, text-only model tags, or Apple-only setup claims.</p>
+      <p>Smart YouTube Reader has one local model path: regular Ollama Gemma 4, defaulting to <code>gemma4:12b</code>. It uses Ollama schema JSON for transcript chaptering and image input for chapter frame selection. This playground prevents drift back to retired providers, text-only model tags, or Apple-only setup claims.</p>
     </section>
 
     <section class="flow">
       <h2>Runtime Flow</h2>
       <div class="grid">
         <div class="node"><strong>Pipeline</strong><small>Downloads video, extracts transcript text, slices frames, hashes and scores frame metadata.</small></div>
-        <div class="node primary"><strong>Ollama Runtime</strong><small><code>model_runtime.chat()</code> calls <code>/api/chat</code> and preserves attached <code>images</code>.</small></div>
-        <div class="node primary"><strong>Chaptering</strong><small>Transcript chunks go to Gemma 4 as text and return XML/JSON chapter structure.</small></div>
+        <div class="node primary"><strong>Ollama Runtime</strong><small><code>model_runtime.chat()</code> calls <code>/api/chat</code>, supports <code>format</code>, and preserves attached <code>images</code>.</small></div>
+        <div class="node primary"><strong>Chaptering</strong><small>Transcript chunks request schema JSON first, then prompt JSON/XML, then deterministic transcript fallback.</small></div>
         <div class="node primary"><strong>Vision Selection</strong><small>A bounded candidate frame set goes to Gemma 4 vision; only returned candidate filenames are accepted.</small></div>
       </div>
       <div class="edges">
@@ -51,26 +51,27 @@
         <div class="edge"><b>intelligence.py -> model_runtime.py</b>: <code>_chat()</code> is the only model call boundary.</div>
         <div class="edge"><b>/models -> new project UI</b>: only installed Ollama tags are selectable; catalog-only tags stay metadata.</div>
         <div class="edge"><b>FrameManager -> vision selector</b>: frame metadata narrows candidates before images are encoded.</div>
+        <div class="edge"><b>Chaptering -> transcript_integrity</b>: malformed model structure records <code>chunk_fallbacks</code> instead of failing the full job when transcript fallback can recover.</div>
         <div class="edge"><b>Vision selector -> archive.json</b>: writes <code>images</code>, <code>_image_context</code>, and <code>_image_selection</code>.</div>
       </div>
     </section>
 
     <section class="spec">
       <h2>Spec Seed</h2>
-      <p><b>Decision:</b> Use Ollama <code>gemma4:12b</code> for transcript chaptering and vision-assisted image selection. Deterministic image scoring remains only as a fallback when vision selection fails.</p>
+      <p><b>Decision:</b> Use Ollama <code>gemma4:12b</code> for transcript chaptering and vision-assisted image selection. Chaptering requests Ollama schema JSON first; deterministic transcript chapters remain the final fallback when parse recovery fails. Deterministic image scoring remains only as a fallback when vision selection fails.</p>
       <p><b>Model readiness:</b> <code>/models</code> returns only installed tags in <code>models</code>, while <code>model_details</code> keeps uninstalled catalog entries informational. <code>/jobs</code> checks the requested model before creating a background job.</p>
       <p><b>Non-goals:</b> No raw audio ingestion, no cloud requirement for initial archive generation, no text-only Gemma 4 local-model tags, and no provider abstraction that preserves an obsolete runtime.</p>
-      <p><b>Acceptance:</b> backend tests and ruff pass; model benchmark prints Ollama runtime; active docs and code have no retired runtime claims; uninstalled catalog models are not normal selectable choices; real project image benchmark reports <code>ollama_vision</code> or an explicit deterministic fallback reason.</p>
+      <p><b>Acceptance:</b> backend tests and ruff pass; schema JSON model benchmark prints Ollama runtime; active docs and code have no retired runtime claims; malformed chapter responses recover through <code>chunk_fallbacks</code>; uninstalled catalog models are not normal selectable choices; real project image benchmark reports <code>ollama_vision</code> or an explicit deterministic fallback reason.</p>
     </section>
 
     <section class="spec">
       <h2>Source Anchors</h2>
       <div class="anchors">
-        <div class="anchor"><b>Runtime:</b> <code>backend/app/model_runtime.py</code> owns Ollama host, default model, model checks, and image-preserving chat payloads.</div>
+        <div class="anchor"><b>Runtime:</b> <code>backend/app/model_runtime.py</code> owns Ollama host, default model, model checks, schema format payloads, and image-preserving chat payloads.</div>
         <div class="anchor"><b>Model API:</b> <code>backend/app/main.py::list_models</code> separates installed selectable models from catalog metadata.</div>
         <div class="anchor"><b>Chaptering:</b> <code>backend/app/intelligence.py::_generate_archive_chunk</code> sends transcript text through the runtime boundary.</div>
         <div class="anchor"><b>Vision:</b> <code>backend/app/intelligence.py::_choose_vision_representative_frames</code> sends candidate frames to Gemma 4 and validates returned filenames.</div>
-        <div class="anchor"><b>Fallback:</b> <code>backend/app/intelligence.py::_choose_representative_frames</code> remains deterministic recovery behavior.</div>
+        <div class="anchor"><b>Fallback:</b> <code>backend/app/intelligence.py::_fallback_archive_chapters_from_chunk</code> and <code>_choose_representative_frames</code> keep deterministic recovery behavior.</div>
       </div>
     </section>
   </main>
