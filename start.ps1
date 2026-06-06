@@ -212,11 +212,13 @@ try {
     $env:SYR_SHARE = if ($ShareEnabled) { "1" } else { "0" }
     $env:SYR_BIND_HOST = $BindHost
     $env:FRONTEND_PORT = "3001"
+    $env:SYR_ALLOWED_DEV_ORIGINS = ""
 
     $AppUrl = "http://localhost:3001"
     if ($ShareEnabled) {
         $TailscaleIp = Get-TailscaleIp
         if ($TailscaleIp) {
+            $env:SYR_ALLOWED_DEV_ORIGINS = $TailscaleIp
             $AppUrl = "http://${TailscaleIp}:3001"
         }
     }
