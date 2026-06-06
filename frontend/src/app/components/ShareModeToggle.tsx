@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
     describeTailscaleUnavailable,
     getShareInfo,
+    getTailscaleModeLabel,
     inferShareModeFromLocation,
     resolveShareOrigin,
     type ShareInfo,
@@ -72,7 +73,7 @@ export default function ShareModeToggle() {
                 onClick={() => updateShareMode('tailscale')}
                 title={shareInfo.modes.tailscale.available ? 'Open the app through your tailnet IP' : describeTailscaleUnavailable(shareInfo)}
             >
-                Tailscale{!shareInfo.modes.tailscale.available && ' (unavailable)'}
+                {getTailscaleModeLabel(shareInfo)}
             </button>
         </div>
     );
