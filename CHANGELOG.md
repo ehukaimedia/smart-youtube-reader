@@ -9,6 +9,7 @@ This project follows the spirit of [Keep a Changelog](https://keepachangelog.com
 ### Fixed
 
 - Fixed Unix launcher Tailscale IP detection so share mode allows tailnet-origin Next.js dev assets without cross-origin warnings.
+- Fixed dashboard card overflow menus so opening `⋯` does not shift the page or show the native browser tooltip.
 
 ## [0.1.0] - 2026-06-01
 
