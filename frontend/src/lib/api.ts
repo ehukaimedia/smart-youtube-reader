@@ -71,10 +71,17 @@ export function resolveShareOrigin(info: ShareInfo, mode: ShareMode): string | n
   return null;
 }
 
+function getShareRestartCommand(): string {
+  if (typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win')) {
+    return 'start.bat -Share';
+  }
+  return 'SYR_SHARE=1 ./start.command';
+}
+
 export function describeTailscaleUnavailable(info: ShareInfo): string {
   const reason = info.modes.tailscale.status;
   if (reason === 'not_share_enabled') {
-    return 'Tailscale is connected, but Smart Reader was started in Local mode. Restart with `start.bat -Share`, then try Tailscale again.';
+    return `Tailscale is connected, but Smart Reader was started in Local mode. Restart with \`${getShareRestartCommand()}\`, then try Tailscale again.`;
   }
   if (reason === 'not_installed') {
     return 'Tailscale is not installed. Install Tailscale or stay on Local.';
