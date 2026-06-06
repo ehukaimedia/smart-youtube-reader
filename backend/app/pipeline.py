@@ -14,6 +14,36 @@ logger = logging.getLogger(__name__)
 
 DATA_ROOT = Path(__file__).resolve().parents[2] / "data" / "jobs"
 
+
+def _archive_frame_path(image_path: str) -> str:
+    normalized = str(image_path).replace("\\", "/")
+    if normalized.startswith("frames/") or normalized.startswith("slices/"):
+        return normalized
+    return f"frames/{normalized.rsplit('/', 1)[-1]}"
+
+
+def _relativize_image_selection_paths(selection: dict) -> dict:
+    updated = dict(selection)
+    for key in ("selected_images", "selected"):
+        value = updated.get(key)
+        if isinstance(value, list):
+            updated[key] = [_archive_frame_path(item) for item in value]
+
+    candidates = updated.get("candidates")
+    if isinstance(candidates, list):
+        normalized_candidates = []
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                normalized_candidates.append(candidate)
+                continue
+            normalized = dict(candidate)
+            if normalized.get("filename"):
+                normalized["filename"] = _archive_frame_path(normalized["filename"])
+            normalized_candidates.append(normalized)
+        updated["candidates"] = normalized_candidates
+    return updated
+
+
 def _ensure_js_runtime_in_path():
     """Prepend known JS runtime bin dirs to PATH so yt-dlp can solve YouTube's n-challenge.
     The uvicorn worker process may not inherit the user's full shell PATH."""
@@ -222,13 +252,17 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
             for chapter in archive_result['archive']:
                 image_context = chapter.get('_image_context') or {}
                 chapter['images'] = [
-                    f"frames/{img}" for img in chapter.get('images', [])
+                    _archive_frame_path(img) for img in chapter.get('images', [])
                 ]
                 if image_context:
                     chapter['_image_context'] = {
-                        f"frames/{image_path}": metadata
+                        _archive_frame_path(image_path): metadata
                         for image_path, metadata in image_context.items()
                     }
+                if isinstance(chapter.get('_image_selection'), dict):
+                    chapter['_image_selection'] = _relativize_image_selection_paths(
+                        chapter['_image_selection'],
+                    )
             archive_result['folder'] = final_folder
             with open(job_dir / "archive.json", "w") as f:
                 json.dump(archive_result, f)
@@ -239,11 +273,14 @@ def run_pipeline(job_id: str, payload: JobCreateRequest, job_store: JobStore):
             "url": payload.video_url,
             "title": job.title,
             "created_at": job.created_at,
+            "model": payload.model,
             "removed_duplicates": removed,
             "archive_chapters": archive_stats,
             "status": "complete",
             "video_ext": job.video_ext or "mp4"
         }
+        if archive_result and archive_result.get("provenance"):
+            manifest["provenance"] = archive_result["provenance"]
         with open(job_dir / "manifest.json", "w") as f:
             json.dump(manifest, f)
 
