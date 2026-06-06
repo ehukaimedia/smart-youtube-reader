@@ -49,8 +49,11 @@ Required shape:
     "digest": "ollama-model-digest-if-known"
   },
   "generation": {
-    "archive_prompt_version": "archive-xml-v1",
-    "archive_response_format": "xml",
+    "archive_prompt_version": "archive-schema-json-v1",
+    "archive_response_format": "schema_json",
+    "archive_schema_attempts": 2,
+    "archive_json_attempts": 1,
+    "archive_xml_attempts": 1,
     "vision_prompt_version": "vision-frame-selection-v1",
     "vision_frame_candidates": 6,
     "max_images_per_chapter": 2
@@ -100,4 +103,3 @@ Each chapter writes `_image_selection` with:
 - `backend/.venv/bin/python -m pytest` passes locally.
 - `backend/.venv/bin/ruff check .` passes locally.
 - GitHub Actions backend CI passes on Ubuntu, macOS, and Windows.
-

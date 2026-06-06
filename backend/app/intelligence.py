@@ -12,7 +12,7 @@ from .provenance import app_metadata
 
 logger = logging.getLogger(__name__)
 PROVENANCE_SCHEMA_VERSION = 1
-ARCHIVE_PROMPT_VERSION = "archive-xml-v1"
+ARCHIVE_PROMPT_VERSION = "archive-schema-json-v1"
 VISION_PROMPT_VERSION = "vision-frame-selection-v1"
 MAX_PROMPT_CHARS = 14000
 MAX_IMAGES_PER_CHAPTER = 2
@@ -1265,6 +1265,8 @@ def _archive_provenance(model: str) -> dict:
         "generation": {
             "archive_prompt_version": ARCHIVE_PROMPT_VERSION,
             "archive_response_format": ARCHIVE_RESPONSE_FORMAT,
+            "archive_schema_attempts": ARCHIVE_SCHEMA_ATTEMPTS,
+            "archive_json_attempts": ARCHIVE_JSON_ATTEMPTS,
             "archive_xml_attempts": ARCHIVE_XML_ATTEMPTS,
             "vision_prompt_version": VISION_PROMPT_VERSION,
             "vision_frame_candidates": VISION_FRAME_CANDIDATES,

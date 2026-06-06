@@ -29,7 +29,11 @@ def test_archive_provenance_records_runtime_and_prompt_contract(monkeypatch):
     assert provenance["app"]["commit"] == "test-sha"
     assert provenance["runtime"]["provider"] == "ollama"
     assert provenance["runtime"]["model"] == "gemma4:12b"
-    assert provenance["generation"]["archive_prompt_version"] == "archive-xml-v1"
+    assert provenance["generation"]["archive_prompt_version"] == "archive-schema-json-v1"
+    assert provenance["generation"]["archive_response_format"] == "schema_json"
+    assert provenance["generation"]["archive_schema_attempts"] == 2
+    assert provenance["generation"]["archive_json_attempts"] == 1
+    assert provenance["generation"]["archive_xml_attempts"] == 1
     assert provenance["generation"]["vision_prompt_version"] == "vision-frame-selection-v1"
 
 
