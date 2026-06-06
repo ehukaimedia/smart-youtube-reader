@@ -40,7 +40,7 @@ function fallbackShareInfo(): ShareInfo {
         share_origin: null,
         available: false,
         status: 'not_running',
-        install_url: 'https://tailscale.com/download/macos',
+        install_url: 'https://tailscale.com/download',
       },
     },
     configured_override: false,
@@ -83,4 +83,10 @@ export function describeTailscaleUnavailable(info: ShareInfo): string {
     return 'Tailscale is installed but no tailnet IP is available. Run `tailscale up` and retry.';
   }
   return 'Tailscale is not running. Start the Tailscale app or run `tailscale up`.';
+}
+
+export function getTailscaleModeLabel(info: ShareInfo): string {
+  if (info.modes.tailscale.available) return 'Tailscale';
+  if (info.modes.tailscale.status === 'not_share_enabled') return 'Tailscale (share off)';
+  return 'Tailscale (unavailable)';
 }

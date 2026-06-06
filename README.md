@@ -262,10 +262,10 @@ Smart YouTube Reader is local-first, so the app can run on either `localhost` or
 
 ### Enabling Tailscale mode
 
-The app never installs or starts Tailscale silently. To use Tailscale mode you need the [Tailscale](https://tailscale.com/download/macos) client running and signed in:
+The app never installs or starts Tailscale silently. To use Tailscale mode you need the [Tailscale](https://tailscale.com/download) client running and signed in:
 
 ```bash
-brew install --cask tailscale   # or download from https://tailscale.com/download/macos
+brew install --cask tailscale   # or download from https://tailscale.com/download
 tailscale up                    # sign in and join your tailnet
 ```
 
