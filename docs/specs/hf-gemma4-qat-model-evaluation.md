@@ -18,8 +18,8 @@ marketing or benchmark claims measured on other hardware, other runtimes, or oth
 **NO-GO.** Keep `gemma4:12b` as `DEFAULT_MODEL`. On this app's own workload and harness the
 QAT candidate is not faster and is measurably less accurate on the production-primary
 schema-JSON chaptering path. The integration path is proven and documented below, so any
-future candidate that passes the gate can be adopted with a one-line default change plus a
-catalog entry.
+future candidate that passes the gate can be adopted through the focused runtime, catalog,
+launcher, test, and doc updates in the dormant migration recipe.
 
 Runner-up considered: adopting the QAT model as a non-default catalog entry for its lower
 VRAM footprint (7.7 GB vs 8.1 GB resident). Rejected: ~400 MB does not change the hardware

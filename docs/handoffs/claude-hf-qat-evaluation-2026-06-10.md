@@ -29,7 +29,7 @@ record an evidence-based **NO-GO** instead of a migration:
 - `docs/specs/hf-gemma4-qat-model-evaluation.md` — decision spec: identity, integration
   contract, protocol, full results, caveats, standing gate, durability.
 - `docs/plans/hf-gemma4-qat-evaluation-and-model-gate-2026-06-10.md` — executed phases,
-  decision, dormant migration recipe (6 touch points), follow-ups, rollback.
+  decision, dormant migration recipe, verification steps, follow-ups, rollback.
 - `docs/playgrounds/specs/hf-gemma4-qat-model-evaluation.html` — self-contained decision
   playground with interactive benchmark explorer and Spec Seed (verified rendering, no
   console errors).
