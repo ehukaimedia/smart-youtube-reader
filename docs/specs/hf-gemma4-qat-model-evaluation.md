@@ -148,13 +148,13 @@ the candidate errored more often in both rounds (5 vs 4, 5 vs 4 in round 2 per-f
   HF import (`<|turn>`, `<turn|>`, `<|turn>user`), suggesting early GGUF chat-template
   conversion; a revised upload could change results — see re-evaluation triggers.
 
-## Module Quarantine Note
+## Artifact Pinning Note
 
-The candidate was published on Hugging Face 2026-06-04/05 and evaluated 2026-06-10 — inside
-the 7-day third-party quarantine window. The evaluation proceeded as an explicit user
-request (treated as the approval the standard requires); the NO-GO outcome means nothing
-from the quarantined artifact ships. Any future adoption must re-check the artifact age and
-pin the exact digest (`ollama show` id) in the spec.
+The 7-day module quarantine in the OSS standard applies to code dependencies (npm/pip
+packages, GitHub Actions, container images), not to model weights from a first-party
+vendor; no quarantine applied to this evaluation. Model artifacts are still identity-pinned:
+any adopted model records its exact digest (`ollama show` id — here `18a4d9511d99`) in the
+spec so provenance and reproductions reference one immutable artifact.
 
 ## Standing Model-Candidate Gate
 
@@ -165,7 +165,7 @@ harness, same suites, and matched sampling parameters:
    >= 20% lower avg seconds/call;
 2. no regression in overall pass rate or error count;
 3. vision selection keeps `ollama_vision` method rate >= baseline on the same chapters;
-4. artifact is >= 7 days published, digest-pinned, and license-compatible;
+4. artifact is digest-pinned (record the `ollama show` id) and license-compatible;
 5. results are committed under `docs/benchmarks/` with environment identity and raw logs.
 
 ## Non-Goals

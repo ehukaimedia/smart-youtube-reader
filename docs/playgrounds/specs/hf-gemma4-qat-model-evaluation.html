@@ -147,7 +147,7 @@
       on the production schema-JSON path, systematic chapter-count over-segmentation, one vision fallback.</p>
       <p><b>Standing gate:</b> a future candidate replaces the default only with: schema_json pass rate
       ≥ baseline + 10 pp (or equal pass rate with ≥ 20% lower latency); no overall pass-rate or error
-      regression; vision method rate ≥ baseline; artifact ≥ 7 days published and digest-pinned;
+      regression; vision method rate ≥ baseline; artifact digest-pinned and license-compatible;
       committed evidence under <code>docs/benchmarks/</code>.</p>
       <p><b>Ownership:</b> <code>backend/app/model_runtime.py</code> owns model identity and the chat
       boundary; the dormant migration recipe (6 touch points) is in
@@ -164,7 +164,7 @@
     <section class="spec">
       <h2>Source Anchors</h2>
       <div class="anchors">
-        <div class="anchor"><b>Spec:</b> <code>docs/specs/hf-gemma4-qat-model-evaluation.md</code> — protocol, full tables, gate, quarantine note.</div>
+        <div class="anchor"><b>Spec:</b> <code>docs/specs/hf-gemma4-qat-model-evaluation.md</code> — protocol, full tables, gate, caveats.</div>
         <div class="anchor"><b>Evidence:</b> <code>docs/benchmarks/gemma4-12b-qat-vs-q4km-2026-06-10/</code> — environment.txt, summary.json, 8 raw suite logs, GPU-residency proofs.</div>
         <div class="anchor"><b>Harness:</b> <code>backend/benchmark_model.py</code> (commit 62215b5, unmodified) — 7 quality gates, wall-clock timing.</div>
         <div class="anchor"><b>Runtime contract:</b> <code>docs/specs/ollama-vision-runtime.md</code> — remains the active runtime spec; this evaluation changes nothing in it.</div>

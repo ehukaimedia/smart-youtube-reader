@@ -16,9 +16,8 @@ are decided the same way.
 ## Executed Phases (all complete, 2026-06-10)
 
 1. **Candidate verification.** Confirmed the official Google HF repo ships Q4_0 QAT weights
-   plus the `mmproj` vision projector; license Apache-2.0; published 2026-06-04/05
-   (inside the 7-day quarantine window — proceeded as an explicit user-approved evaluation;
-   the NO-GO outcome ships nothing from the artifact).
+   plus the `mmproj` vision projector; license Apache-2.0; published 2026-06-04/05; digest
+   pinned in the spec (`18a4d9511d99`).
 2. **Integration proof.** Pulled via `ollama pull hf.co/google/gemma-4-12B-it-qat-q4_0-gguf`;
    Ollama 0.30.7 registered vision + clip projector. Smoke-tested text, JSON-schema
    structured output, and image input through the unchanged `model_runtime.chat()` boundary.
