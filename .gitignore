@@ -60,3 +60,7 @@ docs/specs/
 !docs/playgrounds/architecture/ollama-vision-runtime.html
 !docs/specs/
 !docs/specs/ollama-vision-runtime.md
+
+# Tracked decision artifacts for the HF Gemma 4 QAT model evaluation.
+!docs/plans/
+!docs/plans/hf-gemma4-qat-evaluation-and-model-gate-2026-06-10.md

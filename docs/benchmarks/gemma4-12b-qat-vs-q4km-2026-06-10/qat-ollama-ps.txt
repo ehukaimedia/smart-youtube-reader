@@ -1,0 +1,2 @@
+NAME                                                ID              SIZE      PROCESSOR    CONTEXT    UNTIL              
+hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest    18a4d9511d99    7.7 GB    100% GPU     4096       4 minutes from now    

@@ -1,0 +1,311 @@
+Runtime: Ollama
+Model: gemma4:12b
+Transcript items: 6
+
+Text archive benchmark
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 5.6,
+  "raw_chars": 1389,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Shift from Metrics to Satisfaction",
+    "Semantic Fingerprinting System",
+    "Demand Expansion and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.2,
+  "raw_chars": 1282,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 6,
+  "titles": [
+    "Evolution of the YouTube Algorithm",
+    "Semantic Fingerprints in Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 7.6,
+  "raw_chars": 1645,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Evolution of Algorithm Logic",
+    "Semantic Fingerprinting System",
+    "Demand Scaling and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 5.6,
+  "raw_chars": 1399,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Shift from Metrics to Satisfaction",
+    "Semantic Fingerprinting System",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.4,
+  "raw_chars": 1413,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 6,
+  "titles": [
+    "Shift from Metrics to Satisfaction",
+    "Semantic Fingerprinting",
+    "Demand Dynamics and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 7.5,
+  "raw_chars": 1640,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Evolution of Algorithm Logic",
+    "Semantic Fingerprints and Content Matching",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 5.6,
+  "raw_chars": 1391,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Shift from Metrics to Satisfaction",
+    "Semantic Fingerprinting System",
+    "Demand Expansion and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.1,
+  "raw_chars": 1340,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 6,
+  "titles": [
+    "Evolution of the YouTube Algorithm",
+    "Semantic Fingerprints and Content Matching",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 7.4,
+  "raw_chars": 1621,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Shift from Metrics to Satisfaction",
+    "Semantic Fingerprints and Content Matching",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+Text benchmark summary
+{
+  "chunks": 9,
+  "passed": 6,
+  "pass_rate": 0.667,
+  "min_quality": 6,
+  "avg_quality": 6.67,
+  "total_seconds": 58.0
+}
+Text benchmark summary by format
+{
+  "json": {
+    "chunks": 3,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "min_quality": 6,
+    "avg_quality": 6,
+    "total_seconds": 18.7
+  },
+  "schema_json": {
+    "chunks": 3,
+    "passed": 3,
+    "pass_rate": 1.0,
+    "min_quality": 7,
+    "avg_quality": 7,
+    "total_seconds": 16.8
+  },
+  "xml": {
+    "chunks": 3,
+    "passed": 3,
+    "pass_rate": 1.0,
+    "min_quality": 7,
+    "avg_quality": 7,
+    "total_seconds": 22.5
+  }
+}

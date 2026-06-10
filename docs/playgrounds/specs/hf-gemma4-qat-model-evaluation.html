@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HF Gemma 4 QAT Model Evaluation — Decision Playground</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0f1115; --panel: #171a21; --line: #303642; --text: #edf0f5; --muted: #a8b0bd; --accent: #58d68d; --warn: #f0b45b; --no: #e07a6b; --base: #6aa7e8; --cand: #c08fe0; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1, h2 { margin: 0; letter-spacing: 0; }
+    h1 { font-size: 32px; }
+    h2 { font-size: 18px; margin-top: 28px; }
+    p, li, td, th { color: var(--muted); line-height: 1.55; }
+    code { color: var(--text); background: #222733; padding: 2px 5px; border-radius: 4px; }
+    .intent, .spec, .flow, .verdict { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 18px; margin-top: 18px; }
+    .verdict { border-color: var(--no); }
+    .verdict h2 { margin-top: 0; color: var(--no); }
+    .verdict strong, .spec b, .intent b { color: var(--text); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+    .node { border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-height: 104px; background: #131720; }
+    .node strong { display: block; margin-bottom: 8px; color: var(--text); }
+    .node small { color: var(--muted); line-height: 1.45; display: block; }
+    .node.primary { border-color: var(--accent); }
+    .node.rejected { border-color: var(--no); }
+    .edges { display: grid; gap: 8px; margin-top: 14px; }
+    .edge { border-left: 3px solid var(--accent); padding: 9px 12px; background: #131720; color: var(--muted); }
+    .edge b { color: var(--text); }
+    .anchors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .anchor { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #11151d; color: var(--muted); }
+    .anchor b { color: var(--text); }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
+    .controls label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    select { background: #222733; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; }
+    select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+    .chart { margin-top: 12px; display: grid; gap: 14px; }
+    .row-label { font-size: 13px; color: var(--text); margin-bottom: 4px; }
+    .barpair { display: grid; gap: 4px; }
+    .bar { display: grid; grid-template-columns: 1fr 84px; align-items: center; gap: 8px; }
+    .track { background: #11151d; border: 1px solid var(--line); border-radius: 4px; height: 20px; overflow: hidden; }
+    .fill { height: 100%; border-radius: 3px 0 0 3px; }
+    .fill.base { background: var(--base); }
+    .fill.cand { background: var(--cand); }
+    .val { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 14px; }
+    th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
+    th { color: var(--text); background: #131720; }
+    td.win { color: var(--accent); }
+    @media (max-width: 800px) { .grid, .anchors { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- INTENT: Record the evidence-based NO-GO decision on replacing gemma4:12b (Q4_K_M) with hf.co/google/gemma-4-12B-it-qat-q4_0-gguf, and encode the standing benchmark gate every future default-model candidate must pass — preventing default-model swaps justified by external claims instead of local measurements. -->
+  <main>
+    <h1>HF Gemma 4 QAT Model Evaluation</h1>
+
+    <section class="intent">
+      <h2>Intent</h2>
+      <p>This playground informs one decision: <b>does the Hugging Face QAT release
+      <code>hf.co/google/gemma-4-12B-it-qat-q4_0-gguf</code> replace <code>gemma4:12b</code> as the
+      Smart YouTube Reader default model?</b> It exists to prevent a specific anti-pattern:
+      swapping the production model because a release is described as "faster and more accurate"
+      elsewhere, without measuring it on this app's own chaptering and vision workload, on the
+      runtime and hardware the app actually uses. The full protocol and verdict live in
+      <code>docs/specs/hf-gemma4-qat-model-evaluation.md</code>; raw logs in
+      <code>docs/benchmarks/gemma4-12b-qat-vs-q4km-2026-06-10/</code>.</p>
+    </section>
+
+    <section class="verdict">
+      <h2>Verdict — NO-GO (2026-06-10)</h2>
+      <p><strong>Keep <code>gemma4:12b</code>.</strong> Across 54 identical text calls and 22 vision
+      selections per model on an RTX 5070 / Ollama 0.30.7: the QAT candidate passed
+      <strong>20.4%</strong> of quality gates vs the baseline's <strong>29.6%</strong>, was not faster
+      (10.77 vs 10.80 s/call overall; <strong>+10.5% slower</strong> on the production schema-JSON
+      path), produced more malformed outputs (14 vs 10), over-segmented chapters in all three
+      schema runs on the TED-Ed job (6–7 chapters where the contract allows 2–5), and fell back to
+      deterministic image selection once (baseline: never). Its only measured advantage is ~400 MB
+      less resident VRAM (7.7 vs 8.1 GB).</p>
+    </section>
+
+    <section class="flow">
+      <h2>Benchmark Explorer</h2>
+      <div class="controls">
+        <label>Suite
+          <select id="suite" aria-label="Benchmark suite">
+            <option value="schema_total" selected>schema_json total (production path)</option>
+            <option value="overall">overall (all formats, all suites)</option>
+            <option value="sample">A — sample transcript (9 calls)</option>
+            <option value="teded">B — TED-Ed 238s (9 calls)</option>
+            <option value="trading">C — trading 1641s, round 1 (18 calls)</option>
+            <option value="trading_run2">C — trading 1641s, round 2 (18 calls)</option>
+          </select>
+        </label>
+        <label>Format
+          <select id="format" aria-label="Response format">
+            <option value="all" selected>all formats</option>
+            <option value="schema_json">schema_json (primary)</option>
+            <option value="json">json (fallback)</option>
+            <option value="xml">xml (fallback)</option>
+          </select>
+        </label>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--base)"></span>baseline gemma4:12b (Q4_K_M)</span>
+        <span><span class="swatch" style="background:var(--cand)"></span>candidate HF QAT (Q4_0)</span>
+      </div>
+      <div id="chart" class="chart" role="img" aria-label="Benchmark comparison bars"></div>
+      <p class="note" id="chartnote"></p>
+    </section>
+
+    <section class="flow">
+      <h2>Vision Image Selection (22 chapters per model)</h2>
+      <table>
+        <tr><th>Metric</th><th>baseline</th><th>candidate</th></tr>
+        <tr><td><code>ollama_vision</code> selections</td><td class="win">22/22</td><td>21/22 (1 deterministic fallback)</td></tr>
+        <tr><td>avg visual score (teded / trading r1 / r2)</td><td>0.185 / 0.175 / 0.183</td><td>0.132 / 0.155 / 0.153</td></tr>
+      </table>
+      <p class="note">Visual score measures frame richness (contrast, edges, color), not semantic fit —
+      the scores are reported for transparency, not as a quality verdict. The method row is the
+      contract-relevant signal: the candidate's vision call failed validation once; the baseline's never did.</p>
+    </section>
+
+    <section class="flow">
+      <h2>Decision Map</h2>
+      <div class="grid">
+        <div class="node primary"><strong>Runtime boundary (unchanged)</strong><small><code>model_runtime.chat()</code> → Ollama <code>/api/chat</code>, <code>stream:false</code>, JSON-Schema <code>format</code>, base64 <code>images</code>. Both models ran through this exact path.</small></div>
+        <div class="node primary"><strong>Default model (kept)</strong><small><code>gemma4:12b</code> — <code>DEFAULT_MODEL</code> at <code>model_runtime.py:13</code>; recommended catalog entry at <code>model_runtime.py:17</code>.</small></div>
+        <div class="node rejected"><strong>Candidate (rejected)</strong><small><code>hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest</code> — integrates cleanly (vision projector auto-registered) but loses the benchmark gate.</small></div>
+        <div class="node"><strong>Standing gate (new)</strong><small>Future candidates must beat the gate in the spec before touching <code>DEFAULT_MODEL</code>, launchers, or docs.</small></div>
+      </div>
+      <div class="edges">
+        <div class="edge"><b>hf.co repo → Ollama registry client</b>: <code>ollama pull hf.co/google/gemma-4-12B-it-qat-q4_0-gguf</code> fetched weights + <code>mmproj</code>; <code>ollama show</code> lists <code>vision</code> capability and a 52.38M clip projector (verified 2026-06-10, Ollama 0.30.7).</div>
+        <div class="edge"><b>check_model() / launchers → ollama list</b>: exact-name matching means HF pulls must be referenced with the <code>:latest</code> tag (<code>model_runtime.py:149-154</code>, <code>start.sh:42</code>, <code>start.ps1:196-197</code>).</div>
+        <div class="edge"><b>benchmark_model.py → model_runtime.chat()</b>: the harness exercises the same prompts, schema, temperature 0.1, and gates as production chaptering (<code>backend/benchmark_model.py:203-213</code>).</div>
+        <div class="edge"><b>AVAILABLE_MODELS → provenance</b>: catalog capabilities flow into <code>provenance.runtime</code> via <code>runtime_metadata()</code> (<code>intelligence.py:1264</code>) — any adopted model needs a catalog entry or provenance records empty capabilities.</div>
+        <div class="edge"><b>/models → frontend picker</b>: only installed catalog tags are selectable (<code>main.py:436-450</code>, <code>page.tsx:71</code>) — no frontend change is needed for any model swap.</div>
+      </div>
+    </section>
+
+    <section class="spec">
+      <h2>Spec Seed</h2>
+      <p><b>Decision:</b> Keep <code>gemma4:12b</code> (Ollama library, Q4_K_M) as <code>DEFAULT_MODEL</code>.
+      Reject <code>hf.co/google/gemma-4-12B-it-qat-q4_0-gguf</code> as default: not faster, less accurate
+      on the production schema-JSON path, systematic chapter-count over-segmentation, one vision fallback.</p>
+      <p><b>Standing gate:</b> a future candidate replaces the default only with: schema_json pass rate
+      ≥ baseline + 10 pp (or equal pass rate with ≥ 20% lower latency); no overall pass-rate or error
+      regression; vision method rate ≥ baseline; artifact ≥ 7 days published and digest-pinned;
+      committed evidence under <code>docs/benchmarks/</code>.</p>
+      <p><b>Ownership:</b> <code>backend/app/model_runtime.py</code> owns model identity and the chat
+      boundary; the dormant migration recipe (6 touch points) is in
+      <code>docs/plans/hf-gemma4-qat-evaluation-and-model-gate-2026-06-10.md</code>.</p>
+      <p><b>Caveats recorded:</b> sampling params not fully matched (library modelfile sets
+      <code>top_k=64, top_p=0.95</code>; HF import uses runtime defaults) at temperature 0.1; single
+      machine; candidate GGUF shows irregular stop tokens suggesting early template conversion.</p>
+      <p><b>Non-goals:</b> no runtime replacement, no new model-serving dependencies, no removal of
+      deterministic fallbacks, no second 12B-class catalog entry that loses on the primary path.</p>
+      <p><b>Re-evaluation triggers:</b> Google QAT GGUF re-upload or an Ollama library
+      <code>-it-qat</code> tag; material Q4_0 vs Q4_K_M kernel changes; chaptering contract changes.</p>
+    </section>
+
+    <section class="spec">
+      <h2>Source Anchors</h2>
+      <div class="anchors">
+        <div class="anchor"><b>Spec:</b> <code>docs/specs/hf-gemma4-qat-model-evaluation.md</code> — protocol, full tables, gate, quarantine note.</div>
+        <div class="anchor"><b>Evidence:</b> <code>docs/benchmarks/gemma4-12b-qat-vs-q4km-2026-06-10/</code> — environment.txt, summary.json, 8 raw suite logs, GPU-residency proofs.</div>
+        <div class="anchor"><b>Harness:</b> <code>backend/benchmark_model.py</code> (commit 62215b5, unmodified) — 7 quality gates, wall-clock timing.</div>
+        <div class="anchor"><b>Runtime contract:</b> <code>docs/specs/ollama-vision-runtime.md</code> — remains the active runtime spec; this evaluation changes nothing in it.</div>
+        <div class="anchor"><b>Plan:</b> <code>docs/plans/hf-gemma4-qat-evaluation-and-model-gate-2026-06-10.md</code> — executed phases, dormant migration recipe, follow-ups.</div>
+        <div class="anchor"><b>Candidate:</b> <code>hf.co/google/gemma-4-12B-it-qat-q4_0-gguf</code> — Apache-2.0, published 2026-06-04/05, digest <code>18a4d9511d99</code>.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Data is copied verbatim from docs/benchmarks/gemma4-12b-qat-vs-q4km-2026-06-10/summary.json.
+    const DATA = {
+      baseline: {
+        sample: { all: { calls: 9, passed: 6, avg_quality: 6.67, avg_seconds: 6.44, errors: 0 },
+          schema_json: { calls: 3, passed: 3, avg_quality: 7.0, avg_seconds: 5.6, errors: 0 },
+          json: { calls: 3, passed: 0, avg_quality: 6.0, avg_seconds: 6.23, errors: 0 },
+          xml: { calls: 3, passed: 3, avg_quality: 7.0, avg_seconds: 7.5, errors: 0 } },
+        teded: { all: { calls: 9, passed: 5, avg_quality: 6.56, avg_seconds: 17.42, errors: 0 },
+          schema_json: { calls: 3, passed: 2, avg_quality: 6.67, avg_seconds: 14.57, errors: 0 },
+          json: { calls: 3, passed: 0, avg_quality: 6.0, avg_seconds: 18.13, errors: 0 },
+          xml: { calls: 3, passed: 3, avg_quality: 7.0, avg_seconds: 19.57, errors: 0 } },
+        trading: { all: { calls: 18, passed: 2, avg_quality: 3.72, avg_seconds: 9.93, errors: 5 },
+          schema_json: { calls: 6, passed: 1, avg_quality: 2.0, avg_seconds: 9.7, errors: 4 },
+          json: { calls: 6, passed: 0, avg_quality: 4.17, avg_seconds: 9.92, errors: 0 },
+          xml: { calls: 6, passed: 1, avg_quality: 5.0, avg_seconds: 10.18, errors: 1 } },
+        trading_run2: { all: { calls: 18, passed: 3, avg_quality: 3.89, avg_seconds: 10.53, errors: 5 },
+          schema_json: { calls: 6, passed: 2, avg_quality: 2.33, avg_seconds: 11.2, errors: 4 },
+          json: { calls: 6, passed: 0, avg_quality: 4.17, avg_seconds: 10.03, errors: 0 },
+          xml: { calls: 6, passed: 1, avg_quality: 5.17, avg_seconds: 10.37, errors: 1 } },
+        overall: { all: { calls: 54, passed: 16, avg_quality: 4.74, avg_seconds: 10.8, errors: 10 } },
+        schema_total: { all: { calls: 18, passed: 8, avg_quality: 3.72, avg_seconds: 10.33, errors: 8 } }
+      },
+      qat: {
+        sample: { all: { calls: 9, passed: 6, avg_quality: 6.67, avg_seconds: 6.74, errors: 0 },
+          schema_json: { calls: 3, passed: 3, avg_quality: 7.0, avg_seconds: 6.67, errors: 0 },
+          json: { calls: 3, passed: 0, avg_quality: 6.0, avg_seconds: 6.4, errors: 0 },
+          xml: { calls: 3, passed: 3, avg_quality: 7.0, avg_seconds: 7.17, errors: 0 } },
+        teded: { all: { calls: 9, passed: 3, avg_quality: 6.0, avg_seconds: 17.68, errors: 0 },
+          schema_json: { calls: 3, passed: 0, avg_quality: 6.0, avg_seconds: 18.73, errors: 0 },
+          json: { calls: 3, passed: 0, avg_quality: 5.0, avg_seconds: 16.5, errors: 0 },
+          xml: { calls: 3, passed: 3, avg_quality: 7.0, avg_seconds: 17.8, errors: 0 } },
+        trading: { all: { calls: 18, passed: 1, avg_quality: 3.39, avg_seconds: 9.88, errors: 7 },
+          schema_json: { calls: 6, passed: 0, avg_quality: 1.0, avg_seconds: 10.18, errors: 5 },
+          json: { calls: 6, passed: 0, avg_quality: 4.17, avg_seconds: 9.75, errors: 1 },
+          xml: { calls: 6, passed: 1, avg_quality: 5.0, avg_seconds: 9.7, errors: 1 } },
+        trading_run2: { all: { calls: 18, passed: 1, avg_quality: 3.5, avg_seconds: 10.22, errors: 7 },
+          schema_json: { calls: 6, passed: 0, avg_quality: 1.0, avg_seconds: 11.35, errors: 5 },
+          json: { calls: 6, passed: 0, avg_quality: 4.33, avg_seconds: 9.75, errors: 1 },
+          xml: { calls: 6, passed: 1, avg_quality: 5.17, avg_seconds: 9.55, errors: 1 } },
+        overall: { all: { calls: 54, passed: 11, avg_quality: 4.41, avg_seconds: 10.77, errors: 14 } },
+        schema_total: { all: { calls: 18, passed: 3, avg_quality: 2.83, avg_seconds: 11.41, errors: 10 } }
+      }
+    };
+
+    const METRICS = [
+      { key: "pass_rate", label: "Pass rate (7/7 gates)", fmt: (c) => `${Math.round(100 * c.passed / c.calls)}% (${c.passed}/${c.calls})`, value: (c) => c.passed / c.calls, max: 1, higherBetter: true },
+      { key: "avg_quality", label: "Avg quality (0–7)", fmt: (c) => c.avg_quality.toFixed(2), value: (c) => c.avg_quality, max: 7, higherBetter: true },
+      { key: "avg_seconds", label: "Avg seconds per call (lower is better)", fmt: (c) => `${c.avg_seconds.toFixed(2)}s`, value: (c) => c.avg_seconds, max: null, higherBetter: false },
+      { key: "errors", label: "Malformed-output errors (lower is better)", fmt: (c) => `${c.errors}`, value: (c) => c.errors, max: null, higherBetter: false },
+    ];
+
+    const suiteSel = document.getElementById("suite");
+    const formatSel = document.getElementById("format");
+    const chart = document.getElementById("chart");
+    const note = document.getElementById("chartnote");
+
+    function render() {
+      const suite = suiteSel.value;
+      const aggregate = suite === "overall" || suite === "schema_total";
+      formatSel.disabled = aggregate;
+      const fmt = aggregate ? "all" : formatSel.value;
+      const b = DATA.baseline[suite][fmt];
+      const q = DATA.qat[suite][fmt];
+      chart.innerHTML = "";
+      for (const m of METRICS) {
+        const max = m.max ?? Math.max(m.value(b), m.value(q), 1e-9) * 1.15;
+        const row = document.createElement("div");
+        row.innerHTML = `<div class="row-label">${m.label}</div>
+          <div class="barpair">
+            <div class="bar"><div class="track"><div class="fill base" style="width:${(100 * m.value(b) / max).toFixed(1)}%"></div></div><span class="val">${m.fmt(b)}</span></div>
+            <div class="bar"><div class="track"><div class="fill cand" style="width:${(100 * m.value(q) / max).toFixed(1)}%"></div></div><span class="val">${m.fmt(q)}</span></div>
+          </div>`;
+        chart.appendChild(row);
+      }
+      note.textContent = aggregate
+        ? (suite === "schema_total"
+          ? "Aggregated schema_json calls across all suites — the structured-output path production chaptering tries first."
+          : "All 54 text calls per model across every suite and format.")
+        : `Per-call averages for the selected suite/format. ${fmt === "all" ? "All three response formats combined." : ""}`;
+    }
+
+    suiteSel.addEventListener("change", render);
+    formatSel.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>

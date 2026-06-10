@@ -1,0 +1,57 @@
+Benchmark environment — captured 2026-06-10
+============================================
+
+Host
+  OS:   Windows 11 Home 10.0.26200
+  CPU:  Intel(R) Core(TM) i9-14900KF
+  RAM:  31.8 GB
+  GPU:  NVIDIA GeForce RTX 5070, 12227 MiB VRAM
+
+Runtime
+  Ollama: 0.30.7
+  Host:   http://127.0.0.1:11434 (default OLLAMA_HOST)
+  Both models ran 100% GPU (see *-ollama-ps.txt)
+
+Models under test
+  Baseline:  gemma4:12b
+    id 4eb23ef187e2, 7.6 GB, architecture gemma4, 11.9B params,
+    quantization Q4_K_M, context 262144, clip projector 52.38M,
+    capabilities: completion, vision, audio, tools, thinking
+  Candidate: hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest
+    id 18a4d9511d99, 7.2 GB, architecture gemma4, 11.9B params,
+    quantization Q4_0 (quantization-aware trained), context 262144,
+    clip projector 52.38M (mmproj-gemma-4-12b-it-qat-q4_0.gguf),
+    capabilities: tools, completion, vision, audio
+    source: https://hf.co/google/gemma-4-12B-it-qat-q4_0-gguf
+    (published 2026-06-04/05, Apache-2.0)
+
+Protocol
+  Harness: backend/benchmark_model.py (unchanged, committed at 62215b5)
+  Warm-up: one untimed /api/chat call per model before its timed suites
+  Suite A  sample transcript     1 chunk x 3 formats x 3 runs  (9 calls)
+  Suite B  TED-Ed job (238s)     1 chunk x 3 formats x 3 runs  (9 calls)
+           + vision image-selection benchmark over archive chapters
+  Suite C  trading job (1641s)   6 chunks x 3 formats, two independent
+           rounds (18 calls each; *-trading.txt and *-trading-run2.txt)
+           + vision image-selection benchmark over archive chapters
+  Jobs:
+    data/jobs/3-tips-to-boost-your-confidence-ted-ed_06a6dae9
+    data/jobs/copy-this-5-rule-smc-trading-strategy-backtested-results_318c1b44
+  Quality gates (0-7): valid_format, keys_ok, timestamps_ok, count_ok,
+    no_markdown, no_fluff_titles, content_grounded (>=0.84 word overlap)
+  Timing: wall-clock seconds per call as reported by the harness.
+    Models were resident on GPU during timed calls; suites ran
+    sequentially (baseline first, then candidate) on an otherwise
+    idle machine.
+
+Reproduce
+  ollama pull hf.co/google/gemma-4-12B-it-qat-q4_0-gguf
+  backend\.venv\Scripts\python.exe backend\benchmark_model.py --runs 3 --model <model>
+  backend\.venv\Scripts\python.exe backend\benchmark_model.py 3-tips-to-boost-your-confidence-ted-ed_06a6dae9 --runs 3 --model <model>
+  backend\.venv\Scripts\python.exe backend\benchmark_model.py copy-this-5-rule-smc-trading-strategy-backtested-results_318c1b44 --runs 1 --model <model>
+  (run the trading command twice per model for the two rounds)
+
+Summary
+  summary.json is derived from the raw logs by parse_logs.py in this
+  directory:
+  backend\.venv\Scripts\python.exe docs\benchmarks\gemma4-12b-qat-vs-q4km-2026-06-10\parse_logs.py
