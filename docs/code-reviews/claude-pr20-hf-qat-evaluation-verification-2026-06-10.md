@@ -26,7 +26,8 @@ None.
    lower avg seconds/call" rejects a candidate that is, e.g., +9 pp on schema pass rate
    *and* 50% faster (fails both branches). Rewording the branch to "pass rate >= baseline
    with >= 20% lower avg seconds/call" keeps the gate conservative while not rejecting a
-   strictly-better candidate. Deterministic either way; not blocking.
+   strictly-better candidate. Deterministic either way; not blocking. Resolved by follow-up
+   commit: the active spec and playground now use the baseline-or-better latency branch.
 2. Process note on the prior audit: `codex-pr20-hf-qat-evaluation-2026-06-10.md` verified
    the rewritten playground's DATA block programmatically but did not record a browser
    render of the rewritten explorer (commit `a8f8585` replaced the chart-derivation code).

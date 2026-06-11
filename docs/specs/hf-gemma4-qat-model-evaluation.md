@@ -161,8 +161,8 @@ spec so provenance and reproductions reference one immutable artifact.
 A future candidate may replace `DEFAULT_MODEL` only when, on the same machine class, same
 harness, same suites, and matched sampling parameters:
 
-1. schema_json pass rate >= baseline + 10 percentage points, or equal pass rate with
-   >= 20% lower avg seconds/call;
+1. schema_json pass rate >= baseline + 10 percentage points, or pass rate >= baseline
+   with >= 20% lower avg seconds/call;
 2. no regression in overall pass rate or error count;
 3. vision selection keeps `ollama_vision` method rate >= baseline on the same chapters;
 4. artifact is digest-pinned (record the `ollama show` id) and license-compatible;

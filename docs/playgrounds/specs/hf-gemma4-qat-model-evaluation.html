@@ -146,7 +146,7 @@
       Reject <code>hf.co/google/gemma-4-12B-it-qat-q4_0-gguf</code> as default: not faster, less accurate
       on the production schema-JSON path, systematic chapter-count over-segmentation, one vision fallback.</p>
       <p><b>Standing gate:</b> a future candidate replaces the default only with: schema_json pass rate
-      ≥ baseline + 10 pp (or equal pass rate with ≥ 20% lower latency); no overall pass-rate or error
+      ≥ baseline + 10 pp (or pass rate ≥ baseline with ≥ 20% lower latency); no overall pass-rate or error
       regression; vision method rate ≥ baseline; artifact digest-pinned and license-compatible;
       committed evidence under <code>docs/benchmarks/</code>.</p>
       <p><b>Ownership:</b> <code>backend/app/model_runtime.py</code> owns model identity and the chat

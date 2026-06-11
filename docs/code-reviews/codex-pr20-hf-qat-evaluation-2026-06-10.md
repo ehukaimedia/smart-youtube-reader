@@ -160,8 +160,8 @@ non-regression, digest pinning, license compatibility, and committed raw evidenc
 (`docs/specs/hf-gemma4-qat-model-evaluation.md:159-169`).
 
 It would reject this candidate on multiple independent gates: schema pass rate is lower
-instead of baseline + 10 pp, schema latency is slower rather than 20% faster at equal pass
-rate, overall pass rate regresses, error count regresses, and vision method rate regresses.
-It would accept a genuinely better default candidate that clears the primary schema path
-threshold or ties schema quality with a large latency win while avoiding overall, error, and
-vision regressions.
+instead of baseline + 10 pp or baseline-matching with a large latency win, schema latency is
+slower rather than 20% faster, overall pass rate regresses, error count regresses, and vision
+method rate regresses. It would accept a genuinely better default candidate that clears the
+primary schema path threshold or at least matches schema quality with a large latency win
+while avoiding overall, error, and vision regressions.
