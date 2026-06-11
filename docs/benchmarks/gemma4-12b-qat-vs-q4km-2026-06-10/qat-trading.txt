@@ -1,0 +1,1286 @@
+Runtime: Ollama
+Model: hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest
+Transcript items: 779
+Project: C:\Users\arsen\OneDrive\Desktop\AI-Applications\smart-youtube-reader\data\jobs\copy-this-5-rule-smc-trading-strategy-backtested-results_318c1b44
+
+Text archive benchmark
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.1,
+    303.6
+  ],
+  "input_items": 155,
+  "input_chars": 7963,
+  "seconds": 6.9,
+  "raw_chars": 1167,
+  "format": "schema_json",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "Expecting ',' delimiter: line 10 column 7 (char 833)"
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.1,
+    303.6
+  ],
+  "input_items": 155,
+  "input_chars": 7963,
+  "seconds": 7.4,
+  "raw_chars": 1453,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 1,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": false,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 435,
+  "coverage_chars": 435,
+  "quality": 5,
+  "titles": [
+    "Core Principles of a Systematic Trading Strategy"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.1,
+    303.6
+  ],
+  "input_items": 155,
+  "input_chars": 7963,
+  "seconds": 6.4,
+  "raw_chars": 1063,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 1,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 394,
+  "coverage_chars": 394,
+  "quality": 6,
+  "titles": [
+    "Core Principles of a Systematic Trading Strategy"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 2,
+  "window": [
+    301.2,
+    602.2
+  ],
+  "input_items": 151,
+  "input_chars": 7903,
+  "seconds": 7.9,
+  "raw_chars": 1538,
+  "format": "schema_json",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "Expecting ',' delimiter: line 1 column 818 (char 817)"
+}
+{
+  "run": 1,
+  "chunk": 2,
+  "window": [
+    301.2,
+    602.2
+  ],
+  "input_items": 151,
+  "input_chars": 7903,
+  "seconds": 8.2,
+  "raw_chars": 1692,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 1,
+  "keys_ok": true,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 605,
+  "coverage_chars": 605,
+  "quality": 4,
+  "titles": [
+    "Identifying Consolidative Areas"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 2,
+  "window": [
+    301.2,
+    602.2
+  ],
+  "input_items": 151,
+  "input_chars": 7903,
+  "seconds": 7.2,
+  "raw_chars": 1351,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 1,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 605,
+  "coverage_chars": 605,
+  "quality": 6,
+  "titles": [
+    "Identifying Consolidative Areas and Fair Value"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 3,
+  "window": [
+    600.2,
+    905.1
+  ],
+  "input_items": 135,
+  "input_chars": 6926,
+  "seconds": 13.4,
+  "raw_chars": 2799,
+  "format": "schema_json",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "Expecting ',' delimiter: line 26 column 7 (char 2751)"
+}
+{
+  "run": 1,
+  "chunk": 3,
+  "window": [
+    600.2,
+    905.1
+  ],
+  "input_items": 135,
+  "input_chars": 6926,
+  "seconds": 13.6,
+  "raw_chars": 3057,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 679,
+  "coverage_chars": 2038,
+  "quality": 6,
+  "titles": [
+    "Identifying Swing Lows and Structural Legs",
+    "Distinguishing Liquidation from Change of Character",
+    "Identifying Reversals and Break of Structure"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 3,
+  "window": [
+    600.2,
+    905.1
+  ],
+  "input_items": 135,
+  "input_chars": 6926,
+  "seconds": 12.6,
+  "raw_chars": 2765,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 2,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 764,
+  "coverage_chars": 1529,
+  "quality": 7,
+  "titles": [
+    "Identifying Swing Lows and Structural Legs",
+    "Distinguishing Liquidation from Change of Character"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 4,
+  "window": [
+    903.1,
+    1203.8
+  ],
+  "input_items": 127,
+  "input_chars": 6725,
+  "seconds": 12.5,
+  "raw_chars": 2601,
+  "format": "schema_json",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "Expecting ',' delimiter: line 1 column 2121 (char 2120)"
+}
+{
+  "run": 1,
+  "chunk": 4,
+  "window": [
+    903.1,
+    1203.8
+  ],
+  "input_items": 127,
+  "input_chars": 6725,
+  "seconds": 12.8,
+  "raw_chars": 2745,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": false,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 481,
+  "coverage_chars": 1442,
+  "quality": 5,
+  "titles": [
+    "Directional Bias and Trend Alignment",
+    "Time and Price Windows",
+    "Liquidation Requirements"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 4,
+  "window": [
+    903.1,
+    1203.8
+  ],
+  "input_items": 127,
+  "input_chars": 6725,
+  "seconds": 11.7,
+  "raw_chars": 2289,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 1,
+  "keys_ok": true,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 629,
+  "coverage_chars": 629,
+  "quality": 5,
+  "titles": [
+    "Trading in Alignment with Directional Bias"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 5,
+  "window": [
+    1201.5,
+    1504.2
+  ],
+  "input_items": 141,
+  "input_chars": 7581,
+  "seconds": 5.0,
+  "raw_chars": 806,
+  "format": "schema_json",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "No JSON object or list found"
+}
+{
+  "run": 1,
+  "chunk": 5,
+  "window": [
+    1201.5,
+    1504.2
+  ],
+  "input_items": 141,
+  "input_chars": 7581,
+  "seconds": 5.4,
+  "raw_chars": 837,
+  "format": "json",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": false,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "No JSON object or list found"
+}
+{
+  "run": 1,
+  "chunk": 5,
+  "window": [
+    1201.5,
+    1504.2
+  ],
+  "input_items": 141,
+  "input_chars": 7581,
+  "seconds": 4.3,
+  "raw_chars": 605,
+  "format": "xml",
+  "valid_format": false,
+  "chapters": 0,
+  "keys_ok": false,
+  "timestamps_ok": false,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": false,
+  "content_grounded": false,
+  "avg_content_chars": 0,
+  "coverage_chars": 0,
+  "quality": 0,
+  "titles": [],
+  "error": "No XML chapter elements found"
+}
+{
+  "run": 1,
+  "chunk": 6,
+  "window": [
+    1502.3,
+    1641.4
+  ],
+  "input_items": 70,
+  "input_chars": 3781,
+  "seconds": 15.4,
+  "raw_chars": 3397,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 4,
+  "keys_ok": true,
+  "timestamps_ok": false,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 562,
+  "coverage_chars": 2250,
+  "quality": 6,
+  "titles": [
+    "Five-Step Trade Execution Ruleset",
+    "The Three Pillars of Consistent Profitability",
+    "Psychology and Structure in Execution",
+    "London Sweep Frankfurt Reversal Model"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 6,
+  "window": [
+    1502.3,
+    1641.4
+  ],
+  "input_items": 70,
+  "input_chars": 3781,
+  "seconds": 11.1,
+  "raw_chars": 2532,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 4,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": false,
+  "avg_content_chars": 377,
+  "coverage_chars": 1509,
+  "quality": 5,
+  "titles": [
+    "London Sweep Frankfurt Reversal Model",
+    "Five-Step Execution Rules",
+    "The Three Pillars of Consistent Profitability",
+    "Psychology and Structure Execution"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 6,
+  "window": [
+    1502.3,
+    1641.4
+  ],
+  "input_items": 70,
+  "input_chars": 3781,
+  "seconds": 16.0,
+  "raw_chars": 3472,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 4,
+  "keys_ok": true,
+  "timestamps_ok": false,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 532,
+  "coverage_chars": 2129,
+  "quality": 6,
+  "titles": [
+    "London Sweep Frankfurt Reversal Model",
+    "Five-Step Execution Rules",
+    "The Three Pillars of Consistent Profitability",
+    "Psychology and Structure Analysis"
+  ],
+  "error": ""
+}
+Text benchmark summary
+{
+  "chunks": 18,
+  "passed": 1,
+  "pass_rate": 0.056,
+  "min_quality": 0,
+  "avg_quality": 3.39,
+  "total_seconds": 177.8
+}
+Text benchmark summary by format
+{
+  "json": {
+    "chunks": 6,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "min_quality": 0,
+    "avg_quality": 4.17,
+    "total_seconds": 58.5
+  },
+  "schema_json": {
+    "chunks": 6,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "min_quality": 0,
+    "avg_quality": 1,
+    "total_seconds": 61.1
+  },
+  "xml": {
+    "chunks": 6,
+    "passed": 1,
+    "pass_rate": 0.167,
+    "min_quality": 0,
+    "avg_quality": 5,
+    "total_seconds": 58.2
+  }
+}
+
+Image selection benchmark
+{
+  "chapter": 1,
+  "selected": [
+    "0007.png",
+    "0004.png"
+  ],
+  "candidate_count": 7,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0007.png",
+      "0004.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0002.png",
+        "timestamp": 15,
+        "frame_idx": 2,
+        "visual_score": 0.3258,
+        "brightness": 0.2006,
+        "contrast": 0.4308,
+        "edge_density": 0.0989,
+        "color_spread": 0.0235,
+        "dark_ratio": 0.1717,
+        "light_ratio": 0.0417,
+        "skin_ratio": 0.0321,
+        "phash": "c13cc3ca38c33ff0"
+      },
+      {
+        "filename": "0003.png",
+        "timestamp": 30,
+        "frame_idx": 3,
+        "visual_score": 0.3447,
+        "brightness": 0.8664,
+        "contrast": 0.5656,
+        "edge_density": 0.1026,
+        "color_spread": 0.0127,
+        "dark_ratio": 0.0878,
+        "light_ratio": 0.7505,
+        "skin_ratio": 0.0147,
+        "phash": "d343a4a45a5af873"
+      },
+      {
+        "filename": "0007.png",
+        "timestamp": 90,
+        "frame_idx": 7,
+        "visual_score": 0.0645,
+        "brightness": 0.0906,
+        "contrast": 0.1689,
+        "edge_density": 0.0545,
+        "color_spread": 0.0007,
+        "dark_ratio": 0.8274,
+        "light_ratio": 0.0003,
+        "skin_ratio": 0.0066,
+        "phash": "f8f87eba82870781"
+      },
+      {
+        "filename": "0001.png",
+        "timestamp": 0,
+        "frame_idx": 1,
+        "visual_score": 0.2888,
+        "brightness": 0.2031,
+        "contrast": 0.3411,
+        "edge_density": 0.061,
+        "color_spread": 0.0698,
+        "dark_ratio": 0.0358,
+        "light_ratio": 0.0102,
+        "skin_ratio": 0.0,
+        "phash": "c3d336d469692d34"
+      },
+      {
+        "filename": "0005.png",
+        "timestamp": 60,
+        "frame_idx": 5,
+        "visual_score": 0.4263,
+        "brightness": 0.3942,
+        "contrast": 0.5952,
+        "edge_density": 0.107,
+        "color_spread": 0.0049,
+        "dark_ratio": 0.0371,
+        "light_ratio": 0.104,
+        "skin_ratio": 0.0856,
+        "phash": "946c69d36e693986"
+      },
+      {
+        "filename": "0004.png",
+        "timestamp": 45,
+        "frame_idx": 4,
+        "visual_score": 0.3789,
+        "brightness": 0.2921,
+        "contrast": 0.4178,
+        "edge_density": 0.0812,
+        "color_spread": 0.0983,
+        "dark_ratio": 0.1619,
+        "light_ratio": 0.0004,
+        "skin_ratio": 0.3237,
+        "phash": "fcf863c448369b89"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.222
+}
+{
+  "chapter": 2,
+  "selected": [
+    "0013.png",
+    "0014.png"
+  ],
+  "candidate_count": 17,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0013.png",
+      "0014.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0011.png",
+        "timestamp": 150,
+        "frame_idx": 11,
+        "visual_score": 0.0675,
+        "brightness": 0.1073,
+        "contrast": 0.1663,
+        "edge_density": 0.0555,
+        "color_spread": 0.0042,
+        "dark_ratio": 0.7809,
+        "light_ratio": 0.0003,
+        "skin_ratio": 0.0086,
+        "phash": "f8fafaaa0a0b8b0a"
+      },
+      {
+        "filename": "0008.png",
+        "timestamp": 105,
+        "frame_idx": 8,
+        "visual_score": 0.0657,
+        "brightness": 0.0913,
+        "contrast": 0.1723,
+        "edge_density": 0.0556,
+        "color_spread": 0.0006,
+        "dark_ratio": 0.8242,
+        "light_ratio": 0.0003,
+        "skin_ratio": 0.0072,
+        "phash": "fafa7e0b83030785"
+      },
+      {
+        "filename": "0021.png",
+        "timestamp": 300,
+        "frame_idx": 21,
+        "visual_score": 0.3065,
+        "brightness": 0.2001,
+        "contrast": 0.4638,
+        "edge_density": 0.0629,
+        "color_spread": 0.0314,
+        "dark_ratio": 0.244,
+        "light_ratio": 0.0453,
+        "skin_ratio": 0.0047,
+        "phash": "d1716ec1916e6e91"
+      },
+      {
+        "filename": "0012.png",
+        "timestamp": 165,
+        "frame_idx": 12,
+        "visual_score": 0.4262,
+        "brightness": 0.7773,
+        "contrast": 0.6679,
+        "edge_density": 0.1297,
+        "color_spread": 0.0067,
+        "dark_ratio": 0.071,
+        "light_ratio": 0.6288,
+        "skin_ratio": 0.0138,
+        "phash": "cbcb34b44aea7074"
+      },
+      {
+        "filename": "0013.png",
+        "timestamp": 180,
+        "frame_idx": 13,
+        "visual_score": 0.3958,
+        "brightness": 0.377,
+        "contrast": 0.4248,
+        "edge_density": 0.1039,
+        "color_spread": 0.0578,
+        "dark_ratio": 0.0959,
+        "light_ratio": 0.001,
+        "skin_ratio": 0.3002,
+        "phash": "b49a329a5e629b8b"
+      },
+      {
+        "filename": "0014.png",
+        "timestamp": 195,
+        "frame_idx": 14,
+        "visual_score": 0.0988,
+        "brightness": 0.9663,
+        "contrast": 0.2159,
+        "edge_density": 0.0893,
+        "color_spread": 0.0105,
+        "dark_ratio": 0.0004,
+        "light_ratio": 0.9152,
+        "skin_ratio": 0.0059,
+        "phash": "81010724fcfcf4fe"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.247
+}
+{
+  "chapter": 3,
+  "selected": [
+    "0021.png",
+    "0023.png"
+  ],
+  "candidate_count": 5,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0021.png",
+      "0023.png"
+    ],
+    "candidate_count": 4,
+    "vision_candidates": 4,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0021.png",
+        "timestamp": 300,
+        "frame_idx": 21,
+        "visual_score": 0.3065,
+        "brightness": 0.2001,
+        "contrast": 0.4638,
+        "edge_density": 0.0629,
+        "color_spread": 0.0314,
+        "dark_ratio": 0.244,
+        "light_ratio": 0.0453,
+        "skin_ratio": 0.0047,
+        "phash": "d1716ec1916e6e91"
+      },
+      {
+        "filename": "0022.png",
+        "timestamp": 315,
+        "frame_idx": 22,
+        "visual_score": 0.3738,
+        "brightness": 0.402,
+        "contrast": 0.4225,
+        "edge_density": 0.0902,
+        "color_spread": 0.0394,
+        "dark_ratio": 0.0884,
+        "light_ratio": 0.001,
+        "skin_ratio": 0.2751,
+        "phash": "b49a32dc5cb49aa9"
+      },
+      {
+        "filename": "0023.png",
+        "timestamp": 330,
+        "frame_idx": 23,
+        "visual_score": 0.0967,
+        "brightness": 0.9676,
+        "contrast": 0.2097,
+        "edge_density": 0.0878,
+        "color_spread": 0.0108,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.9185,
+        "skin_ratio": 0.0062,
+        "phash": "8501062cfefcfc74"
+      },
+      {
+        "filename": "0024.png",
+        "timestamp": 345,
+        "frame_idx": 24,
+        "visual_score": 0.0923,
+        "brightness": 0.9695,
+        "contrast": 0.2006,
+        "edge_density": 0.0837,
+        "color_spread": 0.0108,
+        "dark_ratio": 0.001,
+        "light_ratio": 0.9226,
+        "skin_ratio": 0.0063,
+        "phash": "810507247cfcfcfc"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.202
+}
+{
+  "chapter": 4,
+  "selected": [
+    "0035.png",
+    "0037.png"
+  ],
+  "candidate_count": 15,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0035.png",
+      "0037.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0032.png",
+        "timestamp": 465,
+        "frame_idx": 32,
+        "visual_score": 0.363,
+        "brightness": 0.4027,
+        "contrast": 0.4136,
+        "edge_density": 0.092,
+        "color_spread": 0.0261,
+        "dark_ratio": 0.0876,
+        "light_ratio": 0.0005,
+        "skin_ratio": 0.2218,
+        "phash": "b49a72d25a329f89"
+      },
+      {
+        "filename": "0030.png",
+        "timestamp": 435,
+        "frame_idx": 30,
+        "visual_score": 0.0982,
+        "brightness": 0.9663,
+        "contrast": 0.2123,
+        "edge_density": 0.0895,
+        "color_spread": 0.0106,
+        "dark_ratio": 0.0015,
+        "light_ratio": 0.9122,
+        "skin_ratio": 0.0071,
+        "phash": "810502acfcfcf47e"
+      },
+      {
+        "filename": "0039.png",
+        "timestamp": 570,
+        "frame_idx": 39,
+        "visual_score": 0.1024,
+        "brightness": 0.9545,
+        "contrast": 0.2227,
+        "edge_density": 0.0898,
+        "color_spread": 0.0115,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.8483,
+        "skin_ratio": 0.0072,
+        "phash": "910146317cecfcee"
+      },
+      {
+        "filename": "0035.png",
+        "timestamp": 510,
+        "frame_idx": 35,
+        "visual_score": 0.0944,
+        "brightness": 0.9684,
+        "contrast": 0.2082,
+        "edge_density": 0.0847,
+        "color_spread": 0.0104,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.9235,
+        "skin_ratio": 0.0061,
+        "phash": "810107246efefc7e"
+      },
+      {
+        "filename": "0037.png",
+        "timestamp": 540,
+        "frame_idx": 37,
+        "visual_score": 0.094,
+        "brightness": 0.9687,
+        "contrast": 0.2032,
+        "edge_density": 0.0858,
+        "color_spread": 0.0105,
+        "dark_ratio": 0.0003,
+        "light_ratio": 0.9225,
+        "skin_ratio": 0.0068,
+        "phash": "810702247efcfe7c"
+      },
+      {
+        "filename": "0041.png",
+        "timestamp": 600,
+        "frame_idx": 41,
+        "visual_score": 0.1042,
+        "brightness": 0.9506,
+        "contrast": 0.2319,
+        "edge_density": 0.0889,
+        "color_spread": 0.0114,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.8415,
+        "skin_ratio": 0.006,
+        "phash": "b104c63078ecfcfc"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.094
+}
+{
+  "chapter": 5,
+  "selected": [
+    "0041.png",
+    "0042.png"
+  ],
+  "candidate_count": 3,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0041.png",
+      "0042.png"
+    ],
+    "candidate_count": 2,
+    "vision_candidates": 2,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0041.png",
+        "timestamp": 600,
+        "frame_idx": 41,
+        "visual_score": 0.1042,
+        "brightness": 0.9506,
+        "contrast": 0.2319,
+        "edge_density": 0.0889,
+        "color_spread": 0.0114,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.8415,
+        "skin_ratio": 0.006,
+        "phash": "b104c63078ecfcfc"
+      },
+      {
+        "filename": "0042.png",
+        "timestamp": 615,
+        "frame_idx": 42,
+        "visual_score": 0.097,
+        "brightness": 0.9672,
+        "contrast": 0.2083,
+        "edge_density": 0.089,
+        "color_spread": 0.0104,
+        "dark_ratio": 0.0006,
+        "light_ratio": 0.9174,
+        "skin_ratio": 0.0068,
+        "phash": "81050e247cfcfe7c"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.101
+}
+{
+  "chapter": 6,
+  "selected": [
+    "0044.png",
+    "0047.png"
+  ],
+  "candidate_count": 6,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0044.png",
+      "0047.png"
+    ],
+    "candidate_count": 4,
+    "vision_candidates": 4,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0044.png",
+        "timestamp": 645,
+        "frame_idx": 44,
+        "visual_score": 0.2092,
+        "brightness": 0.9483,
+        "contrast": 0.2437,
+        "edge_density": 0.1035,
+        "color_spread": 0.0117,
+        "dark_ratio": 0.0003,
+        "light_ratio": 0.8164,
+        "skin_ratio": 0.0303,
+        "phash": "c5010294feecfc6e"
+      },
+      {
+        "filename": "0045.png",
+        "timestamp": 660,
+        "frame_idx": 45,
+        "visual_score": 0.0972,
+        "brightness": 0.9673,
+        "contrast": 0.2084,
+        "edge_density": 0.0892,
+        "color_spread": 0.0107,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.9197,
+        "skin_ratio": 0.0074,
+        "phash": "810503247cfcfcfe"
+      },
+      {
+        "filename": "0046.png",
+        "timestamp": 675,
+        "frame_idx": 46,
+        "visual_score": 0.0964,
+        "brightness": 0.9676,
+        "contrast": 0.2106,
+        "edge_density": 0.0872,
+        "color_spread": 0.0105,
+        "dark_ratio": 0.0016,
+        "light_ratio": 0.9224,
+        "skin_ratio": 0.0072,
+        "phash": "810106a47efefc76"
+      },
+      {
+        "filename": "0047.png",
+        "timestamp": 690,
+        "frame_idx": 47,
+        "visual_score": 0.106,
+        "brightness": 0.9596,
+        "contrast": 0.2283,
+        "edge_density": 0.0978,
+        "color_spread": 0.0083,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.8938,
+        "skin_ratio": 0.0072,
+        "phash": "810706847e7cfe75"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.158
+}
+{
+  "chapter": 7,
+  "selected": [
+    "0052.png",
+    "0046.png"
+  ],
+  "candidate_count": 7,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0052.png",
+      "0046.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0049.png",
+        "timestamp": 720,
+        "frame_idx": 49,
+        "visual_score": 0.0972,
+        "brightness": 0.9646,
+        "contrast": 0.2082,
+        "edge_density": 0.0885,
+        "color_spread": 0.0107,
+        "dark_ratio": 0.0001,
+        "light_ratio": 0.9076,
+        "skin_ratio": 0.0069,
+        "phash": "810507847e7cfcfc"
+      },
+      {
+        "filename": "0051.png",
+        "timestamp": 750,
+        "frame_idx": 51,
+        "visual_score": 0.1086,
+        "brightness": 0.9577,
+        "contrast": 0.2263,
+        "edge_density": 0.101,
+        "color_spread": 0.0105,
+        "dark_ratio": 0.0003,
+        "light_ratio": 0.8877,
+        "skin_ratio": 0.006,
+        "phash": "840303c46cfefe7c"
+      },
+      {
+        "filename": "0050.png",
+        "timestamp": 735,
+        "frame_idx": 50,
+        "visual_score": 0.2291,
+        "brightness": 0.9309,
+        "contrast": 0.2531,
+        "edge_density": 0.1196,
+        "color_spread": 0.0059,
+        "dark_ratio": 0.0012,
+        "light_ratio": 0.709,
+        "skin_ratio": 0.0163,
+        "phash": "a5058a8076fef678"
+      },
+      {
+        "filename": "0052.png",
+        "timestamp": 765,
+        "frame_idx": 52,
+        "visual_score": 0.1081,
+        "brightness": 0.9587,
+        "contrast": 0.2251,
+        "edge_density": 0.1,
+        "color_spread": 0.0116,
+        "dark_ratio": 0.0008,
+        "light_ratio": 0.8881,
+        "skin_ratio": 0.0074,
+        "phash": "810508a676fcfc7e"
+      },
+      {
+        "filename": "0046.png",
+        "timestamp": 675,
+        "frame_idx": 46,
+        "visual_score": 0.0964,
+        "brightness": 0.9676,
+        "contrast": 0.2106,
+        "edge_density": 0.0872,
+        "color_spread": 0.0105,
+        "dark_ratio": 0.0016,
+        "light_ratio": 0.9224,
+        "skin_ratio": 0.0072,
+        "phash": "810106a47efefc76"
+      },
+      {
+        "filename": "0048.png",
+        "timestamp": 705,
+        "frame_idx": 48,
+        "visual_score": 0.1011,
+        "brightness": 0.9611,
+        "contrast": 0.2194,
+        "edge_density": 0.092,
+        "color_spread": 0.009,
+        "dark_ratio": 0.0016,
+        "light_ratio": 0.8888,
+        "skin_ratio": 0.0067,
+        "phash": "8505028c7e7cfc77"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.102
+}
+{
+  "chapter": 8,
+  "selected": [
+    "0056.png",
+    "0057.png"
+  ],
+  "candidate_count": 8,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0056.png",
+      "0057.png"
+    ],
+    "candidate_count": 5,
+    "vision_candidates": 5,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0056.png",
+        "timestamp": 825,
+        "frame_idx": 56,
+        "visual_score": 0.1222,
+        "brightness": 0.9508,
+        "contrast": 0.2417,
+        "edge_density": 0.1176,
+        "color_spread": 0.0115,
+        "dark_ratio": 0.0006,
+        "light_ratio": 0.8578,
+        "skin_ratio": 0.0063,
+        "phash": "810307d4ecfcfc6c"
+      },
+      {
+        "filename": "0053.png",
+        "timestamp": 780,
+        "frame_idx": 53,
+        "visual_score": 0.1152,
+        "brightness": 0.954,
+        "contrast": 0.2335,
+        "edge_density": 0.1089,
+        "color_spread": 0.0113,
+        "dark_ratio": 0.0004,
+        "light_ratio": 0.8723,
+        "skin_ratio": 0.0065,
+        "phash": "81050ec4f27cfc7e"
+      },
+      {
+        "filename": "0057.png",
+        "timestamp": 840,
+        "frame_idx": 57,
+        "visual_score": 0.1113,
+        "brightness": 0.9579,
+        "contrast": 0.2335,
+        "edge_density": 0.1029,
+        "color_spread": 0.0113,
+        "dark_ratio": 0.0014,
+        "light_ratio": 0.89,
+        "skin_ratio": 0.0064,
+        "phash": "810506c47cfefc7c"
+      },
+      {
+        "filename": "0054.png",
+        "timestamp": 795,
+        "frame_idx": 54,
+        "visual_score": 0.1038,
+        "brightness": 0.9612,
+        "contrast": 0.2131,
+        "edge_density": 0.097,
+        "color_spread": 0.012,
+        "dark_ratio": 0.0004,
+        "light_ratio": 0.8918,
+        "skin_ratio": 0.0074,
+        "phash": "840703c478fcfe76"
+      },
+      {
+        "filename": "0050.png",
+        "timestamp": 735,
+        "frame_idx": 50,
+        "visual_score": 0.2291,
+        "brightness": 0.9309,
+        "contrast": 0.2531,
+        "edge_density": 0.1196,
+        "color_spread": 0.0059,
+        "dark_ratio": 0.0012,
+        "light_ratio": 0.709,
+        "skin_ratio": 0.0163,
+        "phash": "a5058a8076fef678"
+      }
+    ],
+    "provider": "ollama",
+    "model": "hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest"
+  },
+  "avg_visual_score": 0.117
+}

@@ -1,0 +1,311 @@
+Runtime: Ollama
+Model: hf.co/google/gemma-4-12B-it-qat-q4_0-gguf:latest
+Transcript items: 6
+
+Text archive benchmark
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.8,
+  "raw_chars": 1484,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Predictive Viewer Satisfaction Matching",
+    "Content Semantic Fingerprinting",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.4,
+  "raw_chars": 1479,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 6,
+  "titles": [
+    "Evolution of the YouTube Algorithm",
+    "Semantic Fingerprinting of Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 7.3,
+  "raw_chars": 1681,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Predictive Viewer Satisfaction Model",
+    "Semantic Fingerprinting of Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.7,
+  "raw_chars": 1483,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Predictive Viewer Satisfaction Matching",
+    "Content Semantic Fingerprinting",
+    "Session Resonance and Expansion Factors"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.6,
+  "raw_chars": 1549,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 6,
+  "titles": [
+    "Predictive Viewer Satisfaction Model",
+    "Semantic Fingerprinting of Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 7.3,
+  "raw_chars": 1678,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Predictive Viewer Satisfaction Model",
+    "Semantic Fingerprinting of Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.5,
+  "raw_chars": 1493,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Predictive Viewer Satisfaction Model",
+    "Semantic Fingerprinting and Content Matching",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.2,
+  "raw_chars": 1551,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 6,
+  "titles": [
+    "Predictive Viewer Satisfaction Model",
+    "Semantic Fingerprinting of Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    108.0
+  ],
+  "input_items": 6,
+  "input_chars": 748,
+  "seconds": 6.9,
+  "raw_chars": 1640,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 3,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 225,
+  "coverage_chars": 674,
+  "quality": 7,
+  "titles": [
+    "Predictive Viewer Satisfaction Model",
+    "Semantic Fingerprinting of Content",
+    "Demand Spikes and Session Resonance"
+  ],
+  "error": ""
+}
+Text benchmark summary
+{
+  "chunks": 9,
+  "passed": 6,
+  "pass_rate": 0.667,
+  "min_quality": 6,
+  "avg_quality": 6.67,
+  "total_seconds": 60.7
+}
+Text benchmark summary by format
+{
+  "json": {
+    "chunks": 3,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "min_quality": 6,
+    "avg_quality": 6,
+    "total_seconds": 19.2
+  },
+  "schema_json": {
+    "chunks": 3,
+    "passed": 3,
+    "pass_rate": 1.0,
+    "min_quality": 7,
+    "avg_quality": 7,
+    "total_seconds": 20.0
+  },
+  "xml": {
+    "chunks": 3,
+    "passed": 3,
+    "pass_rate": 1.0,
+    "min_quality": 7,
+    "avg_quality": 7,
+    "total_seconds": 21.5
+  }
+}

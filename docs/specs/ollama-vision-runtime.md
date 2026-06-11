@@ -19,6 +19,7 @@ This spec exists to prevent runtime drift and to make the chaptering and image-s
 - The backend does not send raw audio to the model.
 - `/models` exposes the full Gemma 4 catalog as `model_details`, but `models` contains only locally installed Ollama tags that are ready for job creation.
 - `/jobs` checks the requested model before creating a new background job so a missing tag fails immediately with a pull/start-Ollama message instead of failing late after download and frame extraction.
+- Default-model candidates are decided by the standing benchmark gate in `docs/specs/hf-gemma4-qat-model-evaluation.md` (first applied 2026-06-10: the HF Gemma 4 QAT Q4_0 release was evaluated and rejected on local evidence).
 
 ## Archive Flow
 

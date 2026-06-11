@@ -1,0 +1,371 @@
+{
+  "baseline": {
+    "sample": {
+      "calls": 9,
+      "passed": 6,
+      "pass_rate": 0.667,
+      "avg_quality": 6.67,
+      "avg_seconds_per_call": 6.44,
+      "total_seconds": 58.0,
+      "errors": 0,
+      "per_format": {
+        "schema_json": {
+          "calls": 3,
+          "passed": 3,
+          "avg_quality": 7.0,
+          "min_quality": 7,
+          "avg_seconds": 5.6,
+          "total_seconds": 16.8,
+          "errors": 0
+        },
+        "json": {
+          "calls": 3,
+          "passed": 0,
+          "avg_quality": 6.0,
+          "min_quality": 6,
+          "avg_seconds": 6.23,
+          "total_seconds": 18.7,
+          "errors": 0
+        },
+        "xml": {
+          "calls": 3,
+          "passed": 3,
+          "avg_quality": 7.0,
+          "min_quality": 7,
+          "avg_seconds": 7.5,
+          "total_seconds": 22.5,
+          "errors": 0
+        }
+      }
+    },
+    "teded": {
+      "calls": 9,
+      "passed": 5,
+      "pass_rate": 0.556,
+      "avg_quality": 6.56,
+      "avg_seconds_per_call": 17.42,
+      "total_seconds": 156.8,
+      "errors": 0,
+      "per_format": {
+        "schema_json": {
+          "calls": 3,
+          "passed": 2,
+          "avg_quality": 6.67,
+          "min_quality": 6,
+          "avg_seconds": 14.57,
+          "total_seconds": 43.7,
+          "errors": 0
+        },
+        "json": {
+          "calls": 3,
+          "passed": 0,
+          "avg_quality": 6.0,
+          "min_quality": 6,
+          "avg_seconds": 18.13,
+          "total_seconds": 54.4,
+          "errors": 0
+        },
+        "xml": {
+          "calls": 3,
+          "passed": 3,
+          "avg_quality": 7.0,
+          "min_quality": 7,
+          "avg_seconds": 19.57,
+          "total_seconds": 58.7,
+          "errors": 0
+        }
+      },
+      "image_selection": {
+        "chapters": 6,
+        "methods": {
+          "ollama_vision": 6
+        },
+        "avg_visual_score": 0.185
+      }
+    },
+    "trading": {
+      "calls": 18,
+      "passed": 2,
+      "pass_rate": 0.111,
+      "avg_quality": 3.72,
+      "avg_seconds_per_call": 9.93,
+      "total_seconds": 178.8,
+      "errors": 5,
+      "per_format": {
+        "schema_json": {
+          "calls": 6,
+          "passed": 1,
+          "avg_quality": 2.0,
+          "min_quality": 0,
+          "avg_seconds": 9.7,
+          "total_seconds": 58.2,
+          "errors": 4
+        },
+        "json": {
+          "calls": 6,
+          "passed": 0,
+          "avg_quality": 4.17,
+          "min_quality": 3,
+          "avg_seconds": 9.92,
+          "total_seconds": 59.5,
+          "errors": 0
+        },
+        "xml": {
+          "calls": 6,
+          "passed": 1,
+          "avg_quality": 5.0,
+          "min_quality": 0,
+          "avg_seconds": 10.18,
+          "total_seconds": 61.1,
+          "errors": 1
+        }
+      },
+      "image_selection": {
+        "chapters": 8,
+        "methods": {
+          "ollama_vision": 8
+        },
+        "avg_visual_score": 0.175
+      }
+    },
+    "trading_run2": {
+      "calls": 18,
+      "passed": 3,
+      "pass_rate": 0.167,
+      "avg_quality": 3.89,
+      "avg_seconds_per_call": 10.53,
+      "total_seconds": 189.6,
+      "errors": 5,
+      "per_format": {
+        "schema_json": {
+          "calls": 6,
+          "passed": 2,
+          "avg_quality": 2.33,
+          "min_quality": 0,
+          "avg_seconds": 11.2,
+          "total_seconds": 67.2,
+          "errors": 4
+        },
+        "json": {
+          "calls": 6,
+          "passed": 0,
+          "avg_quality": 4.17,
+          "min_quality": 3,
+          "avg_seconds": 10.03,
+          "total_seconds": 60.2,
+          "errors": 0
+        },
+        "xml": {
+          "calls": 6,
+          "passed": 1,
+          "avg_quality": 5.17,
+          "min_quality": 0,
+          "avg_seconds": 10.37,
+          "total_seconds": 62.2,
+          "errors": 1
+        }
+      },
+      "image_selection": {
+        "chapters": 8,
+        "methods": {
+          "ollama_vision": 8
+        },
+        "avg_visual_score": 0.183
+      }
+    },
+    "overall_text": {
+      "calls": 54,
+      "passed": 16,
+      "pass_rate": 0.296,
+      "avg_quality": 4.74,
+      "avg_seconds_per_call": 10.8,
+      "total_seconds": 583.2,
+      "errors": 10
+    }
+  },
+  "qat": {
+    "sample": {
+      "calls": 9,
+      "passed": 6,
+      "pass_rate": 0.667,
+      "avg_quality": 6.67,
+      "avg_seconds_per_call": 6.74,
+      "total_seconds": 60.7,
+      "errors": 0,
+      "per_format": {
+        "schema_json": {
+          "calls": 3,
+          "passed": 3,
+          "avg_quality": 7.0,
+          "min_quality": 7,
+          "avg_seconds": 6.67,
+          "total_seconds": 20.0,
+          "errors": 0
+        },
+        "json": {
+          "calls": 3,
+          "passed": 0,
+          "avg_quality": 6.0,
+          "min_quality": 6,
+          "avg_seconds": 6.4,
+          "total_seconds": 19.2,
+          "errors": 0
+        },
+        "xml": {
+          "calls": 3,
+          "passed": 3,
+          "avg_quality": 7.0,
+          "min_quality": 7,
+          "avg_seconds": 7.17,
+          "total_seconds": 21.5,
+          "errors": 0
+        }
+      }
+    },
+    "teded": {
+      "calls": 9,
+      "passed": 3,
+      "pass_rate": 0.333,
+      "avg_quality": 6.0,
+      "avg_seconds_per_call": 17.68,
+      "total_seconds": 159.1,
+      "errors": 0,
+      "per_format": {
+        "schema_json": {
+          "calls": 3,
+          "passed": 0,
+          "avg_quality": 6.0,
+          "min_quality": 6,
+          "avg_seconds": 18.73,
+          "total_seconds": 56.2,
+          "errors": 0
+        },
+        "json": {
+          "calls": 3,
+          "passed": 0,
+          "avg_quality": 5.0,
+          "min_quality": 5,
+          "avg_seconds": 16.5,
+          "total_seconds": 49.5,
+          "errors": 0
+        },
+        "xml": {
+          "calls": 3,
+          "passed": 3,
+          "avg_quality": 7.0,
+          "min_quality": 7,
+          "avg_seconds": 17.8,
+          "total_seconds": 53.4,
+          "errors": 0
+        }
+      },
+      "image_selection": {
+        "chapters": 6,
+        "methods": {
+          "deterministic": 1,
+          "ollama_vision": 5
+        },
+        "avg_visual_score": 0.132
+      }
+    },
+    "trading": {
+      "calls": 18,
+      "passed": 1,
+      "pass_rate": 0.056,
+      "avg_quality": 3.39,
+      "avg_seconds_per_call": 9.88,
+      "total_seconds": 177.8,
+      "errors": 7,
+      "per_format": {
+        "schema_json": {
+          "calls": 6,
+          "passed": 0,
+          "avg_quality": 1.0,
+          "min_quality": 0,
+          "avg_seconds": 10.18,
+          "total_seconds": 61.1,
+          "errors": 5
+        },
+        "json": {
+          "calls": 6,
+          "passed": 0,
+          "avg_quality": 4.17,
+          "min_quality": 0,
+          "avg_seconds": 9.75,
+          "total_seconds": 58.5,
+          "errors": 1
+        },
+        "xml": {
+          "calls": 6,
+          "passed": 1,
+          "avg_quality": 5.0,
+          "min_quality": 0,
+          "avg_seconds": 9.7,
+          "total_seconds": 58.2,
+          "errors": 1
+        }
+      },
+      "image_selection": {
+        "chapters": 8,
+        "methods": {
+          "ollama_vision": 8
+        },
+        "avg_visual_score": 0.155
+      }
+    },
+    "trading_run2": {
+      "calls": 18,
+      "passed": 1,
+      "pass_rate": 0.056,
+      "avg_quality": 3.5,
+      "avg_seconds_per_call": 10.22,
+      "total_seconds": 183.9,
+      "errors": 7,
+      "per_format": {
+        "schema_json": {
+          "calls": 6,
+          "passed": 0,
+          "avg_quality": 1.0,
+          "min_quality": 0,
+          "avg_seconds": 11.35,
+          "total_seconds": 68.1,
+          "errors": 5
+        },
+        "json": {
+          "calls": 6,
+          "passed": 0,
+          "avg_quality": 4.33,
+          "min_quality": 0,
+          "avg_seconds": 9.75,
+          "total_seconds": 58.5,
+          "errors": 1
+        },
+        "xml": {
+          "calls": 6,
+          "passed": 1,
+          "avg_quality": 5.17,
+          "min_quality": 0,
+          "avg_seconds": 9.55,
+          "total_seconds": 57.3,
+          "errors": 1
+        }
+      },
+      "image_selection": {
+        "chapters": 8,
+        "methods": {
+          "ollama_vision": 8
+        },
+        "avg_visual_score": 0.153
+      }
+    },
+    "overall_text": {
+      "calls": 54,
+      "passed": 11,
+      "pass_rate": 0.204,
+      "avg_quality": 4.41,
+      "avg_seconds_per_call": 10.77,
+      "total_seconds": 581.5,
+      "errors": 14
+    }
+  }
+}

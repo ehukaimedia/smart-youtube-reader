@@ -1,0 +1,873 @@
+Runtime: Ollama
+Model: gemma4:12b
+Transcript items: 78
+Project: C:\Users\arsen\OneDrive\Desktop\AI-Applications\smart-youtube-reader\data\jobs\3-tips-to-boost-your-confidence-ted-ed_06a6dae9
+
+Text archive benchmark
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 14.2,
+  "raw_chars": 3285,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 409,
+  "coverage_chars": 2044,
+  "quality": 7,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 18.8,
+  "raw_chars": 4181,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 589,
+  "coverage_chars": 2943,
+  "quality": 6,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 1,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 20.6,
+  "raw_chars": 4505,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 600,
+  "coverage_chars": 2999,
+  "quality": 7,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 15.9,
+  "raw_chars": 3851,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 6,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": false,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 408,
+  "coverage_chars": 2449,
+  "quality": 6,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as Growth",
+    "Actionable Steps for Facing Challenges"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 18.0,
+  "raw_chars": 4211,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 574,
+  "coverage_chars": 2868,
+  "quality": 6,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 2,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 19.5,
+  "raw_chars": 4502,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 600,
+  "coverage_chars": 2999,
+  "quality": 7,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 13.6,
+  "raw_chars": 3257,
+  "format": "schema_json",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 422,
+  "coverage_chars": 2110,
+  "quality": 7,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 17.6,
+  "raw_chars": 4269,
+  "format": "json",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": false,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 553,
+  "coverage_chars": 2764,
+  "quality": 6,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+{
+  "run": 3,
+  "chunk": 1,
+  "window": [
+    0.0,
+    238.2
+  ],
+  "input_items": 78,
+  "input_chars": 4420,
+  "seconds": 18.6,
+  "raw_chars": 4507,
+  "format": "xml",
+  "valid_format": true,
+  "chapters": 5,
+  "keys_ok": true,
+  "timestamps_ok": true,
+  "count_ok": true,
+  "no_markdown": true,
+  "no_fluff_titles": true,
+  "content_grounded": true,
+  "avg_content_chars": 600,
+  "coverage_chars": 3001,
+  "quality": 7,
+  "titles": [
+    "Defining Confidence",
+    "Factors Influencing Confidence",
+    "Short-term Confidence Boosts",
+    "Growth Mindset and Neuroplasticity",
+    "Practicing Failure as a Tool"
+  ],
+  "error": ""
+}
+Text benchmark summary
+{
+  "chunks": 9,
+  "passed": 5,
+  "pass_rate": 0.556,
+  "min_quality": 6,
+  "avg_quality": 6.56,
+  "total_seconds": 156.8
+}
+Text benchmark summary by format
+{
+  "json": {
+    "chunks": 3,
+    "passed": 0,
+    "pass_rate": 0.0,
+    "min_quality": 6,
+    "avg_quality": 6,
+    "total_seconds": 54.4
+  },
+  "schema_json": {
+    "chunks": 3,
+    "passed": 2,
+    "pass_rate": 0.667,
+    "min_quality": 6,
+    "avg_quality": 6.67,
+    "total_seconds": 43.7
+  },
+  "xml": {
+    "chunks": 3,
+    "passed": 3,
+    "pass_rate": 1.0,
+    "min_quality": 7,
+    "avg_quality": 7,
+    "total_seconds": 58.7
+  }
+}
+
+Image selection benchmark
+{
+  "chapter": 1,
+  "selected": [
+    "0001.png"
+  ],
+  "candidate_count": 4,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0001.png"
+    ],
+    "candidate_count": 4,
+    "vision_candidates": 4,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0004.png",
+        "timestamp": 45,
+        "frame_idx": 4,
+        "visual_score": 0.1012,
+        "brightness": 0.0851,
+        "contrast": 0.2364,
+        "edge_density": 0.0873,
+        "color_spread": 0.0355,
+        "dark_ratio": 0.8138,
+        "light_ratio": 0.0,
+        "skin_ratio": 0.0067,
+        "phash": "c15a37c286385e9f"
+      },
+      {
+        "filename": "0003.png",
+        "timestamp": 30,
+        "frame_idx": 3,
+        "visual_score": 0.3511,
+        "brightness": 0.783,
+        "contrast": 0.515,
+        "edge_density": 0.0854,
+        "color_spread": 0.0436,
+        "dark_ratio": 0.0008,
+        "light_ratio": 0.349,
+        "skin_ratio": 0.0958,
+        "phash": "bee1c11f9886c33c"
+      },
+      {
+        "filename": "0001.png",
+        "timestamp": 0,
+        "frame_idx": 1,
+        "visual_score": 0.2727,
+        "brightness": 0.8523,
+        "contrast": 0.3152,
+        "edge_density": 0.0646,
+        "color_spread": 0.0872,
+        "dark_ratio": 0.0013,
+        "light_ratio": 0.4286,
+        "skin_ratio": 0.0987,
+        "phash": "b03893c76c6e4c67"
+      },
+      {
+        "filename": "0002.png",
+        "timestamp": 15,
+        "frame_idx": 2,
+        "visual_score": 0.1147,
+        "brightness": 0.9252,
+        "contrast": 0.1439,
+        "edge_density": 0.0456,
+        "color_spread": 0.0046,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6453,
+        "skin_ratio": 0.0208,
+        "phash": "91ce4c334edc7338"
+      }
+    ],
+    "provider": "ollama",
+    "model": "gemma4:12b"
+  },
+  "avg_visual_score": 0.273
+}
+{
+  "chapter": 2,
+  "selected": [
+    "0004.png"
+  ],
+  "candidate_count": 6,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0004.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0004.png",
+        "timestamp": 45,
+        "frame_idx": 4,
+        "visual_score": 0.1012,
+        "brightness": 0.0851,
+        "contrast": 0.2364,
+        "edge_density": 0.0873,
+        "color_spread": 0.0355,
+        "dark_ratio": 0.8138,
+        "light_ratio": 0.0,
+        "skin_ratio": 0.0067,
+        "phash": "c15a37c286385e9f"
+      },
+      {
+        "filename": "0003.png",
+        "timestamp": 30,
+        "frame_idx": 3,
+        "visual_score": 0.3511,
+        "brightness": 0.783,
+        "contrast": 0.515,
+        "edge_density": 0.0854,
+        "color_spread": 0.0436,
+        "dark_ratio": 0.0008,
+        "light_ratio": 0.349,
+        "skin_ratio": 0.0958,
+        "phash": "bee1c11f9886c33c"
+      },
+      {
+        "filename": "0006.png",
+        "timestamp": 75,
+        "frame_idx": 6,
+        "visual_score": 0.109,
+        "brightness": 0.9216,
+        "contrast": 0.1089,
+        "edge_density": 0.0404,
+        "color_spread": 0.0202,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.563,
+        "skin_ratio": 0.0028,
+        "phash": "91cc5d370c313f6c"
+      },
+      {
+        "filename": "0007.png",
+        "timestamp": 90,
+        "frame_idx": 7,
+        "visual_score": 0.1708,
+        "brightness": 0.9124,
+        "contrast": 0.1761,
+        "edge_density": 0.0696,
+        "color_spread": 0.0281,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.5753,
+        "skin_ratio": 0.0,
+        "phash": "91e11e4e679b1b64"
+      },
+      {
+        "filename": "0005.png",
+        "timestamp": 60,
+        "frame_idx": 5,
+        "visual_score": 0.1404,
+        "brightness": 0.9071,
+        "contrast": 0.1328,
+        "edge_density": 0.0686,
+        "color_spread": 0.0072,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.4781,
+        "skin_ratio": 0.0313,
+        "phash": "cb3314cc15627b3b"
+      },
+      {
+        "filename": "0002.png",
+        "timestamp": 15,
+        "frame_idx": 2,
+        "visual_score": 0.1147,
+        "brightness": 0.9252,
+        "contrast": 0.1439,
+        "edge_density": 0.0456,
+        "color_spread": 0.0046,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6453,
+        "skin_ratio": 0.0208,
+        "phash": "91ce4c334edc7338"
+      }
+    ],
+    "provider": "ollama",
+    "model": "gemma4:12b"
+  },
+  "avg_visual_score": 0.101
+}
+{
+  "chapter": 3,
+  "selected": [
+    "0007.png"
+  ],
+  "candidate_count": 4,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0007.png"
+    ],
+    "candidate_count": 4,
+    "vision_candidates": 4,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0007.png",
+        "timestamp": 90,
+        "frame_idx": 7,
+        "visual_score": 0.1708,
+        "brightness": 0.9124,
+        "contrast": 0.1761,
+        "edge_density": 0.0696,
+        "color_spread": 0.0281,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.5753,
+        "skin_ratio": 0.0,
+        "phash": "91e11e4e679b1b64"
+      },
+      {
+        "filename": "0008.png",
+        "timestamp": 105,
+        "frame_idx": 8,
+        "visual_score": 0.1626,
+        "brightness": 0.8805,
+        "contrast": 0.1431,
+        "edge_density": 0.044,
+        "color_spread": 0.0588,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.329,
+        "skin_ratio": 0.0074,
+        "phash": "c1ce1ab33aae4699"
+      },
+      {
+        "filename": "0006.png",
+        "timestamp": 75,
+        "frame_idx": 6,
+        "visual_score": 0.109,
+        "brightness": 0.9216,
+        "contrast": 0.1089,
+        "edge_density": 0.0404,
+        "color_spread": 0.0202,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.563,
+        "skin_ratio": 0.0028,
+        "phash": "91cc5d370c313f6c"
+      },
+      {
+        "filename": "0009.png",
+        "timestamp": 120,
+        "frame_idx": 9,
+        "visual_score": 0.1148,
+        "brightness": 0.9255,
+        "contrast": 0.1259,
+        "edge_density": 0.0515,
+        "color_spread": 0.0055,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6292,
+        "skin_ratio": 0.016,
+        "phash": "d4e1031e3ee1693e"
+      }
+    ],
+    "provider": "ollama",
+    "model": "gemma4:12b"
+  },
+  "avg_visual_score": 0.171
+}
+{
+  "chapter": 4,
+  "selected": [
+    "0008.png"
+  ],
+  "candidate_count": 7,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0008.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0011.png",
+        "timestamp": 150,
+        "frame_idx": 11,
+        "visual_score": 0.4704,
+        "brightness": 0.6677,
+        "contrast": 0.7328,
+        "edge_density": 0.0867,
+        "color_spread": 0.06,
+        "dark_ratio": 0.0035,
+        "light_ratio": 0.3618,
+        "skin_ratio": 0.0006,
+        "phash": "b96e1696c3c33692"
+      },
+      {
+        "filename": "0012.png",
+        "timestamp": 165,
+        "frame_idx": 12,
+        "visual_score": 0.1008,
+        "brightness": 0.1071,
+        "contrast": 0.3055,
+        "edge_density": 0.0661,
+        "color_spread": 0.0225,
+        "dark_ratio": 0.7823,
+        "light_ratio": 0.0009,
+        "skin_ratio": 0.0174,
+        "phash": "8e6932dbac74cca8"
+      },
+      {
+        "filename": "0008.png",
+        "timestamp": 105,
+        "frame_idx": 8,
+        "visual_score": 0.1626,
+        "brightness": 0.8805,
+        "contrast": 0.1431,
+        "edge_density": 0.044,
+        "color_spread": 0.0588,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.329,
+        "skin_ratio": 0.0074,
+        "phash": "c1ce1ab33aae4699"
+      },
+      {
+        "filename": "0013.png",
+        "timestamp": 180,
+        "frame_idx": 13,
+        "visual_score": 0.1296,
+        "brightness": 0.908,
+        "contrast": 0.108,
+        "edge_density": 0.0443,
+        "color_spread": 0.0392,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.4238,
+        "skin_ratio": 0.0003,
+        "phash": "868659b91f4c6cd3"
+      },
+      {
+        "filename": "0010.png",
+        "timestamp": 135,
+        "frame_idx": 10,
+        "visual_score": 0.2045,
+        "brightness": 0.8914,
+        "contrast": 0.2826,
+        "edge_density": 0.0739,
+        "color_spread": 0.0085,
+        "dark_ratio": 0.001,
+        "light_ratio": 0.5463,
+        "skin_ratio": 0.0281,
+        "phash": "b3c44e333bcc4ca3"
+      },
+      {
+        "filename": "0009.png",
+        "timestamp": 120,
+        "frame_idx": 9,
+        "visual_score": 0.1148,
+        "brightness": 0.9255,
+        "contrast": 0.1259,
+        "edge_density": 0.0515,
+        "color_spread": 0.0055,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6292,
+        "skin_ratio": 0.016,
+        "phash": "d4e1031e3ee1693e"
+      }
+    ],
+    "provider": "ollama",
+    "model": "gemma4:12b"
+  },
+  "avg_visual_score": 0.163
+}
+{
+  "chapter": 5,
+  "selected": [
+    "0013.png",
+    "0014.png"
+  ],
+  "candidate_count": 6,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0013.png",
+      "0014.png"
+    ],
+    "candidate_count": 6,
+    "vision_candidates": 6,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0012.png",
+        "timestamp": 165,
+        "frame_idx": 12,
+        "visual_score": 0.1008,
+        "brightness": 0.1071,
+        "contrast": 0.3055,
+        "edge_density": 0.0661,
+        "color_spread": 0.0225,
+        "dark_ratio": 0.7823,
+        "light_ratio": 0.0009,
+        "skin_ratio": 0.0174,
+        "phash": "8e6932dbac74cca8"
+      },
+      {
+        "filename": "0011.png",
+        "timestamp": 150,
+        "frame_idx": 11,
+        "visual_score": 0.4704,
+        "brightness": 0.6677,
+        "contrast": 0.7328,
+        "edge_density": 0.0867,
+        "color_spread": 0.06,
+        "dark_ratio": 0.0035,
+        "light_ratio": 0.3618,
+        "skin_ratio": 0.0006,
+        "phash": "b96e1696c3c33692"
+      },
+      {
+        "filename": "0013.png",
+        "timestamp": 180,
+        "frame_idx": 13,
+        "visual_score": 0.1296,
+        "brightness": 0.908,
+        "contrast": 0.108,
+        "edge_density": 0.0443,
+        "color_spread": 0.0392,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.4238,
+        "skin_ratio": 0.0003,
+        "phash": "868659b91f4c6cd3"
+      },
+      {
+        "filename": "0016.png",
+        "timestamp": 225,
+        "frame_idx": 16,
+        "visual_score": 0.2758,
+        "brightness": 0.8457,
+        "contrast": 0.444,
+        "edge_density": 0.0721,
+        "color_spread": 0.0141,
+        "dark_ratio": 0.0022,
+        "light_ratio": 0.5122,
+        "skin_ratio": 0.0519,
+        "phash": "e5cf92306cc79236"
+      },
+      {
+        "filename": "0014.png",
+        "timestamp": 195,
+        "frame_idx": 14,
+        "visual_score": 0.1183,
+        "brightness": 0.9239,
+        "contrast": 0.1492,
+        "edge_density": 0.0464,
+        "color_spread": 0.0053,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6403,
+        "skin_ratio": 0.022,
+        "phash": "93334cccd9cc6633"
+      },
+      {
+        "filename": "0015.png",
+        "timestamp": 210,
+        "frame_idx": 15,
+        "visual_score": 0.1147,
+        "brightness": 0.9255,
+        "contrast": 0.1375,
+        "edge_density": 0.0477,
+        "color_spread": 0.0049,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6378,
+        "skin_ratio": 0.0162,
+        "phash": "c2b5154a1fa56ada"
+      }
+    ],
+    "provider": "ollama",
+    "model": "gemma4:12b"
+  },
+  "avg_visual_score": 0.124
+}
+{
+  "chapter": 6,
+  "selected": [
+    "0016.png"
+  ],
+  "candidate_count": 4,
+  "selection": {
+    "schema_version": 1,
+    "method": "ollama_vision",
+    "selected_images": [
+      "0016.png"
+    ],
+    "candidate_count": 3,
+    "vision_candidates": 3,
+    "max_images": 2,
+    "candidates": [
+      {
+        "filename": "0017.png",
+        "timestamp": 240,
+        "frame_idx": 17,
+        "visual_score": 0.492,
+        "brightness": 0.7662,
+        "contrast": 0.6254,
+        "edge_density": 0.1879,
+        "color_spread": 0.0332,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6183,
+        "skin_ratio": 0.1023,
+        "phash": "bbb1823e84c7c16b"
+      },
+      {
+        "filename": "0016.png",
+        "timestamp": 225,
+        "frame_idx": 16,
+        "visual_score": 0.2758,
+        "brightness": 0.8457,
+        "contrast": 0.444,
+        "edge_density": 0.0721,
+        "color_spread": 0.0141,
+        "dark_ratio": 0.0022,
+        "light_ratio": 0.5122,
+        "skin_ratio": 0.0519,
+        "phash": "e5cf92306cc79236"
+      },
+      {
+        "filename": "0015.png",
+        "timestamp": 210,
+        "frame_idx": 15,
+        "visual_score": 0.1147,
+        "brightness": 0.9255,
+        "contrast": 0.1375,
+        "edge_density": 0.0477,
+        "color_spread": 0.0049,
+        "dark_ratio": 0.0,
+        "light_ratio": 0.6378,
+        "skin_ratio": 0.0162,
+        "phash": "c2b5154a1fa56ada"
+      }
+    ],
+    "provider": "ollama",
+    "model": "gemma4:12b"
+  },
+  "avg_visual_score": 0.276
+}
