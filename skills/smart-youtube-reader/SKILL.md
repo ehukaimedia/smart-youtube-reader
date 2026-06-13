@@ -63,7 +63,7 @@ Trigger it with: `"make a playground for job <id>"` or `"build an explorer for t
 1. **Download** — yt-dlp fetches video using Chrome cookies if `YDL_COOKIES_BROWSER=chrome` is set
 2. **Transcript** — `youtube-transcript-api` v1.x fetch; falls back to yt-dlp VTT parsing
 3. **Frames** — FFmpeg extracts frames at `interval_sec`; FrameManager deduplicates via perceptual hash
-4. **Archive** — MLX-VLM Gemma 4 chunks transcript into semantic chapters; FrameManager pairs chapters with local frame metadata
+4. **Archive** — Ollama Gemma 4 (`gemma4:12b`) chunks the transcript into semantic chapters, then uses vision to select representative frames per chapter (deterministic frame scoring as fallback)
 5. **Package** — manifest written; directory renamed to `<slug>_<short_id>`
 
 ## Environment
@@ -71,8 +71,8 @@ Trigger it with: `"make a playground for job <id>"` or `"build an explorer for t
 | Variable | Default | Effect |
 |---|---|---|
 | `YDL_COOKIES_BROWSER` | unset | Set to `chrome` or `firefox` for private/age-restricted videos |
-| `SMART_READER_MODEL` | `mlx-community/gemma-4-e4b-it-4bit` | Override the default MLX Gemma 4 archive model |
-| `MLX_MODELS_DIR` | `data/mlx` | Override the local Hugging Face/MLX model cache |
+| `SMART_READER_MODEL` | `gemma4:12b` | Override the default Ollama Gemma 4 archive model (must be a vision-capable tag) |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama server endpoint the backend calls for archive generation |
 
 ## Common Issues
 
@@ -82,4 +82,4 @@ Trigger it with: `"make a playground for job <id>"` or `"build an explorer for t
 | `Skipping client since it does not support cookies` | ios/android clients used with `cookiesfrombrowser` | Use `web` client (default) |
 | `AttributeError: get_transcript` | `youtube-transcript-api` v0.x installed | Requires `>=1.0.0` |
 | `Only images available` | n-challenge unsolved + no cookie-compatible client | Fix PATH so node is discoverable |
-| Job stuck at processing | `mlx-vlm` missing or model download still starting | Install backend requirements and retry; first run can take several minutes while MLX downloads weights |
+| Job stuck at processing | Ollama not running, or `gemma4:12b` not pulled | Start Ollama and run `ollama pull gemma4:12b`; the launch scripts also pull it if missing |
